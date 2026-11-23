@@ -5,9 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
 <title>Panel de validación · Recuento Ciudadano</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-:root{ --paper:#f4f6f9; --card:#fff; --ink:#14223a; --muted:#5a6678; --line:#d9dfe8; --accent:#1d4fd8; --ok:#137a43; --ok-soft:#e2f4ea; --warn:#9a5b00; --warn-soft:#fdf0d9; --bad:#b42318; --bad-soft:#fde6e4;
-  --body:"IBM Plex Sans","Segoe UI",Arial,sans-serif; --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace; color-scheme:light; }
+:root{ --paper:#f6f2ea; --card:#fffdf9; --ink:#1e2a32; --muted:#5e6b73; --line:#d9d3c7; --accent:#23626a; --ok:#23626a; --ok-soft:#dcebea; --warn:#8a6420; --warn-soft:#f3e6c8; --bad:#a3402e; --bad-soft:#f6e0da;
+  --body:"Inter","Segoe UI",Arial,sans-serif; --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace; color-scheme:light; }
 *{box-sizing:border-box} body{margin:0; background:var(--paper); color:var(--ink); font-family:var(--body); font-size:15px}
 .wrap{max-width:1200px; margin:0 auto; padding:16px}
 h1{font-size:22px; margin:0 0 12px} h2{font-size:17px; margin:0}
@@ -28,7 +30,7 @@ td:first-child,th:first-child{text-align:left}
 td.dif{background:var(--warn-soft); font-weight:700}
 .flag{color:var(--bad); font-size:12.5px}
 .version{border:2px solid var(--line); border-radius:10px; padding:10px; margin-top:10px}
-.version.sugerida{border-color:var(--ok); background:#f6fcf8}
+.version.sugerida{border-color:var(--ok); background:#eef5f4}
 .version h3{margin:0; font-size:15px} .aviso{background:var(--warn-soft); color:var(--warn); border-radius:8px; padding:6px 10px; font-size:13px; margin-top:6px}
 .miniaturas{display:flex; gap:8px; flex-wrap:wrap; margin-top:8px} .miniaturas img{height:150px; width:auto; border-radius:6px; background:#222; cursor:zoom-in}
 td.ia{color:var(--muted)} td.iadif{background:var(--bad-soft); color:var(--bad); font-weight:700}

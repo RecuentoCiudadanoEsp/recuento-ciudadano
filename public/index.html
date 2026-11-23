@@ -4,27 +4,38 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Recuento Ciudadano · Fotografía el acta de tu mesa</title>
-<meta name="description" content="Verificación ciudadana de los resultados con fotografías de las actas de escrutinio. Cuando cierre tu colegio, fotografía el acta de la puerta y súbela. Las fotos verificadas son públicas.">
+<meta name="description" content="Verificación independiente y descentralizada del recuento oficial con fotografías de las actas de escrutinio. Cuando cierre tu colegio, fotografía el acta de la puerta y súbela. Las fotos verificadas son públicas.">
 <meta property="og:title" content="Recuento Ciudadano · Fotografía el acta de tu mesa">
-<meta property="og:description" content="Verificación ciudadana con fotos públicas de las actas de escrutinio, mesa por mesa. No sustituye al recuento oficial.">
+<meta property="og:description" content="Verificación independiente y descentralizada del recuento oficial, con fotos públicas de las actas de escrutinio de cada mesa.">
+<meta property="og:image" content="https://recuentociudadano.es/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#23626A">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icono-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root{
-  --paper:#f4f6f9; --card:#fff; --ink:#14223a; --muted:#5a6678; --line:#d9dfe8; --accent:#1d4fd8; --accent-soft:#e6edff;
-  --ok:#137a43; --ok-soft:#e2f4ea; --warn:#9a5b00; --warn-soft:#fdf0d9; --bad:#b42318; --bad-soft:#fde6e4; --info:#1d4fd8; --info-soft:#e6edff;
-  --display:"Archivo","Helvetica Neue",Arial,sans-serif; --body:"IBM Plex Sans","Segoe UI",Arial,sans-serif; --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  /* Paleta: papel y tinta (el acta), petróleo como color principal y ocre como acento.
+     Colores elegidos para no recordar a ningún partido. */
+  --paper:#f6f2ea; --card:#fffdf9; --ink:#1e2a32; --muted:#5e6b73; --line:#d9d3c7; --accent:#23626a; --accent-soft:#dcebea;
+  --ocre:#c8963e; --ok:#23626a; --ok-soft:#dcebea; --warn:#8a6420; --warn-soft:#f3e6c8; --bad:#a3402e; --bad-soft:#f6e0da; --info:#23626a; --info-soft:#dcebea;
+  --display:"Inter","Helvetica Neue",Arial,sans-serif; --body:"Inter","Segoe UI",Arial,sans-serif; --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark){ :root{
-  --paper:#0f1522; --card:#172033; --ink:#e7ecf5; --muted:#9aa6ba; --line:#2a364d; --accent:#7ea2ff; --accent-soft:#1d2a4a;
-  --ok:#5fd394; --ok-soft:#133224; --warn:#f2b85b; --warn-soft:#3a2a10; --bad:#ff8a7e; --bad-soft:#3d1917; --info:#7ea2ff; --info-soft:#1d2a4a; color-scheme: dark; } }
+  --paper:#111a1f; --card:#18242b; --ink:#eceee9; --muted:#9aa7ae; --line:#2b3a42; --accent:#7cc0c4; --accent-soft:#1c3639;
+  --ocre:#d9ab58; --ok:#7cc0c4; --ok-soft:#1c3639; --warn:#e2b866; --warn-soft:#3a2f17; --bad:#f08f7c; --bad-soft:#3d211c; --info:#7cc0c4; --info-soft:#1c3639; color-scheme: dark; } }
 *{box-sizing:border-box} html,body{margin:0}
 body{background:var(--paper); color:var(--ink); font-family:var(--body); font-size:16px; line-height:1.5}
 .wrap{max-width:860px; margin:0 auto; padding:16px 16px 64px}
 header.top{display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:8px}
-.brand{font-family:var(--display); font-weight:800; font-size:20px; text-decoration:none; color:var(--ink)}
+.brand{font-family:var(--display); font-weight:800; font-size:20px; letter-spacing:-.01em; text-decoration:none; color:var(--ink); display:inline-flex; align-items:center; gap:10px}
+.brand img{width:36px; height:36px; display:block}
 nav.tabs{display:flex; gap:2px; overflow-x:auto; border-bottom:1px solid var(--line); margin-bottom:18px}
 nav.tabs a{padding:10px 12px; text-decoration:none; color:var(--muted); font-weight:600; white-space:nowrap; border-bottom:3px solid transparent}
 nav.tabs a[aria-current="page"]{color:var(--ink); border-color:var(--accent)}
@@ -43,7 +54,7 @@ select,input[type=number],input[type=text]{width:100%; font:inherit; color:var(-
 input[type=number]{font-family:var(--mono); font-variant-numeric:tabular-nums; font-size:18px}
 button,.btn{font:inherit; font-weight:600; border-radius:10px; border:1px solid var(--line); background:var(--card); color:var(--ink); padding:11px 16px; cursor:pointer; text-decoration:none; display:inline-block}
 button.primary,.btn.primary{background:var(--accent); border-color:var(--accent); color:#fff}
-@media (prefers-color-scheme: dark){ button.primary,.btn.primary{color:#0f1522} }
+@media (prefers-color-scheme: dark){ button.primary,.btn.primary{color:#111a1f} }
 button:disabled{opacity:.5; cursor:not-allowed}
 button.big{width:100%; padding:15px; font-size:18px}
 button.small,.btn.small{padding:7px 11px; font-size:14px}
@@ -104,7 +115,7 @@ footer{margin-top:30px; font-size:13px; color:var(--muted)}
 <body>
 <div class="wrap">
   <header class="top">
-    <a class="brand" href="#inicio" id="brand">Recuento Ciudadano</a>
+    <a class="brand" href="#inicio"><img src="/logo.svg" alt="" width="36" height="36"><span id="brand">Recuento Ciudadano</span></a>
     <span class="meta" id="estadoGlobal"></span>
   </header>
   <nav class="tabs" aria-label="Secciones">
@@ -118,7 +129,7 @@ footer{margin-top:30px; font-size:13px; color:var(--muted)}
   <section class="view" id="v-inicio">
     <h1>Cuando cierre tu colegio, fotografía el acta de tu mesa y súbela aquí.</h1>
     <p>Al terminar el recuento, cada mesa pega en la puerta una copia del acta de escrutinio. Si muchas personas las fotografían, cualquiera podrá comprobar los resultados mesa por mesa, con la foto delante.</p>
-    <p class="meta">No es un recuento paralelo ni sustituye al oficial: es una forma de verificar, con fotografías de las actas, que los resultados publicados coinciden con lo que se firmó en cada mesa.</p>
+    <p class="meta">Verificación independiente y descentralizada del recuento oficial: cada foto del acta permite comprobar que el resultado publicado de esa mesa coincide con lo que se firmó en ella.</p>
     <div id="inicioCerrado">
       <div class="meta">Los envíos se abren el <b id="abreTxt"></b>:</div>
       <div class="count" id="countdown"><div><b>–</b><span>días</span></div><div><b>–</b><span>horas</span></div><div><b>–</b><span>min</span></div><div><b>–</b><span>seg</span></div></div>
@@ -256,7 +267,7 @@ footer{margin-top:30px; font-size:13px; color:var(--muted)}
   <section class="view" id="v-como">
     <h1>Cómo funciona</h1>
     <div class="stack">
-      <div class="card"><h2>Qué es</h2><p>Una iniciativa ciudadana y altruista para que las actas de escrutinio, que ya son públicas en la puerta de cada colegio, puedan consultarse juntas y con su foto. No sustituye al recuento oficial ni lo pretende: permite comprobarlo mesa por mesa.</p></div>
+      <div class="card"><h2>Qué es</h2><p>Una iniciativa ciudadana y altruista para que las actas de escrutinio, que ya son públicas en la puerta de cada colegio, puedan consultarse juntas y con su foto. Así cualquiera puede comprobar, de forma independiente y descentralizada, el recuento oficial de cada mesa de la que haya foto.</p></div>
       <div class="card"><h2>Cuándo una mesa está verificada</h2>
         <ul style="padding-left:20px; margin:0">
           <li><b>Verificada:</b> al menos dos fotos de personas distintas con las mismas cifras, y las cuentas del acta cuadran.</li>
@@ -470,7 +481,7 @@ $("btnEnviar").addEventListener("click",async()=>{
 async function verResultados(){
   try{ const r=await getJSON("/api/public/resumen.json",{fresh:true}); const n=r.nacional||{};
     const verif=(n.verificada||0)+(n.validada||0);
-    $("tiles").innerHTML=[["Mesas con foto",n.con_envio],["Verificadas",verif],["% de todas las mesas",n.mesas?((verif/n.mesas)*100).toLocaleString("es-ES",{maximumFractionDigits:1})+" %":"—"],["En conflicto o revisión",(n.conflicto||0)+(n.revision||0)]]
+    $("tiles").innerHTML=[["Mesas con foto",n.con_envio||0],["Verificadas",verif],["% de todas las mesas",n.mesas?((verif/n.mesas)*100).toLocaleString("es-ES",{maximumFractionDigits:1})+" %":"—"],["En conflicto o revisión",(n.conflicto||0)+(n.revision||0)]]
       .map(([k,v])=>`<div class="tile"><div class="v">${typeof v==="number"?fmt(v):v}</div><div class="k">${k}</div></div>`).join("");
     if(r.totales_visibles&&n.votos&&Object.keys(n.votos).length){ $("totalesCard").classList.remove("hide");
       const partidos=Object.entries(n.votos).filter(([k])=>!k.startsWith("_")).sort((a,b)=>b[1]-a[1]); const tot=partidos.reduce((a,[,v])=>a+v,0)+(n.votos._blanco||0);
@@ -490,7 +501,7 @@ const COLORES=[[/PSOE|^PSC|PSdeG|PSE-EE|PSIB/,"#d81e26"],[/^PP$|PARTIDO POPULAR/
   [/PODEMOS/,"#6b2e68"],[/SALF/,"#8a6a3c"],[/^ERC/,"#f0a020"],[/JxCat|JUNTS/,"#1fb5a8"],[/BILDU/,"#94b800"],[/PNV/,"#2e7d32"],[/B\.?N\.?G/,"#5fa8d8"],[/COMPROMIS/,"#e8710a"],
   [/^CC\b|COALICI.N CANARIA/,"#e6c200"],[/UPN/,"#0a3b7c"],[/ADELANTE/,"#00958f"],[/TERUEL/,"#037252"]];
 const colorPartido=s=>{ for(const [re,c] of COLORES) if(re.test(s)) return c; return "#8d96a6"; };
-const ESCALA=[[0,"var(--paper)"],[0.0001,"#dbe6ff"],[0.1,"#b3c9fb"],[0.25,"#7ea2f4"],[0.5,"#4a74e0"],[0.75,"#1d4fd8"]];
+const ESCALA=[[0,"var(--paper)"],[0.0001,"#e3eeed"],[0.1,"#b9d6d6"],[0.25,"#86b6b8"],[0.5,"#4f8c90"],[0.75,"#23626a"]];
 const colorCob=f=>{ let c=ESCALA[0][1]; for(const [u,col] of ESCALA) if(f>=u) c=col; return c; };
 const leyCob=()=>`<span><i style="background:var(--paper); border:1px solid var(--line)"></i>Sin verificadas</span>`+[["0–10 %",1],["10–25 %",2],["25–50 %",3],["50–75 %",4],["75–100 %",5]].map(([t,i])=>`<span><i style="background:${ESCALA[i][1]}"></i>${t}</span>`).join("")+`<span>de mesas verificadas</span>`;
 const pct=f=>(f*100).toLocaleString("es-ES",{maximumFractionDigits:1})+" %";
