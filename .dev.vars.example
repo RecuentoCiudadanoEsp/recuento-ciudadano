@@ -1,0 +1,4 @@
+# Variables para las pruebas en local: copiar como .dev.vars (no se versiona; no usar valores reales).
+ADMIN_TOKEN="token-de-pruebas-1234567890-abcdefghijk"
+SAL_IP="sal-de-pruebas"
+MODO_PRUEBAS="1"

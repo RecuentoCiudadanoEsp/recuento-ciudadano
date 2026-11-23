@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Panel de validación · Recuento Ciudadano</title>
+<style>
+:root{ --paper:#f4f6f9; --card:#fff; --ink:#14223a; --muted:#5a6678; --line:#d9dfe8; --accent:#1d4fd8; --ok:#137a43; --ok-soft:#e2f4ea; --warn:#9a5b00; --warn-soft:#fdf0d9; --bad:#b42318; --bad-soft:#fde6e4;
+  --body:"IBM Plex Sans","Segoe UI",Arial,sans-serif; --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace; color-scheme:light; }
+*{box-sizing:border-box} body{margin:0; background:var(--paper); color:var(--ink); font-family:var(--body); font-size:15px}
+.wrap{max-width:1200px; margin:0 auto; padding:16px}
+h1{font-size:22px; margin:0 0 12px} h2{font-size:17px; margin:0}
+.row{display:flex; flex-wrap:wrap; gap:8px; align-items:center}
+.card{background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px; margin-bottom:14px}
+input,select,button{font:inherit; padding:8px 10px; border-radius:8px; border:1px solid var(--line); background:var(--card); color:var(--ink)}
+button{cursor:pointer; font-weight:600} button.ok{background:var(--ok); border-color:var(--ok); color:#fff} button.bad{background:var(--bad); border-color:var(--bad); color:#fff}
+.meta{color:var(--muted); font-size:13px} .mono{font-family:var(--mono); font-size:12.5px}
+.pill{display:inline-block; font-size:12px; font-weight:600; padding:2px 8px; border-radius:999px; background:var(--paper); border:1px solid var(--line)}
+.p-conflicto{background:var(--warn-soft); color:var(--warn); border:0} .p-revision,.p-invalida{background:var(--bad-soft); color:var(--bad); border:0} .p-valida,.p-verificada,.p-validada{background:var(--ok-soft); color:var(--ok); border:0}
+.envs{display:grid; grid-template-columns:repeat(auto-fill,minmax(340px,1fr)); gap:12px; margin-top:12px}
+.env{border:1px solid var(--line); border-radius:10px; padding:10px}
+.env.invalida{opacity:.6}
+.env img{width:100%; max-height:420px; object-fit:contain; background:#222; border-radius:6px; cursor:zoom-in}
+table{border-collapse:collapse; width:100%; font-size:13.5px; margin-top:8px}
+td,th{padding:4px 6px; border-bottom:1px solid var(--line); text-align:right; font-variant-numeric:tabular-nums}
+td:first-child,th:first-child{text-align:left}
+td.dif{background:var(--warn-soft); font-weight:700}
+.flag{color:var(--bad); font-size:12.5px}
+.version{border:2px solid var(--line); border-radius:10px; padding:10px; margin-top:10px}
+.version.sugerida{border-color:var(--ok); background:#f6fcf8}
+.version h3{margin:0; font-size:15px} .aviso{background:var(--warn-soft); color:var(--warn); border-radius:8px; padding:6px 10px; font-size:13px; margin-top:6px}
+.miniaturas{display:flex; gap:8px; flex-wrap:wrap; margin-top:8px} .miniaturas img{height:150px; width:auto; border-radius:6px; background:#222; cursor:zoom-in}
+td.ia{color:var(--muted)} td.iadif{background:var(--bad-soft); color:var(--bad); font-weight:700}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Panel de validación</h1>
+  <div class="card row" id="login">
+    <label for="tok">Contraseña del panel</label><input type="password" id="tok" size="40" autocomplete="current-password">
+    <button id="btnLogin">Entrar</button><span class="meta" id="loginInfo"></span>
+  </div>
+  <div id="app" style="display:none">
+    <div class="card row">
+      <label for="fEstado">Cola</label>
+      <select id="fEstado"><option value="conflicto,revision">Mesas por revisar (conflictos y avisos)</option><option value="fotos">Fotos sospechosas</option><option value="espera">Fotos en espera (mesas ya verificadas, sin prioridad)</option><option value="nuevas">Mesas nuevas por confirmar</option><option value="pendiente">Pendientes (1 fuente)</option><option value="verificada,validada">Verificadas</option></select>
+      <label for="fProv">Provincia</label><input id="fProv" size="3" placeholder="08">
+      <button id="btnCargar">Cargar</button>
+      <label for="fMesa">Mesa</label><input id="fMesa" size="18" placeholder="08-187-01-001-A"><button id="btnMesa">Abrir mesa</button>
+      <button id="btnRecalc">Recalcular ahora</button>
+      <button id="btnVaciar" class="bad">Vaciar datos de prueba</button>
+      <span class="meta" id="stats"></span>
+    </div>
+    <div id="cola"></div>
+  </div>
+</div>
+<script>
+"use strict";
+const $=id=>document.getElementById(id); let TOK=sessionStorage.getItem("rc-admin")||"";
+const MOTIVOS=["No corresponde a esa mesa","Ilegible","Posible manipulación","Duplicada","Cifras mal copiadas respecto a la foto","Otro"];
+const FLAGS={nombres_sin_tapar:"La zona de nombres no está tapada",no_parece_acta:"No parece un acta (colores, piel o mucho fondo)",ia_no_acta:"La lectura automática dice que no es un acta",ia_inapropiada:"La lectura automática la marca como inapropiada",foto_aprobada:"Foto revisada y aprobada",red_muchas_mesas:"Red (IP) que ha enviado muchas mesas en una hora",mesa_nueva:"Mesa no incluida en la lista: confirmar o reasignar",foto_reutilizada:"Foto repetida en otra mesa",foto_antes_apertura:"Foto anterior al cierre",muchas_mesas:"Muchas mesas desde el mismo dispositivo",lejos:"Lejos del colegio",censo_distinto:"Electores distintos al censo"};
+async function api(path,opts={}){ const r=await fetch("/admin/api/"+path,{...opts,headers:{...(opts.headers||{}),authorization:"Bearer "+TOK,"content-type":"application/json"}});
+  if(r.status===403){ $("app").style.display="none"; $("login").style.display="flex"; $("loginInfo").textContent="Acceso bloqueado: falta configurar Cloudflare Access o no has entrado con tu correo."; throw new Error("403"); }
+  if(r.status===401){ $("app").style.display="none"; $("login").style.display="flex"; $("loginInfo").textContent="Contraseña incorrecta."; throw new Error("401"); } return r.json(); }
+async function entrar(){ TOK=$("tok").value||TOK; try{ await stats(); sessionStorage.setItem("rc-admin",TOK); $("login").style.display="none"; $("app").style.display="block"; cargar(); }catch(e){} }
+$("btnLogin").onclick=entrar; $("tok").addEventListener("keydown",e=>{ if(e.key==="Enter") entrar(); });
+async function stats(){ const s=await api("estadisticas"); $("stats").textContent=`${s.envios} envíos · ${s.mesas} mesas · `+s.estados.map(e=>`${e.estado}: ${e.n}`).join(" · ")+` · pendientes de recalcular: ${s.pendientes_recalculo}${s.lecturas_pendientes?` · fotos por leer: ${s.lecturas_pendientes}`:""}${s.fotos_en_espera?` · fotos en espera: ${s.fotos_en_espera}`:""}${s.lecturas_ia?` · lecturas IA: ${s.lecturas_ia} de ${s.tope_lecturas_ia}`:""}`; }
+async function cargar(){ const modo=$("fEstado").value; const q=new URLSearchParams({estado:modo}); if($("fProv").value) q.set("prov",$("fProv").value.padStart(2,"0")); pintar((await api("cola?"+q)).mesas, modo); stats(); }
+async function abrirMesa(){ const id=$("fMesa").value.trim(); if(id) pintar((await api("mesa?id="+encodeURIComponent(id))).mesas, "mesa"); }
+$("btnCargar").onclick=cargar; $("btnMesa").onclick=abrirMesa; $("btnRecalc").onclick=async()=>{ $("btnRecalc").disabled=true; await api("recalcular",{method:"POST"}); $("btnRecalc").disabled=false; cargar(); };
+// ---------- utilidades de comparación ----------
+const CAMPOS=m=>{ const c=m.candidaturas||[]; return [["electores","Electores"],["votantes","Votantes"],["nulos","Nulos"],["blanco","Blanco"],...c.map(x=>[x.codigo,x.siglas])]; };
+const val=(c,k)=>c==null?null:(k in c?c[k]:(c.cand?c.cand[k]:null));
+function compararIA(e,campos){ if(!e.ia) return null; const dif=[]; let leidos=0;
+  for(const [k,l] of campos){ const iv=val(e.ia,k); if(iv==null) continue; leidos++; const v=val(e.cifras,k); if(v!==iv) dif.push({k,l,foto:iv,env:v}); }
+  return {leidos, dif, acuerdo: leidos? (leidos-dif.length)/leidos : null}; }
+const img=(h,alto)=>`<img data-foto="${h}" alt="Foto del acta" title="Abrir a tamaño completo"${alto?` style="height:${alto}px"`:""}>`;
+const avisosEnvio=e=>e.flags.filter(f=>f!=="foto_aprobada"&&!f.startsWith("retapada:")).map(f=>FLAGS[f]||f);
+
+// ---------- vista por MESA: versiones agrupadas con sugerencia ----------
+function pintarMesa(m){
+  const campos=CAMPOS(m); const vivos=m.envios.filter(e=>e.estado!=="invalida");
+  const grupos={}; for(const e of vivos){ (grupos[e.firma]=grupos[e.firma]||[]).push(e); }
+  const vs=Object.entries(grupos).map(([firma,es])=>{ const comps=es.map(e=>compararIA(e,campos)).filter(Boolean);
+    const acuerdo=comps.length? comps.reduce((a,c)=>a+(c.acuerdo??1),0)/comps.length : null;
+    return {firma,es,cifras:es[0].cifras,fuentes:new Set(es.map(e=>e.disp)).size,redes:new Set(es.map(e=>e.red)).size,acuerdo,comps,
+      avisos:[...new Set(es.flatMap(avisosEnvio))], validada:es.some(e=>e.estado==="valida")}; })
+    .sort((a,b)=>b.fuentes-a.fuentes || (b.acuerdo??0.5)-(a.acuerdo??0.5) || b.es.length-a.es.length);
+  const sug=vs[0];
+  let razon="";
+  if(vs.length>1){ razon = sug.fuentes>vs[1].fuentes ? `Es la que envían más personas distintas (${sug.fuentes} frente a ${vs[1].fuentes}).` :
+      (sug.acuerdo!=null&&vs[1].acuerdo!=null&&sug.acuerdo>vs[1].acuerdo) ? `Empate en personas; sus cifras coinciden mejor con lo que se lee en las fotos (${Math.round(sug.acuerdo*100)} % frente a ${Math.round(vs[1].acuerdo*100)} %).` : "Empate: decide mirando las fotos."; }
+  else if(vs.length===1) razon="Solo hay una versión.";
+  const tabla=`<div style="overflow-x:auto"><table><tr><th>Versión</th>${campos.map(([,l])=>`<th>${l}</th>`).join("")}</tr>${vs.map((v,i)=>`<tr><td><b>${String.fromCharCode(65+i)}</b>${v===sug&&vs.length>1?" ✓":""}</td>${campos.map(([k])=>{ const x=val(v.cifras,k), r=val(sug.cifras,k); return `<td class="${i&&x!==r?"dif":""}">${x}</td>`; }).join("")}</tr>`).join("")}</table></div>`;
+  const bloques=vs.map((v,i)=>{ const difs=v.comps.flatMap(c=>c.dif); const porCampo={}; for(const d of difs){ (porCampo[d.l]=porCampo[d.l]||new Set()).add(d.foto); }
+    return `<div class="version ${v===sug&&vs.length>1?"sugerida":""}"><div class="row" style="justify-content:space-between"><h3>Versión ${String.fromCharCode(65+i)}${v===sug&&vs.length>1?" · sugerida":""}</h3>
+      <span class="meta">${v.es.length} foto(s) · ${v.fuentes} persona(s) · ${v.redes} red(es)${v.acuerdo!=null?` · coincide con sus fotos en un ${Math.round(v.acuerdo*100)} %`:""}</span></div>
+      ${Object.keys(porCampo).length?`<div class="aviso">En sus fotos se lee otra cosa: ${Object.entries(porCampo).map(([l,set])=>`<b>${l}</b> (foto: ${[...set].join("/")}, enviado: ${val(v.cifras,(CAMPOS(m).find(c=>c[1]===l)||[])[0])})`).join(" · ")}</div>`:""}
+      ${v.avisos.length?`<div class="flag" style="margin-top:6px">${v.avisos.join(" · ")}</div>`:""}
+      <div class="miniaturas">${v.es.map(e=>img(e.hash)).join("")}</div>
+      <div class="row" style="margin-top:8px"><button class="ok" data-resolver="${m.mesa_id}" data-firma="${encodeURIComponent(v.firma)}">Esta es la buena</button>
+      <details><summary class="meta">Opciones por foto</summary>${v.es.map(e=>porFoto(e,m)).join("")}</details></div></div>`; }).join("");
+  const invalidas=m.envios.filter(e=>e.estado==="invalida");
+  return `<div class="card"><div class="row" style="justify-content:space-between"><div><h2 class="mono">${m.mesa_id}</h2><div class="meta">${m.municipio||""}${m.local?" · "+m.local:""} · censo ${m.censo??"—"} · ${m.n_envios||0} envíos</div></div><span class="pill p-${m.estado}">${m.estado||"sin envíos"}</span></div>
+    ${m.nueva?`<div class="row aviso" style="margin-top:8px"><b>Mesa nueva.</b> Mira la cabecera del acta: si la mesa existe tal cual, confírmala; si es otra, reasigna las fotos (Opciones por foto). <button class="ok" data-confirmar="${m.mesa_id}">Confirmar como mesa real</button></div>`:""}
+    ${m.envios.some(e=>e.ia_estado==="en_espera")?`<div class="row meta" style="margin-top:8px">${m.envios.filter(e=>e.ia_estado==="en_espera").length} foto(s) en espera, sin leer ni publicar. <button data-leer="${m.mesa_id}">Leerlas con IA</button></div>`:""}
+    ${vs.length>1?`<div class="meta" style="margin-top:8px"><b>${vs.length} versiones distintas.</b> ${razon}</div>`:""}${tabla}${bloques}
+    ${invalidas.length?`<details style="margin-top:8px"><summary class="meta">${invalidas.length} foto(s) invalidada(s)</summary>${invalidas.map(e=>porFoto(e,m)).join("")}</details>`:""}
+    <datalist id="dl-${m.mesa_id}" data-prov="${m.prov}" data-muni="${m.muni||m.mesa_id.split("-")[1]}"></datalist></div>`;
+}
+function porFoto(e,m){ return `<div class="env ${e.estado}" style="margin-top:8px"><div class="row" style="justify-content:space-between"><span class="pill p-${e.estado}">${e.estado}${e.motivo?": "+e.motivo:""}</span><span class="meta">${new Date(e.ts).toLocaleString("es-ES")} · disp. ${e.disp} · red ${e.red} · ${e.publica?"pública":"no pública"}${e.denuncias?` · ${e.denuncias} denuncia(s)`:""}</span></div>
+  <div class="row" style="margin-top:6px">${e.estado!=="invalida"?`<button data-tapar="${e.hash}">Tapar nombres</button>`:""}<button class="ok" data-h="${e.hash}" data-d="valida">Validar cifras</button><select data-m="${e.hash}">${MOTIVOS.map(x=>`<option>${x}</option>`).join("")}</select><button class="bad" data-h="${e.hash}" data-d="invalida">Invalidar</button>
+  ${e.estado!=="pendiente"?`<button data-h="${e.hash}" data-d="pendiente">Deshacer</button>`:""}<input list="dl-${m.mesa_id}" data-r="${e.hash}" placeholder="Reasignar a mesa…" size="18" class="mono"><button data-reasignar="${e.hash}">Reasignar</button></div>
+  <div class="mono meta" style="margin-top:4px">${e.hash}</div></div>`; }
+
+// ---------- vista por FOTO: sospechosas ----------
+function pintarFotos(m){ const campos=CAMPOS(m);
+  const sos=m.envios.filter(e=>e.estado==="pendiente"&&!e.flags.includes("foto_aprobada")&&(e.flags.some(f=>["nombres_sin_tapar","no_parece_acta","ia_no_acta","ia_inapropiada"].includes(f))||e.denuncias>=2));
+  return sos.map(e=>{ const c=compararIA(e,campos);
+    return `<div class="card"><div class="row" style="align-items:flex-start; gap:16px"><div style="flex:0 0 340px">${img(e.hash,420)}</div>
+    <div style="flex:1; min-width:260px"><h2 class="mono">${m.mesa_id}</h2><div class="meta">${m.municipio||""} · mesa ${m.estado||""}</div>
+    <div class="flag" style="margin-top:8px; font-size:14px">${avisosEnvio(e).join("<br>")}${e.denuncias?`<br>${e.denuncias} denuncia(s)`:""}</div>
+    ${c&&c.dif.length?`<div class="aviso">La lectura automática ve otras cifras en ${c.dif.length} campo(s).</div>`:""}
+    <p class="meta">¿Es un acta y no se ven nombres ni firmas? <b>Aprobar</b> la publica (sus cifras siguen su curso normal). Si no, <b>Retirar</b> la quita de la web y de las cuentas.</p>
+    <div class="row">${e.flags.includes("nombres_sin_tapar")?`<button class="ok" data-tapar="${e.hash}">Tapar nombres y aprobar</button>`:""}<button class="ok" data-aprobar="${e.hash}">Aprobar foto</button><button class="bad" data-h="${e.hash}" data-d="invalida" data-motivo="Foto retirada: no es un acta o muestra datos personales">Retirar</button></div></div></div></div>`; }).join("");
+}
+
+// ---------- fotos en espera: mesas ya verificadas, revisión manual sin prisa ----------
+function pintarEspera(m){ const campos=CAMPOS(m);
+  return m.envios.filter(e=>e.ia_estado==="en_espera"&&e.estado==="pendiente"&&!e.flags.includes("foto_aprobada")).map(e=>{
+    const igual=m.cifras&&campos.every(([k])=>val(e.cifras,k)===val(m.cifras,k));
+    return `<div class="card"><div class="row" style="align-items:flex-start; gap:16px"><div style="flex:0 0 300px">${img(e.hash,380)}</div>
+    <div style="flex:1; min-width:260px"><h2 class="mono">${m.mesa_id}</h2><div class="meta">${m.municipio||""} · mesa ${m.estado||""} · ${new Date(e.ts).toLocaleString("es-ES")}</div>
+    <p>${igual?"Sus cifras coinciden con las de la mesa.":"<b>Sus cifras no coinciden con las de la mesa.</b>"}</p>${avisosEnvio(e).length?`<div class="flag">${avisosEnvio(e).join(" · ")}</div>`:""}
+    <p class="meta">Mira la foto: si es el acta de esta mesa y no se ven nombres, <b>Aprobar</b> la publica (si se ve alguno, <b>Tapar nombres y aprobar</b>). <b>Retirar</b> la quita. <b>Leer con IA</b> gasta una lectura.</p>
+    <div class="row"><button data-tapar="${e.hash}">Tapar nombres y aprobar</button><button class="ok" data-aprobar="${e.hash}">Aprobar foto</button><button class="bad" data-h="${e.hash}" data-d="invalida" data-motivo="Foto retirada en la revisión manual">Retirar</button><button data-leerfoto="${e.hash}">Leer con IA</button></div></div></div></div>`; }).join(""); }
+
+function pintar(mesas, modo){
+  if(!mesas.length){ $("cola").innerHTML='<div class="card meta">No hay nada en esta cola.</div>'; return; }
+  $("cola").innerHTML = modo==="fotos" ? mesas.map(pintarFotos).join("") : modo==="espera" ? mesas.map(pintarEspera).join("") : mesas.map(pintarMesa).join("");
+  document.querySelectorAll("img[data-foto]").forEach(async im=>{ try{ const r=await fetch(`/admin/api/foto/${im.dataset.foto}.jpg`,{headers:{authorization:"Bearer "+TOK}}); if(!r.ok) return;
+    im.src=URL.createObjectURL(await r.blob()); im.onclick=()=>window.open(im.src,"_blank"); }catch(e){} });
+  document.querySelectorAll("datalist[data-prov]").forEach(async d=>{ try{ const r=await api(`mesas_municipio?prov=${d.dataset.prov}&muni=${d.dataset.muni}`); d.innerHTML=r.mesas.map(x=>`<option value="${x.id}">censo ${x.censo??"—"}</option>`).join(""); }catch(e){} });
+  const tras=async()=>{ await api("recalcular",{method:"POST"}); cargar(); };
+  document.querySelectorAll("button[data-confirmar]").forEach(b=>b.onclick=async()=>{ b.disabled=true; await api("confirmar_mesa",{method:"POST",body:JSON.stringify({mesa_id:b.dataset.confirmar})}); tras(); });
+  document.querySelectorAll("button[data-resolver]").forEach(b=>b.onclick=async()=>{ b.disabled=true; await api("resolver_mesa",{method:"POST",body:JSON.stringify({mesa_id:b.dataset.resolver,firma:decodeURIComponent(b.dataset.firma)})}); tras(); });
+  document.querySelectorAll("button[data-leerfoto]").forEach(b=>b.onclick=async()=>{ b.disabled=true; await api("leer_en_espera",{method:"POST",body:JSON.stringify({hash:b.dataset.leerfoto})}); b.textContent="Se leerá en el próximo minuto"; });
+  document.querySelectorAll("button[data-leer]").forEach(b=>b.onclick=async()=>{ b.disabled=true; await api("leer_en_espera",{method:"POST",body:JSON.stringify({mesa_id:b.dataset.leer})}); b.textContent="Se leerán en el próximo minuto"; });
+  document.querySelectorAll("button[data-tapar]").forEach(b=>b.onclick=()=>abrirTapar(b.dataset.tapar));
+  document.querySelectorAll("button[data-aprobar]").forEach(b=>b.onclick=async()=>{ b.disabled=true; await api("aprobar_foto",{method:"POST",body:JSON.stringify({hash:b.dataset.aprobar})}); tras(); });
+  document.querySelectorAll("button[data-reasignar]").forEach(b=>b.onclick=async()=>{ const h=b.dataset.reasignar; const dest=document.querySelector(`input[data-r="${h}"]`).value.trim().toUpperCase(); if(!dest) return;
+    b.disabled=true; const r=await api("reasignar",{method:"POST",body:JSON.stringify({hash:h,mesa_destino:dest})}); if(r.error){ alertar(r.mensaje||r.error); b.disabled=false; return; } tras(); });
+  document.querySelectorAll("button[data-h]").forEach(b=>b.onclick=async()=>{ const h=b.dataset.h, d=b.dataset.d; const sel=document.querySelector(`select[data-m="${h}"]`);
+    const motivo=b.dataset.motivo||(d==="invalida"?(sel?sel.value:"Otro"):(d==="valida"?"Revisada a mano":""));
+    b.disabled=true; await api("decision",{method:"POST",body:JSON.stringify({hash:h,decision:d,motivo})}); tras(); });
+}
+// ---------- tapar nombres a mano en una foto y aprobarla ----------
+let ZONAS_AUTO=[]; fetch("/api/config").then(r=>r.json()).then(c=>{ ZONAS_AUTO=c.zonas_difuminado||[]; }).catch(()=>{});
+async function abrirTapar(hash){
+  const r=await fetch(`/admin/api/foto/${hash}.jpg`,{headers:{authorization:"Bearer "+TOK}}); if(!r.ok){ alertar("No se ha podido cargar la foto."); return; }
+  const imgEl=await createImageBitmap(await r.blob()); let rects=ZONAS_AUTO.map(z=>({fx:z[0],fy:z[1],fw:z[2],fh:z[3]})), drag=null;
+  const fondo=document.createElement("div"); fondo.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px";
+  fondo.innerHTML=`<div style="background:#fff;border-radius:12px;padding:14px;max-width:96vw;max-height:96vh;display:flex;flex-direction:column;gap:10px">
+    <div class="row" style="justify-content:space-between"><b>Arrastra con el ratón sobre cada nombre o firma para taparlo</b><span class="meta">Al guardar, esta versión sustituye a la publicada</span></div>
+    <canvas id="cvTapar" style="max-width:90vw;max-height:78vh;cursor:crosshair;touch-action:none;border-radius:6px"></canvas>
+    <div class="row"><button id="tpDeshacer">Deshacer</button><span style="flex:1"></span><button id="tpCancelar">Cancelar</button><button class="ok" id="tpGuardar">Guardar tapada y aprobar</button></div></div>`;
+  document.body.append(fondo); const cv=fondo.querySelector("#cvTapar"), g=cv.getContext("2d");
+  const s=Math.min(1,1600/Math.max(imgEl.width,imgEl.height)); cv.width=Math.round(imgEl.width*s); cv.height=Math.round(imgEl.height*s);
+  const pinta=(tmp)=>{ g.drawImage(imgEl,0,0,cv.width,cv.height); g.fillStyle="#2b2b2b"; for(const q of rects) g.fillRect(q.fx*cv.width,q.fy*cv.height,q.fw*cv.width,q.fh*cv.height);
+    if(tmp){ g.fillStyle="rgba(29,79,216,.4)"; g.fillRect(tmp.fx*cv.width,tmp.fy*cv.height,tmp.fw*cv.width,tmp.fh*cv.height); } };
+  const pos=e=>{ const b=cv.getBoundingClientRect(); return [(e.clientX-b.left)/b.width,(e.clientY-b.top)/b.height]; };
+  const rect=(a,b)=>({fx:Math.min(a[0],b[0]),fy:Math.min(a[1],b[1]),fw:Math.abs(a[0]-b[0]),fh:Math.abs(a[1]-b[1])});
+  cv.onpointerdown=e=>{ cv.setPointerCapture(e.pointerId); drag=pos(e); }; cv.onpointermove=e=>{ if(drag) pinta(rect(drag,pos(e))); };
+  cv.onpointerup=e=>{ if(!drag) return; const q=rect(drag,pos(e)); drag=null; if(q.fw>0.005&&q.fh>0.003) rects.push(q); pinta(); };
+  fondo.querySelector("#tpDeshacer").onclick=()=>{ if(rects.length>ZONAS_AUTO.length) rects.pop(); pinta(); };
+  fondo.querySelector("#tpCancelar").onclick=()=>fondo.remove();
+  fondo.querySelector("#tpGuardar").onclick=async()=>{ const bt=fondo.querySelector("#tpGuardar"); bt.disabled=true; bt.textContent="Guardando…"; pinta();
+    const aBlob=(c,q)=>new Promise(res=>c.toBlob(res,"image/jpeg",q)); const foto=await aBlob(cv,0.82);
+    const m=document.createElement("canvas"); const k=480/cv.width; m.width=480; m.height=Math.round(cv.height*k); m.getContext("2d").drawImage(cv,0,0,m.width,m.height); const mini=await aBlob(m,0.65);
+    const fd=new FormData(); fd.append("hash",hash); fd.append("foto",foto,"foto.jpg"); fd.append("mini",mini,"mini.jpg");
+    const rr=await fetch("/admin/api/retapar",{method:"POST",headers:{authorization:"Bearer "+TOK},body:fd});
+    if(!rr.ok){ bt.disabled=false; bt.textContent="Guardar tapada y aprobar"; alert("No se ha podido guardar. Inténtalo de nuevo."); return; }
+    fondo.remove(); await api("recalcular",{method:"POST"}); cargar(); };
+  pinta();
+}
+
+$("btnVaciar").onclick=async()=>{ if(prompt("Esto borra TODOS los envíos, fotos y resultados. Solo funciona en modo pruebas. Escribe VACIAR para confirmar:")!=="VACIAR") return;
+  const r=await api("vaciar_pruebas",{method:"POST",body:JSON.stringify({confirmar:"VACIAR"})}); alertar(r.ok?`Vaciado: ${r.objetos_borrados} ficheros borrados.`:(r.error==="solo_en_modo_pruebas"?"Solo se puede vaciar con MODO_PRUEBAS activado.":r.error)); if(r.ok) cargar(); };
+function alertar(t){ $("stats").textContent="⚠ "+t; }
+if(TOK){ entrar(); }
+</script>
+</body>
+</html>

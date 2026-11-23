@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recuento Ciudadano · Fotografía el acta de tu mesa</title>
+<meta name="description" content="Verificación ciudadana de los resultados con fotografías de las actas de escrutinio. Cuando cierre tu colegio, fotografía el acta de la puerta y súbela. Las fotos verificadas son públicas.">
+<meta property="og:title" content="Recuento Ciudadano · Fotografía el acta de tu mesa">
+<meta property="og:description" content="Verificación ciudadana con fotos públicas de las actas de escrutinio, mesa por mesa. No sustituye al recuento oficial.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#f4f6f9; --card:#fff; --ink:#14223a; --muted:#5a6678; --line:#d9dfe8; --accent:#1d4fd8; --accent-soft:#e6edff;
+  --ok:#137a43; --ok-soft:#e2f4ea; --warn:#9a5b00; --warn-soft:#fdf0d9; --bad:#b42318; --bad-soft:#fde6e4; --info:#1d4fd8; --info-soft:#e6edff;
+  --display:"Archivo","Helvetica Neue",Arial,sans-serif; --body:"IBM Plex Sans","Segoe UI",Arial,sans-serif; --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark){ :root{
+  --paper:#0f1522; --card:#172033; --ink:#e7ecf5; --muted:#9aa6ba; --line:#2a364d; --accent:#7ea2ff; --accent-soft:#1d2a4a;
+  --ok:#5fd394; --ok-soft:#133224; --warn:#f2b85b; --warn-soft:#3a2a10; --bad:#ff8a7e; --bad-soft:#3d1917; --info:#7ea2ff; --info-soft:#1d2a4a; color-scheme: dark; } }
+*{box-sizing:border-box} html,body{margin:0}
+body{background:var(--paper); color:var(--ink); font-family:var(--body); font-size:16px; line-height:1.5}
+.wrap{max-width:860px; margin:0 auto; padding:16px 16px 64px}
+header.top{display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:8px}
+.brand{font-family:var(--display); font-weight:800; font-size:20px; text-decoration:none; color:var(--ink)}
+nav.tabs{display:flex; gap:2px; overflow-x:auto; border-bottom:1px solid var(--line); margin-bottom:18px}
+nav.tabs a{padding:10px 12px; text-decoration:none; color:var(--muted); font-weight:600; white-space:nowrap; border-bottom:3px solid transparent}
+nav.tabs a[aria-current="page"]{color:var(--ink); border-color:var(--accent)}
+h1{font-family:var(--display); font-weight:800; font-size:30px; line-height:1.15; margin:6px 0 10px; text-wrap:balance}
+h2{font-family:var(--display); font-weight:800; font-size:20px; margin:0 0 10px; text-wrap:balance}
+h3{font-family:var(--display); font-weight:600; font-size:16px; margin:0 0 6px}
+p{margin:0 0 10px; max-width:68ch}
+a{color:var(--accent)}
+.card{background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px}
+.stack{display:flex; flex-direction:column; gap:14px}
+.row{display:flex; flex-wrap:wrap; gap:8px; align-items:center}
+.meta{font-size:14px; color:var(--muted)}
+.mono{font-family:var(--mono); font-size:13px; word-break:break-all}
+label{display:block; font-size:14px; font-weight:600; color:var(--muted); margin-bottom:4px}
+select,input[type=number],input[type=text]{width:100%; font:inherit; color:var(--ink); background:var(--paper); border:1px solid var(--line); border-radius:9px; padding:11px 12px}
+input[type=number]{font-family:var(--mono); font-variant-numeric:tabular-nums; font-size:18px}
+button,.btn{font:inherit; font-weight:600; border-radius:10px; border:1px solid var(--line); background:var(--card); color:var(--ink); padding:11px 16px; cursor:pointer; text-decoration:none; display:inline-block}
+button.primary,.btn.primary{background:var(--accent); border-color:var(--accent); color:#fff}
+@media (prefers-color-scheme: dark){ button.primary,.btn.primary{color:#0f1522} }
+button:disabled{opacity:.5; cursor:not-allowed}
+button.big{width:100%; padding:15px; font-size:18px}
+button.small,.btn.small{padding:7px 11px; font-size:14px}
+:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+.view{display:none} .view.on{display:block}
+.count{display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin:14px 0}
+.count div{background:var(--card); border:1px solid var(--line); border-radius:10px; padding:10px; text-align:center}
+.count b{display:block; font-family:var(--display); font-size:30px; font-variant-numeric:tabular-nums}
+.count span{font-size:12px; color:var(--muted)}
+.step{display:flex; gap:10px; align-items:baseline; margin-bottom:10px}
+.step .n{font-family:var(--mono); font-size:13px; color:var(--accent); border:1.5px solid var(--accent); border-radius:999px; width:26px; height:26px; display:inline-flex; align-items:center; justify-content:center; flex:none}
+.grid2{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+.grid-c{display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px}
+.banner{padding:12px 14px; border-radius:10px; font-size:15px}
+.b-info{background:var(--info-soft)} .b-warn{background:var(--warn-soft)} .b-ok{background:var(--ok-soft)} .b-bad{background:var(--bad-soft)}
+.checks{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px}
+.checks li{display:flex; gap:8px; padding:8px 10px; border-radius:8px; font-size:15px}
+.checks .ic{font-family:var(--mono); font-weight:600; width:16px; flex:none; text-align:center}
+input.dudoso{background:var(--warn-soft); border-color:var(--warn)} .pista{font-size:12px; color:var(--muted); min-height:0; margin-top:2px} .pista.f-alta{color:var(--ok)} .pista.f-baja{color:var(--bad); font-weight:600} input.dudoso+.pista{color:var(--warn); font-weight:600}
+.mapa{width:100%; height:auto; max-height:62vh; display:block; margin:0 auto; touch-action:manipulation} .mapa path{stroke:var(--card); stroke-width:.6; cursor:pointer; transition:opacity .15s} .mapa path:hover{opacity:.75; stroke:var(--ink); stroke-width:1.2}
+.mapa .marco{fill:none; stroke:var(--line); stroke-width:1; pointer-events:none}
+.leyenda{display:flex; flex-wrap:wrap; gap:10px; font-size:12.5px; color:var(--muted); margin-top:8px} .leyenda i{display:inline-block; width:14px; height:14px; border-radius:3px; vertical-align:-3px; margin-right:4px}
+.seg{display:inline-flex; border:1px solid var(--line); border-radius:9px; overflow:hidden} .seg button{border:0; border-radius:0; padding:7px 12px; font-size:14px} .seg button.on{background:var(--accent); color:#fff}
+.mapaInfo{min-height:22px; font-size:14px; margin-top:6px}
+.c-ok{background:var(--ok-soft); color:var(--ok)} .c-warn{background:var(--warn-soft); color:var(--warn)} .c-bad{background:var(--bad-soft); color:var(--bad)} .c-idle{background:var(--paper); color:var(--muted)}
+.checks li span.t{color:var(--ink)}
+.pill{display:inline-block; font-size:12.5px; font-weight:600; padding:3px 9px; border-radius:999px; white-space:nowrap}
+.p-verificada,.p-validada{background:var(--ok-soft); color:var(--ok)} .p-pendiente{background:var(--paper); color:var(--muted); border:1px solid var(--line)}
+.p-conflicto{background:var(--warn-soft); color:var(--warn)} .p-revision,.p-invalidada,.p-invalida{background:var(--bad-soft); color:var(--bad)} .p-valida{background:var(--ok-soft); color:var(--ok)}
+.editor{position:relative; touch-action:none; border:1px solid var(--line); border-radius:8px; overflow:hidden; background:#222}
+.editor canvas{display:block; width:100%; height:auto}
+.tiles{display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:14px}
+@media (max-width:620px){ .tiles{grid-template-columns:repeat(2,1fr)} .grid2{grid-template-columns:1fr} h1{font-size:26px} }
+.tile{background:var(--card); border:1px solid var(--line); border-radius:10px; padding:12px}
+.tile .v{font-family:var(--display); font-size:24px; font-weight:800; font-variant-numeric:tabular-nums}
+.tile .k{font-size:13px; color:var(--muted)}
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse; width:100%; font-size:14.5px}
+th,td{text-align:right; padding:8px; border-bottom:1px solid var(--line); font-variant-numeric:tabular-nums; white-space:nowrap}
+th:first-child,td:first-child{text-align:left; white-space:normal; overflow-wrap:anywhere}
+@media (max-width:520px){ th,td{padding:7px 5px; font-size:13.5px} }
+th{font-size:13px; color:var(--muted); font-weight:600}
+tr.link{cursor:pointer} tr.link:hover td{background:var(--accent-soft)}
+.fotoOculta{aspect-ratio:3/4; display:flex; align-items:center; justify-content:center; text-align:center; padding:10px; font-size:13px; color:var(--muted,#666); background:rgba(127,127,127,.12); border-radius:8px}
+.linkish{margin-top:6px; background:none; border:none; padding:0; text-decoration:underline; color:var(--muted,#666); font-size:12px; cursor:pointer}
+.fotos{display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px}
+.foto{border:1px solid var(--line); border-radius:10px; overflow:hidden; background:var(--card); font-size:13px}
+.foto img{width:100%; aspect-ratio:3/4; object-fit:cover; display:block; background:#ddd}
+.foto div{padding:8px}
+.foto.invalida img{opacity:.35}
+.hide{display:none !important}
+.spinner{display:inline-block; width:16px; height:16px; border:2px solid var(--line); border-top-color:var(--accent); border-radius:50%; animation:g 1s linear infinite; vertical-align:-3px}
+@keyframes g{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion: reduce){ .spinner{animation:none} }
+footer{margin-top:30px; font-size:13px; color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <a class="brand" href="#inicio" id="brand">Recuento Ciudadano</a>
+    <span class="meta" id="estadoGlobal"></span>
+  </header>
+  <nav class="tabs" aria-label="Secciones">
+    <a href="#inicio" data-v="inicio">Inicio</a>
+    <a href="#enviar" data-v="enviar">Enviar acta</a>
+    <a href="#resultados" data-v="resultados">Resultados</a>
+    <a href="#como" data-v="como">Cómo funciona</a>
+  </nav>
+
+  <!-- INICIO -->
+  <section class="view" id="v-inicio">
+    <h1>Cuando cierre tu colegio, fotografía el acta de tu mesa y súbela aquí.</h1>
+    <p>Al terminar el recuento, cada mesa pega en la puerta una copia del acta de escrutinio. Si muchas personas las fotografían, cualquiera podrá comprobar los resultados mesa por mesa, con la foto delante.</p>
+    <p class="meta">No es un recuento paralelo ni sustituye al oficial: es una forma de verificar, con fotografías de las actas, que los resultados publicados coinciden con lo que se firmó en cada mesa.</p>
+    <div id="inicioCerrado">
+      <div class="meta">Los envíos se abren el <b id="abreTxt"></b>:</div>
+      <div class="count" id="countdown"><div><b>–</b><span>días</span></div><div><b>–</b><span>horas</span></div><div><b>–</b><span>min</span></div><div><b>–</b><span>seg</span></div></div>
+      <div class="row">
+        <a class="btn primary" href="#enviar">Practicar el envío ahora</a>
+        <button id="btnIcs">Añadir aviso al calendario</button>
+        <button id="btnShareHome">Compartir</button>
+      </div>
+    </div>
+    <div id="inicioAbierto" class="hide">
+      <div class="row" style="margin:14px 0"><a class="btn primary" href="#enviar" style="font-size:18px; padding:15px 22px">Enviar el acta de mi mesa</a><a class="btn" href="#resultados">Ver resultados</a></div>
+    </div>
+    <div class="card" style="margin-top:18px">
+      <h2>Tres pasos, un minuto</h2>
+      <ol class="meta" style="font-size:15px; padding-left:20px; margin:0">
+        <li>Espera a que peguen el acta en la puerta del colegio, normalmente entre las 21:00 y las 22:30.</li>
+        <li>Elige tu mesa (sale en el propio acta), haz la foto y copia las cifras.</li>
+        <li>Envía. No pedimos nombre ni correo. Tu foto será pública, sin los nombres de los miembros de la mesa.</li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ENVIAR -->
+  <section class="view" id="v-enviar">
+    <div class="banner b-warn" id="practicaBanner" style="margin-bottom:14px"><b>Modo práctica.</b> Puedes probar todo el proceso; no se envía nada hasta que se abran los envíos.</div>
+    <div class="stack">
+      <div class="card">
+        <div class="step"><span class="n">1</span><h2>Tu mesa</h2></div>
+        <p class="meta">En la cabecera del acta pone provincia, municipio, distrito, sección y mesa.</p>
+        <div class="grid2">
+          <div><label for="sProv">Provincia</label><select id="sProv"><option value="">Elige…</option></select></div>
+          <div><label for="sMuni">Municipio</label><select id="sMuni" disabled></select></div>
+          <div><label for="sDist">Distrito</label><select id="sDist" disabled></select></div>
+          <div><label for="sSecc">Sección</label><select id="sSecc" disabled></select></div>
+          <div><label for="sMesa">Mesa</label><select id="sMesa" disabled></select></div>
+          <div><label>&nbsp;</label><button id="btnGeo" style="width:100%">Confirmar que estoy en el colegio</button></div>
+        </div>
+        <div class="meta" id="mesaInfo" style="margin-top:8px"></div>
+        <button class="small" id="btnNoAparece" style="margin-top:10px">Mi mesa no aparece</button>
+        <div id="nuevaBox" class="hide" style="margin-top:10px">
+          <div class="banner b-info" style="margin-bottom:10px">Elige provincia y municipio arriba y copia de la cabecera del acta el distrito, la sección y la mesa. Revisaremos esta mesa a mano antes de contarla.</div>
+          <div class="grid2">
+            <div><label for="nDist">Distrito</label><input type="text" inputmode="numeric" maxlength="2" id="nDist" placeholder="01"></div>
+            <div><label for="nSecc">Sección</label><input type="text" inputmode="numeric" maxlength="3" id="nSecc" placeholder="001"></div>
+            <div><label for="nMesa">Mesa</label><select id="nMesa"><option value="">Elige…</option><option>A</option><option>B</option><option>C</option><option>D</option><option>E</option><option value="U">U (única)</option></select></div>
+            <div><label>&nbsp;</label><button class="small" id="btnVolverLista" style="width:100%">Volver a la lista</button></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="step"><span class="n">2</span><h2>Foto del acta</h2></div>
+        <p class="meta">Encuadra el acta entera, de frente y con luz, sin margen alrededor. Para proteger la privacidad de quienes han trabajado en la mesa, tapamos automáticamente la columna de la izquierda, donde van sus nombres y firmas. Si queda algún nombre o firma a la vista en otra parte, tápalo arrastrando el dedo. Una foto con nombres a la vista no cuenta ni se publica hasta que la revisemos.</p>
+        <label class="btn primary" for="foto" style="color:#fff">Hacer o elegir foto</label>
+        <input type="file" id="foto" accept="image/*" capture="environment" class="hide">
+        <div id="editorBox" class="hide" style="margin-top:12px">
+          <div class="editor" id="editor"><canvas id="cv"></canvas></div>
+          <div class="banner b-warn hide" id="avisoEncuadre" style="margin-top:8px"></div>
+          <div class="row" style="margin-top:8px">
+            <span class="meta">La zona gris de la izquierda se tapa siempre. Arrastra sobre la foto para tapar más.</span>
+            <button class="small" id="btnUndo">Deshacer</button>
+            <button class="small" id="btnRot">Girar</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="step"><span class="n">3</span><h2>Cifras del acta</h2></div>
+        <p class="meta">Cópialas de la columna «En número». Si una casilla está vacía o pone «N», escribe 0.</p>
+        <div class="meta" id="iaInfo" style="margin-bottom:8px"></div>
+        <div class="grid-c" id="fBasicos"></div>
+        <h3 style="margin-top:14px">Votos a cada candidatura</h3>
+        <div class="grid-c" id="fCands"><span class="meta">Elige primero la provincia.</span></div>
+        <div class="meta" id="candFuente" style="margin-top:6px"></div>
+      </div>
+
+      <div class="card">
+        <div class="step"><span class="n">4</span><h2>Comprobación y envío</h2></div>
+        <ul class="checks" id="checks"></ul>
+        <div id="turnstile" style="margin-top:12px"></div>
+        <button class="primary big" id="btnEnviar" style="margin-top:12px" disabled>Enviar</button>
+        <div id="resultado" style="margin-top:12px"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- RESULTADOS -->
+  <section class="view" id="v-resultados">
+    <div class="banner b-info" style="margin-bottom:14px">Esto <b>no es un recuento completo</b>: solo incluye las mesas que alguien ha fotografiado. Una mesa cuenta como verificada cuando al menos dos personas distintas envían fotos con las mismas cifras.</div>
+    <div class="tiles" id="tiles"></div>
+    <div class="card" style="margin-bottom:14px">
+      <div class="row" style="justify-content:space-between; gap:8px"><h2>Mapa por provincias</h2>
+        <div class="seg" id="segEsp"><button data-modo="cobertura" class="on">Cobertura</button><button data-modo="votos">Más votado</button></div></div>
+      <div class="mapaInfo meta" id="infoEsp">Toca una provincia para ver sus municipios y mesas.</div>
+      <div id="mapaEsp"></div><div class="leyenda" id="leyEsp"></div>
+    </div>
+    <div class="card" id="totalesCard" style="margin-bottom:14px">
+      <h2>Votos en mesas verificadas</h2>
+      <div class="tablewrap"><table id="tTotales"></table></div>
+    </div>
+    <div class="card">
+      <h2>Por provincia</h2>
+      <div class="tablewrap"><table id="tProv"></table></div>
+    </div>
+    <div class="meta" id="genTxt" style="margin-top:8px"></div>
+  </section>
+
+  <!-- PROVINCIA -->
+  <section class="view" id="v-prov">
+    <a href="#resultados" class="meta">← Resultados</a>
+    <h1 id="provTit"></h1>
+    <div class="card" style="margin-bottom:14px">
+      <div class="row" style="justify-content:space-between; gap:8px"><h2>Municipios</h2>
+        <div class="seg" id="segProv"><button data-modo="cobertura" class="on">Cobertura</button><button data-modo="votos">Más votado</button></div></div>
+      <div class="mapaInfo meta" id="infoProv">Toca un municipio para ver sus mesas.</div>
+      <div id="mapaProv"></div><div class="leyenda" id="leyProv"></div>
+    </div>
+    <div class="card hide" id="votosProvCard" style="margin-bottom:14px"><h2>Votos provisionales en la provincia</h2><div class="meta" id="votosProvNota" style="margin:6px 0"></div><div class="tablewrap"><table id="tVotosProv"></table></div></div>
+    <div class="grid2" style="margin-bottom:12px" id="filtrosProv">
+      <div><label for="fMuni">Municipio</label><select id="fMuni"><option value="">Todos</option></select></div>
+      <div><label for="fEst">Estado</label><select id="fEst"><option value="">Todos</option><option value="verificada">Verificadas</option><option value="validada">Validadas por revisión</option><option value="pendiente">Pendientes (1 envío)</option><option value="conflicto">En conflicto</option><option value="revision">En revisión</option></select></div>
+    </div>
+    <div class="card"><div class="tablewrap"><table id="tMesas"></table></div></div>
+  </section>
+
+  <!-- MESA -->
+  <section class="view" id="v-mesa">
+    <a href="#resultados" class="meta" id="mesaBack">← Resultados</a>
+    <h1 id="mesaTit"></h1>
+    <div class="meta" id="mesaSub"></div>
+    <div id="mesaCuerpo" style="margin-top:14px"></div>
+  </section>
+
+  <!-- CÓMO FUNCIONA -->
+  <section class="view" id="v-como">
+    <h1>Cómo funciona</h1>
+    <div class="stack">
+      <div class="card"><h2>Qué es</h2><p>Una iniciativa ciudadana y altruista para que las actas de escrutinio, que ya son públicas en la puerta de cada colegio, puedan consultarse juntas y con su foto. No sustituye al recuento oficial ni lo pretende: permite comprobarlo mesa por mesa.</p></div>
+      <div class="card"><h2>Cuándo una mesa está verificada</h2>
+        <ul style="padding-left:20px; margin:0">
+          <li><b>Verificada:</b> al menos dos fotos de personas distintas con las mismas cifras, y las cuentas del acta cuadran.</li>
+          <li><b>Pendiente:</b> solo hay una foto. Se muestra, pero no cuenta en los totales.</li>
+          <li><b>En conflicto:</b> hay fotos con cifras distintas. Se revisan a mano comparando las fotos.</li>
+          <li><b>En revisión:</b> las cuentas no cuadran o el envío tiene alguna señal de alerta.</li>
+          <li><b>Validada:</b> resuelta por revisión humana. Cada decisión queda en el <a href="/api/public/decisiones.json">registro público de decisiones</a>.</li>
+        </ul></div>
+      <div class="card"><h2>Ninguna foto se borra</h2><p>Si una foto se invalida (no corresponde a la mesa, no se lee, parece manipulada o está repetida), sigue visible, marcada y con el motivo.</p></div>
+      <div class="card"><h2>Privacidad</h2><p>No pedimos nombre, correo ni teléfono. Guardamos una huella anónima de tu navegador y de tu conexión solo para frenar abusos.</p>
+        <p><b>Por qué tapamos los nombres del acta.</b> En el acta firman las personas que han formado la mesa: presidencia, vocales e interventores. Son ciudadanos que han cumplido con su deber, y sus nombres y firmas no hacen falta para comprobar los resultados. Por eso la web tapa automáticamente, antes de subir nada, la columna de la izquierda donde suelen ir; la foto con nombres nunca sale de tu móvil. Para que se tape bien, fotografía el acta entera y de frente. Si alguna foto llegara con nombres a la vista, no cuenta ni se publica hasta que el equipo de revisión los tapa.</p></div>
+      <div class="card"><h2>Una diferencia no es una prueba</h2><p>Si unas cifras no coinciden con las oficiales, puede ser un error al copiarlas, al leer la foto o una corrección hecha después en el escrutinio general. Es un indicio para revisar, siempre con la foto delante.</p></div>
+    </div>
+  </section>
+
+  <footer>Iniciativa ciudadana sin afiliación política. <a href="https://github.com/RecuentoCiudadanoEsp/recuento-ciudadano" target="_blank" rel="noopener">Código abierto</a>. <a href="#como">Cómo funciona</a>.</footer>
+</div>
+
+<script>
+"use strict";
+const $=id=>document.getElementById(id);
+const fmt=n=>(n==null||isNaN(n))?"—":Number(n).toLocaleString("es-ES");
+const ESTADOS={verificada:"Verificada",validada:"Validada por revisión",pendiente:"Pendiente de contraste",conflicto:"En conflicto",revision:"En revisión",invalidada:"Invalidada",valida:"Válida",invalida:"Invalidada"};
+const MOTIVOS_F={red_muchas_mesas:"red con muchos envíos",mesa_nueva:"mesa pendiente de confirmar",foto_reutilizada:"foto repetida en otra mesa",foto_antes_apertura:"foto anterior al cierre",muchas_mesas:"muchas mesas desde el mismo dispositivo",lejos:"enviada lejos del colegio",censo_distinto:"electores distintos al censo",nombres_sin_tapar:"nombres sin tapar (pendiente de revisión)",no_parece_acta:"pendiente de revisar la imagen",ia_no_acta:"pendiente de revisar la imagen",ia_inapropiada:"imagen retirada de la vista"};
+const huellaFoto=f=>{ const r=(f.f||[]).find(x=>x.startsWith("retapada:")); return r?r.slice(9):f.h; };
+let CFG={abre:null,turnstile_sitekey:"",zonas_difuminado:[]}; let PROVS=[]; const cacheJSON={};
+async function getJSON(u,{fresh}={}){ if(!fresh&&cacheJSON[u]) return cacheJSON[u]; const r=await fetch(u); if(!r.ok) throw new Error(u+" "+r.status); const d=await r.json(); cacheJSON[u]=d; return d; }
+const abierto=()=>CFG.modo_pruebas || (CFG.abre && Date.now()>=Date.parse(CFG.abre));
+const disp=(()=>{ try{ let d=localStorage.getItem("rc-disp"); if(!d){ d=crypto.randomUUID(); localStorage.setItem("rc-disp",d); } return d; }catch(e){ return "sin-almacenamiento"; } })();
+const nombreProv=p=>(PROVS.find(x=>x.prov===p)||{}).nombre||p;
+const seccTxt=s=>String(Number(s)).padStart(3,"0");
+
+// ---------- rutas ----------
+function route(){
+  const h=location.hash.slice(1)||"inicio"; const [v,arg]=h.split("=");
+  const vista=["inicio","enviar","resultados","prov","mesa","como"].includes(v)?v:"inicio";
+  document.querySelectorAll(".view").forEach(s=>s.classList.toggle("on",s.id==="v-"+vista));
+  const tab=vista==="prov"||vista==="mesa"?"resultados":vista;
+  document.querySelectorAll("nav.tabs a").forEach(a=>{ if(a.dataset.v===tab) a.setAttribute("aria-current","page"); else a.removeAttribute("aria-current"); });
+  if(vista==="resultados") verResultados(); if(vista==="prov") verProvincia(arg); if(vista==="mesa") verMesa(arg);
+  window.scrollTo(0,0);
+}
+window.addEventListener("hashchange",route);
+
+// ---------- inicio y cuenta atrás ----------
+let abPrev=null;
+function tick(){
+  const ab=abierto(); $("inicioCerrado").classList.toggle("hide",ab); $("inicioAbierto").classList.toggle("hide",!ab); $("practicaBanner").classList.toggle("hide",ab);
+  $("estadoGlobal").textContent=ab?"Envíos abiertos":"Envíos cerrados hasta el cierre de los colegios";
+  if(!ab&&CFG.abre){ let s=Math.max(0,Math.floor((Date.parse(CFG.abre)-Date.now())/1000)); const v=[Math.floor(s/86400),Math.floor(s%86400/3600),Math.floor(s%3600/60),s%60];
+    $("countdown").querySelectorAll("b").forEach((b,i)=>b.textContent=v[i]); }
+  if(ab!==abPrev){ abPrev=ab; validar(); }   // solo redibuja si cambia el estado (evita mover el botón cada segundo)
+}
+$("btnIcs").addEventListener("click",()=>{
+  const ini=new Date(Date.parse(CFG.abre)+60*60*1000); const fin=new Date(ini.getTime()+90*60*1000); const f=d=>d.toISOString().replace(/[-:]/g,"").replace(/\.\d+/,"");
+  const ics=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//Recuento Ciudadano//ES","BEGIN:VEVENT",`UID:${Date.now()}@recuento`,`DTSTAMP:${f(new Date())}`,`DTSTART:${f(ini)}`,`DTEND:${f(fin)}`,
+    "SUMMARY:Fotografiar el acta de mi mesa electoral",`DESCRIPTION:Cuando peguen el acta en la puerta del colegio, fotografíala y súbela en ${location.origin}`,`URL:${location.origin}`,
+    "BEGIN:VALARM","TRIGGER:-PT0M","ACTION:DISPLAY","DESCRIPTION:Fotografía el acta de tu mesa","END:VALARM","END:VEVENT","END:VCALENDAR"].join("\r\n");
+  const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([ics],{type:"text/calendar"})); a.download="recuento-ciudadano.ics"; document.body.append(a); a.click(); a.remove();
+});
+function compartir(texto,url){ if(navigator.share){ navigator.share({text:texto,url}).catch(()=>{}); return; }
+  window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(texto)}&url=${encodeURIComponent(url)}`,"_blank","noopener"); }
+$("btnShareHome").addEventListener("click",()=>compartir("El día de las elecciones, cuando cierre tu colegio, fotografía el acta de tu mesa y súbela. Así cualquiera puede comprobar los resultados con la foto delante:",location.origin));
+
+// ---------- formulario: mesa ----------
+let MESAS=null, CANDS=[], GEO=null;
+function opts(sel,items,ph){ sel.innerHTML=`<option value="">${ph}</option>`+items.map(([v,t])=>`<option value="${v}">${t}</option>`).join(""); sel.disabled=!items.length; }
+$("sProv").addEventListener("change",async()=>{
+  const p=$("sProv").value; MESAS=null; CANDS=[]; ["sMuni","sDist","sSecc","sMesa"].forEach(id=>opts($(id),[],"—")); pintarCands(); mesaInfo();
+  if(!p) return;
+  try{ const [m,c]=await Promise.all([getJSON(`/data/mesas/${p}.json`),getJSON(`/data/candidaturas/${p}.json`)]); MESAS=m; CANDS=c.candidaturas;
+    $("candFuente").textContent= /provisional/.test(c.fuente||"")?"Lista provisional de candidaturas.":"";
+    const munis=Object.entries(m.municipios).sort((a,b)=>a[1].localeCompare(b[1],"es")); opts($("sMuni"),munis,"Elige municipio…"); pintarCands(); if(IMG) pedirLectura(); }
+  catch(e){ $("mesaInfo").textContent="No se han podido cargar las mesas de esta provincia. Recarga la página."; }
+});
+const partes=id=>id.split("-");
+$("sMuni").addEventListener("change",()=>{ const mu=$("sMuni").value; const ds=[...new Set(MESAS.mesas.filter(([id])=>partes(id)[1]===mu).map(([id])=>partes(id)[2]))].sort();
+  opts($("sDist"),ds.map(d=>[d,"Distrito "+Number(d)]),"Elige distrito…"); opts($("sSecc"),[],"—"); opts($("sMesa"),[],"—"); if(ds.length===1){ $("sDist").value=ds[0]; $("sDist").dispatchEvent(new Event("change")); } mesaInfo(); });
+$("sDist").addEventListener("change",()=>{ const mu=$("sMuni").value, d=$("sDist").value; const ss=[...new Set(MESAS.mesas.filter(([id])=>{const p=partes(id); return p[1]===mu&&p[2]===d;}).map(([id])=>partes(id)[3]))].sort();
+  opts($("sSecc"),ss.map(s=>[s,"Sección "+seccTxt(s)]),"Elige sección…"); opts($("sMesa"),[],"—"); mesaInfo(); });
+$("sSecc").addEventListener("change",()=>{ const mu=$("sMuni").value, d=$("sDist").value, s=$("sSecc").value; const ms=MESAS.mesas.filter(([id])=>{const p=partes(id); return p[1]===mu&&p[2]===d&&p[3]===s;});
+  opts($("sMesa"),ms.map(([id,,local])=>[id,"Mesa "+partes(id)[4]+(local?" · "+local:"")]),"Elige mesa…"); if(ms.length===1){ $("sMesa").value=ms[0][0]; } mesaInfo(); });
+$("sMesa").addEventListener("change",mesaInfo);
+$("sMuni").addEventListener("change",()=>{ if(MODO_NUEVA){ ["sDist","sSecc","sMesa"].forEach(id=>$(id).disabled=true); mesaInfo(); } });
+let MODO_NUEVA=false;
+$("btnNoAparece").addEventListener("click",()=>{ MODO_NUEVA=true; $("nuevaBox").classList.remove("hide"); $("btnNoAparece").classList.add("hide"); ["sDist","sSecc","sMesa"].forEach(id=>$(id).disabled=true); mesaInfo(); });
+$("btnVolverLista").addEventListener("click",()=>{ MODO_NUEVA=false; $("nuevaBox").classList.add("hide"); $("btnNoAparece").classList.remove("hide"); $("sMuni").dispatchEvent(new Event("change")); });
+["nDist","nSecc","nMesa"].forEach(id=>$(id).addEventListener("input",mesaInfo));
+function mesaNueva(){ const p=$("sProv").value, mu=$("sMuni").value, d=$("nDist").value.trim(), sc=$("nSecc").value.trim(), m=$("nMesa").value;
+  if(!p||!mu||!/^\d{1,2}$/.test(d)||!/^\d{1,3}$/.test(sc)||!m) return null;
+  const id=`${p}-${mu}-${d.padStart(2,"0")}-${sc.padStart(3,"0")}-${m}`; const ex=MESAS&&MESAS.mesas.find(x=>x[0]===id);
+  return {id,censo:ex?ex[1]:null,local:ex?ex[2]||null:null,prov:p,municipio:MESAS.municipios[mu],nueva:!ex}; }
+function mesaSel(){ if(MODO_NUEVA) return mesaNueva(); const id=$("sMesa").value; if(!id||!MESAS) return null; const m=MESAS.mesas.find(x=>x[0]===id); return m?{id,censo:m[1],local:m[2]||null,prov:$("sProv").value,municipio:MESAS.municipios[partes(id)[1]]}:null; }
+function mesaInfo(){ const m=mesaSel(); $("mesaInfo").innerHTML=m?`Mesa <b class="mono">${m.id}</b> · ${m.municipio}${m.local?` · <b>${m.local}</b>`:""}${m.censo?` · electores aprox. ${fmt(m.censo)}`:""}${m.nueva?" · <b>mesa nueva, se revisará a mano</b>":""}${GEO?" · ubicación confirmada":""}`:""; validar(); }
+$("btnGeo").addEventListener("click",()=>{ if(!navigator.geolocation){ $("btnGeo").textContent="Ubicación no disponible"; return; }
+  $("btnGeo").textContent="Obteniendo ubicación…";
+  navigator.geolocation.getCurrentPosition(p=>{ GEO={lat:+p.coords.latitude.toFixed(5),lon:+p.coords.longitude.toFixed(5),acc:Math.round(p.coords.accuracy)}; $("btnGeo").textContent="Ubicación confirmada ✓"; mesaInfo(); },
+    ()=>{ GEO=null; $("btnGeo").textContent="Sin ubicación (puedes enviar igual)"; mesaInfo(); },{enableHighAccuracy:true,timeout:15000}); });
+
+// ---------- formulario: cifras ----------
+const BASICOS=[["electores","Total electores (1+2)"],["votantes","Total votantes (A+B)"],["nulos","Votos nulos"],["blanco","Votos en blanco"]];
+$("fBasicos").innerHTML=BASICOS.map(([k,l])=>`<div><label for="n-${k}">${l}</label><input type="number" inputmode="numeric" min="0" step="1" id="n-${k}"><div class="pista" id="p-${k}"></div></div>`).join("");
+BASICOS.forEach(([k])=>$("n-"+k).addEventListener("input",validar));
+function pintarCands(){ $("fCands").innerHTML=CANDS.length?CANDS.map(c=>`<div><label for="c-${c.codigo}" title="${(c.denominacion||"").replace(/"/g,"&quot;")}">${c.siglas}</label><input type="number" inputmode="numeric" min="0" step="1" id="c-${c.codigo}" data-cod="${c.codigo}"><div class="pista" id="p-${c.codigo}"></div></div>`).join(""):'<span class="meta">Elige primero la provincia.</span>';
+  $("fCands").querySelectorAll("input").forEach(i=>i.addEventListener("input",validar)); validar(); }
+function leerCifras(){ const v=id=>{ const x=$(id).value; return x===""?null:Number(x); }; const c={cand:{}}; BASICOS.forEach(([k])=>c[k]=v("n-"+k)); CANDS.forEach(k=>c.cand[k.codigo]=v("c-"+k.codigo)); return c; }
+
+// ---------- formulario: foto y tapado ----------
+let IMG=null, RECTS=[], ROT=0, FOTO_TS=null; const AUTO=()=>(CFG.zonas_difuminado||[]).map(z=>({fx:z[0],fy:z[1],fw:z[2],fh:z[3]})); const cv=$("cv"), g=cv.getContext("2d");
+$("foto").addEventListener("change",async e=>{ const f=e.target.files[0]; if(!f) return; FOTO_TS=f.lastModified||Date.now();
+  try{ IMG=await createImageBitmap(f,{imageOrientation:"from-image"}); }catch(err){ IMG=await createImageBitmap(f); }
+  ROT=0; RECTS=[]; LECTURA=null; $("editorBox").classList.remove("hide"); dibujar(); revisarEncuadre(); pedirLectura(); validar(); });
+function lienzo(maxW){ const rot=ROT%180!==0; const w0=rot?IMG.height:IMG.width, h0=rot?IMG.width:IMG.height; const s=Math.min(1,maxW/w0);
+  const c=document.createElement("canvas"); c.width=Math.round(w0*s); c.height=Math.round(h0*s); const x=c.getContext("2d");
+  x.translate(c.width/2,c.height/2); x.rotate(ROT*Math.PI/180); const dw=(rot?c.height:c.width), dh=(rot?c.width:c.height); x.drawImage(IMG,-dw/2,-dh/2,dw,dh); x.setTransform(1,0,0,1,0,0);
+  x.fillStyle="#2b2b2b"; for(const r of [...AUTO(),...RECTS]) x.fillRect(r.fx*c.width,r.fy*c.height,r.fw*c.width,r.fh*c.height); return c; }
+function dibujar(tmp){ const c=lienzo(1000); cv.width=c.width; cv.height=c.height; g.drawImage(c,0,0); if(tmp){ g.fillStyle="rgba(29,79,216,.35)"; g.fillRect(tmp.fx*cv.width,tmp.fy*cv.height,tmp.fw*cv.width,tmp.fh*cv.height); } }
+let drag=null; const pos=e=>{ const r=cv.getBoundingClientRect(); return [(e.clientX-r.left)/r.width,(e.clientY-r.top)/r.height]; };
+cv.addEventListener("pointerdown",e=>{ if(!IMG) return; cv.setPointerCapture(e.pointerId); drag=pos(e); });
+cv.addEventListener("pointermove",e=>{ if(!drag) return; const p=pos(e); dibujar(rect(drag,p)); });
+cv.addEventListener("pointerup",e=>{ if(!drag) return; const r=rect(drag,pos(e)); drag=null; if(r.fw>0.01&&r.fh>0.005) RECTS.push(r); dibujar(); });
+const rect=(a,b)=>({fx:Math.min(a[0],b[0]),fy:Math.min(a[1],b[1]),fw:Math.abs(a[0]-b[0]),fh:Math.abs(a[1]-b[1])});
+$("btnUndo").addEventListener("click",()=>{ RECTS.pop(); dibujar(); });
+$("btnRot").addEventListener("click",()=>{ ROT=(ROT+90)%360; RECTS=[]; LECTURA=null; dibujar(); revisarEncuadre(); pedirLectura(); });
+const aBlob=(c,q)=>new Promise(r=>c.toBlob(r,"image/jpeg",q));
+async function sha256(b){ const d=await crypto.subtle.digest("SHA-256",await b.arrayBuffer()); return [...new Uint8Array(d)].map(x=>x.toString(16).padStart(2,"0")).join(""); }
+function dhash(c){ const t=document.createElement("canvas"); t.width=9; t.height=8; const x=t.getContext("2d"); x.drawImage(c,0,0,9,8); const d=x.getImageData(0,0,9,8).data; let bits="";
+  for(let y=0;y<8;y++) for(let i=0;i<8;i++){ const a=(y*9+i)*4, b=a+4; bits+=(d[a]+d[a+1]+d[a+2])>(d[b]+d[b+1]+d[b+2])?"1":"0"; }
+  return BigInt("0b"+bits).toString(16).padStart(16,"0"); }
+
+// ---------- encuadre: misma comprobación que hace el servidor ----------
+function revisarEncuadre(){ const c=lienzo(300), d=c.getContext("2d").getImageData(0,0,c.width,c.height).data; const hist=new Uint32Array(256); let n=0;
+  for(let i=0;i<d.length;i+=16){ hist[Math.max(d[i],d[i+1],d[i+2])]++; n++; } let acc=0,p90=255; for(let v=0;v<256;v++){ acc+=hist[v]; if(acc>=n*0.9){ p90=v; break; } }
+  const um=Math.max(50,p90*0.62); let papel=0,piel=0,col=0;
+  for(let i=0;i<d.length;i+=16){ const r=d[i],g=d[i+1],b=d[i+2],mx=Math.max(r,g,b),mn=Math.min(r,g,b),sat=mx?(mx-mn)/mx:0;
+    if(mx>um&&sat<0.22) papel++; if(sat>0.45&&mx>60) col++; if(r>95&&g>40&&b>20&&mx-mn>15&&Math.abs(r-g)>15&&r>g&&r>b&&sat>0.23) piel++; }
+  const mal=papel/n<0.3||piel/n>0.3||col/n>0.3; const a=$("avisoEncuadre");
+  a.classList.toggle("hide",!mal); a.innerHTML=mal?"<b>Parece que la foto tiene mucho fondo o no es un acta.</b> Acércate para que el acta ocupe casi toda la foto. Si la envías así, no se publicará hasta que la revisemos.":""; }
+
+// ---------- lectura automática: marca en amarillo lo que no coincide con la foto ----------
+let LECTURA=null, LECT_ID=0;
+async function pedirLectura(){ LECTURA=null; marcarDudosos(); const prov=$("sProv").value;
+  if(!CFG.lectura_ia||!abierto()||!IMG||!prov){ $("iaInfo").textContent=""; return; }
+  const id=++LECT_ID; $("iaInfo").innerHTML='<span class="spinner"></span> Leyendo la foto para ayudarte a comprobar las cifras…';
+  try{ const foto=await aBlob(lienzo(1600),0.8); const fd=new FormData(); fd.append("foto",foto,"acta.jpg"); fd.append("prov",prov); const ms=mesaSel(); if(ms) fd.append("mesa_id",ms.id);
+    const r=await fetch("/api/leer",{method:"POST",body:fd}); if(id!==LECT_ID) return; const d=await r.json();
+    if(d.omitida){ $("iaInfo").textContent="Esta mesa ya está verificada por varias personas: tu foto se guardará como respaldo."; return; }
+    if(!r.ok||!d.lectura){ $("iaInfo").textContent=""; return; }
+    LECTURA=d.lectura; $("iaInfo").textContent=LECTURA.es_acta===false?"La foto no parece un acta de escrutinio. Revisa que sea la correcta.":"Foto leída. Debajo de cada casilla tienes lo que se lee en la foto y su fiabilidad (alta si coinciden la cifra en letra y en número). No se escribe solo: cópialo tú del acta. En amarillo, lo que no coincide.";
+    validar(); }catch(e){ if(id===LECT_ID) $("iaInfo").textContent=""; } }
+function marcarDudosos(){ const campos=[...BASICOS.map(([k])=>["n-"+k,k,null]),...CANDS.map(c=>["c-"+c.codigo,null,c.codigo])];
+  for(const [idInput,k,cod] of campos){ const el=$(idInput), p=$("p-"+(k||cod)); if(!el) continue;
+    const leido=LECTURA?(k?LECTURA[k]:(LECTURA.cand||{})[cod]):null; const v=el.value===""?null:Number(el.value);
+    const f=LECTURA&&LECTURA.fiab?LECTURA.fiab[k||cod]:null; const dudoso=leido!=null&&v!=null&&v!==leido; el.classList.toggle("dudoso",dudoso);
+    if(!p) continue; p.className="pista"+(leido!=null?" f-"+(f||"media"):"");
+    p.textContent = leido==null ? "" : dudoso ? `En la foto parece ${leido} (fiabilidad ${f||"media"})` : (v===leido ? `✓ coincide con la foto` : `En la foto: ${leido} · fiabilidad ${f||"media"}`); } }
+
+// ---------- validación (mismas reglas que el servidor) ----------
+function comprobar(){
+  const it=[]; const add=(l,t)=>it.push({l,t}); const m=mesaSel(); const c=leerCifras();
+  add(m?(m.nueva?"warn":"ok"):"idle", m?(m.nueva?`Mesa ${m.id}: no está en nuestra lista, la revisaremos a mano antes de contarla.`:`Mesa ${m.id}`):(MODO_NUEVA?"Completa municipio, distrito, sección y mesa.":"Elige tu mesa."));
+  add(IMG?"ok":"idle", IMG?`Foto lista: nombres de la izquierda tapados${RECTS.length?` y ${RECTS.length} zona(s) más`:""}.`:"Falta la foto del acta.");
+  const faltan=[...BASICOS.filter(([k])=>c[k]==null).map(([,l])=>l), ...CANDS.filter(k=>c.cand[k.codigo]==null).map(k=>k.siglas)];
+  if(!CANDS.length) add("idle","Faltan las cifras.");
+  else if(faltan.length) add("idle",`Faltan cifras: ${faltan.slice(0,4).join(", ")}${faltan.length>4?"…":""}. Si una candidatura tiene 0 votos, escribe 0.`);
+  else { const suma=CANDS.reduce((a,k)=>a+c.cand[k.codigo],0)+c.blanco+c.nulos;
+    if(c.votantes>c.electores) add("bad",`Hay más votantes (${fmt(c.votantes)}) que electores (${fmt(c.electores)}). Revisa las cifras.`);
+    if(c.votantes!==suma) add("bad",`No cuadra: candidaturas + blanco + nulos = ${fmt(suma)}, pero votantes = ${fmt(c.votantes)}. Revisa lo copiado${LECTURA?" (empieza por las casillas en amarillo)":""}. Un acta que no cuadra no se puede enviar.`);
+    else add("ok","Las cuentas cuadran.");
+    if(m&&m.censo&&!m.nueva&&Math.abs(c.electores-m.censo)>Math.max(15,m.censo*0.08)) add("warn",`Electores (${fmt(c.electores)}) muy distinto al censo de referencia (${fmt(m.censo)}). ¿Es la mesa correcta?`); }
+  if(!GEO) add("warn","Sin ubicación confirmada: se acepta, pero tu envío pesará menos.");
+  const listo=!!(m&&IMG&&CANDS.length&&!faltan.length&&!it.some(i=>i.l==="bad")); return {it,listo,m,c};
+}
+let checksPrev="";
+function validar(){ const {it,listo}=comprobar(); const ic={ok:"✓",warn:"!",bad:"✕",idle:"·"};
+  const html=it.map(i=>`<li class="c-${i.l}"><span class="ic">${ic[i.l]}</span><span class="t">${i.t}</span></li>`).join("");
+  if(html!==checksPrev){ checksPrev=html; $("checks").innerHTML=html; }
+  marcarDudosos(); const b=$("btnEnviar"); b.disabled=!listo||ENVIANDO; const txt=abierto()?"Enviar":"Probar el envío (no se envía nada)"; if(b.textContent!==txt) b.textContent=txt; }
+
+// ---------- Turnstile ----------
+let TS_TOKEN=null, tsCargado=false;
+function cargarTurnstile(){ if(tsCargado||!CFG.turnstile_sitekey) return; tsCargado=true; window.onTs=()=>{ turnstile.render("#turnstile",{sitekey:CFG.turnstile_sitekey,callback:t=>{TS_TOKEN=t;},"expired-callback":()=>{TS_TOKEN=null;}}); };
+  const s=document.createElement("script"); s.src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onTs&render=explicit"; s.async=true; document.head.append(s); }
+
+// ---------- envío ----------
+let ENVIANDO=false;
+const ERRORES={cerrado:"Los envíos aún no están abiertos.",verificacion:"No se ha podido verificar que no eres un robot. Recarga la página e inténtalo de nuevo.",duplicada:"Esta foto ya se había enviado.",
+  demasiados_envios:"Demasiados envíos seguidos desde tu conexión. Espera unos minutos.",mesa_desconocida:"No reconocemos esa mesa. Revisa los datos de la cabecera del acta.",cifras_incompletas:"Faltan cifras.",tamano_foto:"La foto es demasiado grande o pequeña. Prueba a hacerla de nuevo.",no_cuadra:"Las cuentas del acta no cuadran. Revisa las cifras.",formato_foto:"No se ha podido leer la foto. Hazla de nuevo."};
+$("btnEnviar").addEventListener("click",async()=>{
+  const {listo,m,c}=comprobar(); if(!listo) return; ENVIANDO=true; validar(); $("resultado").innerHTML='<span class="spinner"></span> Preparando la foto…';
+  try{
+    const grande=lienzo(1600), peq=lienzo(480); const foto=await aBlob(grande,0.8), mini=await aBlob(peq,0.65); const hash=await sha256(foto);
+    if(!abierto()){ $("resultado").innerHTML=`<div class="banner b-ok"><b>Práctica completada.</b> Tu envío estaría listo: foto de ${Math.round(foto.size/1024)} KB, huella <span class="mono">${hash.slice(0,16)}…</span>. El día de las elecciones será igual.</div>`; return; }
+    if(CFG.turnstile_sitekey&&!TS_TOKEN){ $("resultado").innerHTML='<div class="banner b-warn">Completa la verificación antirrobots de arriba y vuelve a pulsar Enviar.</div>'; return; }
+    $("resultado").innerHTML='<span class="spinner"></span> Enviando…';
+    const fd=new FormData(); fd.append("foto",foto,"acta.jpg"); fd.append("mini",mini,"mini.jpg"); if(TS_TOKEN) fd.append("turnstile",TS_TOKEN);
+    fd.append("datos",JSON.stringify({mesa_id:m.id,mesa_nueva:!!m.nueva,cifras:c,hash,dhash:dhash(grande),dispositivo:disp,geo:GEO,ts_foto:FOTO_TS}));
+    let r, d; for(let intento=0; intento<3; intento++){ try{ r=await fetch("/api/envio",{method:"POST",body:fd}); d=await r.json(); break; }catch(err){ if(intento===2) throw err; await new Promise(z=>setTimeout(z,1500*(intento+1))); } }
+    if(!r.ok){ $("resultado").innerHTML=`<div class="banner b-bad">${ERRORES[d.error]||d.mensaje||"No se ha podido enviar. Inténtalo de nuevo."}</div>`; if(window.turnstile&&CFG.turnstile_sitekey){ turnstile.reset("#turnstile"); TS_TOKEN=null; } return; }
+    const url=`${location.origin}/#mesa=${d.mesa_id}`;
+    $("resultado").innerHTML=`<div class="banner b-ok"><b>¡Enviada, gracias!</b> Tus cifras aparecerán en la ficha de la mesa en un minuto. La foto se hará pública cuando otra persona envíe la misma acta (o la revisemos).${d.foto_en_revision?" Hemos detectado algo raro en la foto (mucho fondo o algún nombre sin tapar), así que la revisaremos antes de publicarla.":""}
+      <div class="row" style="margin-top:10px"><a class="btn small" href="#mesa=${d.mesa_id}">Ver mi mesa</a><button class="small" id="btnShareMesa">Compartir</button><button class="small" id="btnOtra">Enviar otra mesa</button></div></div>`;
+    $("btnShareMesa").onclick=()=>compartir(`He fotografiado el acta de mi mesa electoral. Cuando cierre tu colegio, haz lo mismo:`,url);
+    $("btnOtra").onclick=()=>{ IMG=null; RECTS=[]; $("foto").value=""; $("editorBox").classList.add("hide"); document.querySelectorAll("#fBasicos input,#fCands input").forEach(i=>i.value=""); $("resultado").innerHTML=""; validar(); window.scrollTo(0,0); };
+    if(window.turnstile&&CFG.turnstile_sitekey){ turnstile.reset("#turnstile"); TS_TOKEN=null; }
+  }catch(e){ $("resultado").innerHTML='<div class="banner b-bad">Sin conexión o error de red. Tus datos siguen aquí: vuelve a pulsar Enviar cuando tengas cobertura.</div>'; }
+  finally{ ENVIANDO=false; validar(); }
+});
+
+// ---------- resultados ----------
+async function verResultados(){
+  try{ const r=await getJSON("/api/public/resumen.json",{fresh:true}); const n=r.nacional||{};
+    const verif=(n.verificada||0)+(n.validada||0);
+    $("tiles").innerHTML=[["Mesas con foto",n.con_envio],["Verificadas",verif],["% de todas las mesas",n.mesas?((verif/n.mesas)*100).toLocaleString("es-ES",{maximumFractionDigits:1})+" %":"—"],["En conflicto o revisión",(n.conflicto||0)+(n.revision||0)]]
+      .map(([k,v])=>`<div class="tile"><div class="v">${typeof v==="number"?fmt(v):v}</div><div class="k">${k}</div></div>`).join("");
+    if(r.totales_visibles&&n.votos&&Object.keys(n.votos).length){ $("totalesCard").classList.remove("hide");
+      const partidos=Object.entries(n.votos).filter(([k])=>!k.startsWith("_")).sort((a,b)=>b[1]-a[1]); const tot=partidos.reduce((a,[,v])=>a+v,0)+(n.votos._blanco||0);
+      $("tTotales").innerHTML=`<tr><th>Candidatura</th><th>Votos</th><th>% s/ válidos</th></tr>`+partidos.map(([s,v])=>`<tr><td>${s}</td><td>${fmt(v)}</td><td>${tot?(v/tot*100).toFixed(2):"—"}</td></tr>`).join("")
+        +`<tr><td>En blanco</td><td>${fmt(n.votos._blanco)}</td><td></td></tr><tr><td>Nulos</td><td>${fmt(n.votos._nulos)}</td><td></td></tr>`+
+        `<tr><td colspan="3" class="meta" style="text-align:left; white-space:normal">Solo ${fmt(verif)} mesas verificadas: no es representativo del total.</td></tr>`; }
+    else { $("totalesCard").classList.add("hide"); }
+    $("tProv").innerHTML=`<tr><th>Provincia</th><th>Mesas</th><th>Con foto</th><th>Verificadas</th><th>Conflicto</th></tr>`+(r.provincias||[]).sort((a,b)=>(b.con_envio||0)-(a.con_envio||0))
+      .map(p=>`<tr class="link" data-p="${p.prov}"><td>${nombreProv(p.prov)}</td><td>${fmt(p.mesas)}</td><td>${fmt(p.con_envio)}</td><td>${fmt((p.verificada||0)+(p.validada||0))}</td><td>${fmt((p.conflicto||0)+(p.revision||0))}</td></tr>`).join("");
+    $("tProv").querySelectorAll("tr.link").forEach(tr=>tr.onclick=()=>location.hash="prov="+tr.dataset.p);
+    mapaEspana(r).catch(()=>{});
+    $("genTxt").textContent=r.generado?`Actualizado: ${new Date(r.generado).toLocaleTimeString("es-ES")}. Se actualiza cada minuto.`:"Todavía no hay envíos.";
+  }catch(e){ $("tiles").innerHTML='<div class="meta">No se han podido cargar los resultados.</div>'; }
+}
+// ---------- mapas ----------
+const COLORES=[[/PSOE|^PSC|PSdeG|PSE-EE|PSIB/,"#d81e26"],[/^PP$|PARTIDO POPULAR/,"#1d84ce"],[/VOX/,"#5aa61f"],[/FRENTE AMPLIO|^FA$|COMUNS|SUMAR|ARAM.S|CHA-IU/,"#c2337a"],
+  [/PODEMOS/,"#6b2e68"],[/SALF/,"#8a6a3c"],[/^ERC/,"#f0a020"],[/JxCat|JUNTS/,"#1fb5a8"],[/BILDU/,"#94b800"],[/PNV/,"#2e7d32"],[/B\.?N\.?G/,"#5fa8d8"],[/COMPROMIS/,"#e8710a"],
+  [/^CC\b|COALICI.N CANARIA/,"#e6c200"],[/UPN/,"#0a3b7c"],[/ADELANTE/,"#00958f"],[/TERUEL/,"#037252"]];
+const colorPartido=s=>{ for(const [re,c] of COLORES) if(re.test(s)) return c; return "#8d96a6"; };
+const ESCALA=[[0,"var(--paper)"],[0.0001,"#dbe6ff"],[0.1,"#b3c9fb"],[0.25,"#7ea2f4"],[0.5,"#4a74e0"],[0.75,"#1d4fd8"]];
+const colorCob=f=>{ let c=ESCALA[0][1]; for(const [u,col] of ESCALA) if(f>=u) c=col; return c; };
+const leyCob=()=>`<span><i style="background:var(--paper); border:1px solid var(--line)"></i>Sin verificadas</span>`+[["0–10 %",1],["10–25 %",2],["25–50 %",3],["50–75 %",4],["75–100 %",5]].map(([t,i])=>`<span><i style="background:${ESCALA[i][1]}"></i>${t}</span>`).join("")+`<span>de mesas verificadas</span>`;
+const pct=f=>(f*100).toLocaleString("es-ES",{maximumFractionDigits:1})+" %";
+function svgMapa(cont, datos, items, {color, info, click, marco}){
+  cont.innerHTML=`<svg class="mapa" viewBox="0 0 ${datos.ancho} ${datos.alto}" role="img">${items.map(x=>`<path d="${x.d}" data-id="${x.id}" fill="${color(x.id)}"><title>${info(x.id)}</title></path>`).join("")}${marco?`<path class="marco" d="${marco}"/>`:""}</svg>`;
+  cont.querySelectorAll("path[data-id]").forEach(el=>{ el.onclick=()=>click(el.dataset.id); el.onmouseenter=()=>{ cont.dataset.info=info(el.dataset.id); cont.dispatchEvent(new Event("info")); }; });
+}
+function ganador(votos){ const e=Object.entries(votos||{}).filter(([k])=>!k.startsWith("_")).sort((a,b)=>b[1]-a[1]); if(!e.length||!e[0][1]) return null;
+  const tot=e.reduce((a,[,v])=>a+v,0)+((votos||{})._blanco||0); return {siglas:e[0][0], pct:tot?e[0][1]/tot:0}; }
+let MODO_ESP="cobertura", RESUMEN=null;
+async function mapaEspana(r){ RESUMEN=r; const m=await getJSON("/data/mapa/espana.json"); const P=new Map((r.provincias||[]).map(p=>[p.prov,p]));
+  const cob=id=>{ const p=P.get(id); return p&&p.mesas?((p.verificada||0)+(p.validada||0))/p.mesas:0; };
+  const votosOk=r.totales_visibles;
+  $("segEsp").querySelector('[data-modo="votos"]').disabled=!votosOk; if(!votosOk) MODO_ESP="cobertura";
+  $("segEsp").querySelectorAll("button").forEach(b=>{ b.classList.toggle("on",b.dataset.modo===MODO_ESP); b.onclick=()=>{ if(b.disabled) return; MODO_ESP=b.dataset.modo; mapaEspana(RESUMEN); }; });
+  const color=id=>{ if(MODO_ESP==="votos"){ const g=ganador((P.get(id)||{}).votos); return g?colorPartido(g.siglas):"var(--paper)"; } return colorCob(cob(id)); };
+  const info=id=>{ const p=P.get(id)||{}; const v=(p.verificada||0)+(p.validada||0); const g=votosOk?ganador(p.votos):null;
+    return `${nombreProv(id)}: ${fmt(v)} de ${fmt(p.mesas||0)} mesas verificadas (${pct(cob(id))})${g?` · más votado en ellas: ${g.siglas}`:""}`; };
+  svgMapa($("mapaEsp"), m, m.provincias.map(x=>({id:x.prov,d:x.d})), {color, info, click:id=>location.hash="prov="+id, marco:m.marcoCanarias});
+  $("mapaEsp").addEventListener("info",()=>$("infoEsp").textContent=$("mapaEsp").dataset.info);
+  if(MODO_ESP==="votos"){ const vistos=new Map(); for(const p of P.values()){ const g=ganador(p.votos); if(g) vistos.set(colorPartido(g.siglas), g.siglas); }
+    $("leyEsp").innerHTML=[...vistos].map(([c,s])=>`<span><i style="background:${c}"></i>${s}</span>`).join("")+`<span>Partido más votado en las mesas verificadas de cada provincia (no es el resultado de la provincia)</span>`; }
+  else $("leyEsp").innerHTML=leyCob()+(votosOk?"":`<span>· «Más votado» se activa cuando cierran todos los colegios (también en Canarias)</span>`);
+}
+
+let PROV_DATA=null;
+async function cargarProv(p,fresh){ const d=await getJSON(`/api/public/prov/${p}.json`,{fresh}); PROV_DATA=d; return d; }
+let MODO_PROV="cobertura";
+async function verProvincia(p){
+  $("provTit").textContent=nombreProv(p); $("tMesas").innerHTML='<tr><td><span class="spinner"></span></td></tr>';
+  try{ const [d,ref,mapa,r]=await Promise.all([cargarProv(p,true),getJSON(`/data/mesas/${p}.json`),getJSON(`/data/mapa/municipios/${p}.json`).catch(()=>null),getJSON("/api/public/resumen.json",{fresh:true}).catch(()=>({}))]);
+    const votosOk=!!r.totales_visibles; const cods=Object.fromEntries((d.candidaturas||[]).map(c=>[c.codigo,c.siglas]));
+    // por municipio: total de mesas (lista oficial), verificadas y votos de las verificadas
+    const M={}; for(const [id] of ref.mesas){ const k=id.split("-")[1]; (M[k]=M[k]||{total:0,ver:0,con:0,votos:{}}).total++; }
+    for(const m of d.mesas){ const k=m.id.split("-")[1]; const x=(M[k]=M[k]||{total:0,ver:0,con:0,votos:{}}); x.con++;
+      if((m.estado==="verificada"||m.estado==="validada")&&m.cifras){ x.ver++; for(const [c,v] of Object.entries(m.cifras.cand||{})){ const s=cods[c]||c; x.votos[s]=(x.votos[s]||0)+v; } x.votos._blanco=(x.votos._blanco||0)+(m.cifras.blanco||0); } }
+    const nombreMuni=k=>ref.municipios[k]||((mapa&&mapa.municipios.find(x=>x.muni===k))||{}).nombre||k;
+    const cob=k=>{ const x=M[k]; return x&&x.total?x.ver/x.total:0; };
+    if(mapa){ $("segProv").querySelector('[data-modo="votos"]').disabled=!votosOk; if(!votosOk) MODO_PROV="cobertura";
+      const pintarMapa=()=>{ $("segProv").querySelectorAll("button").forEach(b=>{ b.classList.toggle("on",b.dataset.modo===MODO_PROV); b.onclick=()=>{ if(b.disabled) return; MODO_PROV=b.dataset.modo; pintarMapa(); }; });
+        const color=k=>{ if(MODO_PROV==="votos"){ const g=ganador((M[k]||{}).votos); return g?colorPartido(g.siglas):"var(--paper)"; } return colorCob(cob(k)); };
+        const info=k=>{ const x=M[k]||{total:0,ver:0,con:0}; const g=votosOk?ganador(x.votos):null; return `${nombreMuni(k)}: ${fmt(x.ver)} de ${fmt(x.total)} mesas verificadas${x.con>x.ver?`, ${fmt(x.con-x.ver)} más con foto`:""}${g?` · más votado en ellas: ${g.siglas}`:""}`; };
+        svgMapa($("mapaProv"), mapa, mapa.municipios.map(x=>({id:x.muni,d:x.d})), {color, info, click:k=>{ $("fMuni").value=k; pintar(); $("infoProv").textContent=info(k); $("filtrosProv").scrollIntoView({behavior:"smooth"}); }});
+        if(MODO_PROV==="votos"){ const vistos=new Map(); for(const x of Object.values(M)){ const g=ganador(x.votos); if(g) vistos.set(colorPartido(g.siglas),g.siglas); }
+          $("leyProv").innerHTML=[...vistos].map(([c,s])=>`<span><i style="background:${c}"></i>${s}</span>`).join("")+"<span>Más votado en las mesas verificadas de cada municipio</span>"; }
+        else $("leyProv").innerHTML=leyCob(); };
+      $("mapaProv").addEventListener("info",()=>$("infoProv").textContent=$("mapaProv").dataset.info); pintarMapa(); }
+    else { $("mapaProv").innerHTML=""; $("leyProv").innerHTML=""; }
+    // votos provisionales de la provincia (sin escaños)
+    const pr=(r.provincias||[]).find(x=>x.prov===p);
+    if(votosOk&&pr&&pr.votos&&Object.keys(pr.votos).length){ const ver=(pr.verificada||0)+(pr.validada||0);
+      const partidos=Object.entries(pr.votos).filter(([k])=>!k.startsWith("_")).sort((a,b)=>b[1]-a[1]); const tot=partidos.reduce((a,[,v])=>a+v,0)+(pr.votos._blanco||0);
+      $("votosProvNota").innerHTML=`Suma de los votos de <b>${fmt(ver)} de ${fmt(pr.mesas)} mesas</b> (${pct(pr.mesas?ver/pr.mesas:0)}) que están verificadas. <b>No es una estimación</b> del resultado de la provincia ni de los escaños: las mesas fotografiadas no son una muestra representativa.`;
+      $("tVotosProv").innerHTML=`<tr><th>Candidatura</th><th>Votos</th><th>% s/ válidos</th></tr>`+partidos.map(([s,v])=>`<tr><td><i style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${colorPartido(s)};margin-right:6px"></i>${s}</td><td>${fmt(v)}</td><td>${tot?(v/tot*100).toFixed(2):"—"}</td></tr>`).join("")+`<tr><td>En blanco</td><td>${fmt(pr.votos._blanco)}</td><td></td></tr><tr><td>Nulos</td><td>${fmt(pr.votos._nulos)}</td><td></td></tr>`;
+      $("votosProvCard").classList.remove("hide"); }
+    else $("votosProvCard").classList.add("hide");
+    // lista de mesas: todos los municipios con mesas (aunque aún no tengan foto)
+    const codsMuni=Object.keys(ref.municipios).sort((a,b)=>nombreMuni(a).localeCompare(nombreMuni(b),"es"));
+    $("fMuni").innerHTML='<option value="">Todos los que tienen foto</option>'+codsMuni.map(k=>`<option value="${k}">${nombreMuni(k)}${M[k]&&M[k].con?` (${M[k].con})`:""}</option>`).join("");
+    const porId=new Map(d.mesas.map(m=>[m.id,m]));
+    function pintar(){ const fm=$("fMuni").value, fe=$("fEst").value;
+      let ms = fm ? ref.mesas.filter(([id])=>id.split("-")[1]===fm).map(([id])=>porId.get(id)||{id,municipio:nombreMuni(fm),n:0,estado:null}) : d.mesas.slice();
+      if(fm) for(const m of d.mesas) if(m.id.split("-")[1]===fm&&!ms.some(x=>x.id===m.id)) ms.push(m); // mesas nuevas
+      ms=ms.filter(m=>!fe||m.estado===fe).sort((a,b)=>a.id.localeCompare(b.id)); const totalMs=ms.length; ms=ms.slice(0,150);
+      $("tMesas").innerHTML=ms.length?`<tr><th>Mesa</th><th>Municipio</th><th>Fotos</th><th>Estado</th></tr>`+ms.map(m=>`<tr class="link" data-id="${m.id}"><td class="mono">${m.id}</td><td>${m.municipio||""}</td><td>${m.n||0}</td><td>${m.estado?`<span class="pill p-${m.estado}">${ESTADOS[m.estado]||m.estado}</span>`:'<span class="meta">Sin foto</span>'}</td></tr>`).join("")
+        :`<tr><td class="meta">${fm||fe?"No hay mesas con ese filtro.":"Aún no hay mesas con foto en esta provincia."}</td></tr>`;
+      if(totalMs>ms.length) $("tMesas").innerHTML+=`<tr><td colspan="4" class="meta" style="text-align:left">Se muestran 150 de ${fmt(totalMs)} mesas. Elige un municipio en el mapa o en la lista para ver el resto.</td></tr>`;
+      $("tMesas").querySelectorAll("tr.link").forEach(tr=>tr.onclick=()=>location.hash="mesa="+tr.dataset.id); }
+    $("fMuni").onchange=pintar; $("fEst").onchange=pintar; pintar();
+  }catch(e){ console.error(e); $("tMesas").innerHTML='<tr><td class="meta">No se han podido cargar las mesas.</td></tr>'; }
+}
+async function verMesa(id){
+  const p=(id||"").slice(0,2); $("mesaTit").textContent="Mesa "+id; $("mesaBack").href="#prov="+p; $("mesaCuerpo").innerHTML='<span class="spinner"></span>';
+  try{ const [d,ms]=await Promise.all([cargarProv(p,true),getJSON(`/data/mesas/${p}.json`).catch(()=>null)]); const m=d.mesas.find(x=>x.id===id);
+    const pt=id.split("-"); const ref=ms&&ms.mesas.find(x=>x[0]===id);
+    $("mesaSub").textContent=`${nombreProv(p)} · ${ms?ms.municipios[pt[1]]:pt[1]} · Distrito ${Number(pt[2])} · Sección ${seccTxt(pt[3])} · Mesa ${pt[4]}${ref&&ref[2]?" · "+ref[2]:""}`;
+    if(!m){ $("mesaCuerpo").innerHTML=`<div class="card"><p>Aún no hay fotos de esta mesa.</p>${abierto()?'<a class="btn primary" href="#enviar">¿Estás allí? Envía la tuya</a>':""}</div>`; return; }
+    const cands=d.candidaturas||[]; const fila=c=>c?[c.electores,c.votantes,c.nulos,c.blanco,...cands.map(k=>c.cand[k.codigo])]:[];
+    const cab=["Electores","Votantes","Nulos","Blanco",...cands.map(k=>k.siglas)];
+    let h=(m.nueva?`<div class="banner b-warn" style="margin-bottom:12px">Esta mesa no figura en nuestra lista de referencia. Está pendiente de que revisemos las fotos para confirmarla.</div>`:"")+`<div class="row" style="margin-bottom:12px"><span class="pill p-${m.estado}" style="font-size:15px">${ESTADOS[m.estado]||m.estado}</span><span class="meta">${m.n} foto(s) · ${m.indep} fuente(s) independiente(s) coincidente(s)</span></div>`;
+    if(m.cifras) h+=`<div class="card" style="margin-bottom:14px"><h2>Cifras ${m.estado==="conflicto"?"de la versión mayoritaria":""}</h2><div class="tablewrap"><table><tr>${cab.map(x=>`<th>${x}</th>`).join("")}</tr><tr>${fila(m.cifras).map(v=>`<td>${fmt(v)}</td>`).join("")}</tr></table></div></div>`;
+    h+=`<h2>Fotos enviadas</h2><div class="fotos">`+m.fotos.map(f=>{ const mot=[...(f.mot?[f.mot]:[]),...(f.f||[]).filter(x=>MOTIVOS_F[x]).map(x=>MOTIVOS_F[x]),...((f.f||[]).some(x=>x.startsWith("retapada:"))?["nombres tapados en la revisión"]:[])];
+      const img=f.pub?`<a href="/api/foto/${f.h}.jpg" target="_blank" rel="noopener"><img loading="lazy" src="/api/mini/${f.h}.jpg" alt="Foto del acta enviada"></a>`
+        :`<div class="fotoOculta">${f.est==="invalida"?"Foto retirada":f.den?"Foto oculta por denuncias, pendiente de revisión":"La foto se publicará cuando otra persona envíe la misma acta o la revisemos"}</div>`;
+      return `<div class="foto ${f.est==="invalida"?"invalida":""}">${img}
+      <div><span class="pill p-${f.est==="pendiente"?(f.ok?"pendiente":"revision"):f.est}">${f.est==="pendiente"?(f.ok?"Recibida":"No cuadra"):ESTADOS[f.est]}</span>
+      <div class="meta" style="margin-top:4px">${new Date(f.ts).toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit"})}${f.geo===1?" · en el colegio":""}</div>
+      ${mot.length?`<div class="meta">${mot.join(" · ")}</div>`:""}
+      <div class="meta">${fila(f.c).slice(4).map((v,i)=>`${cands[i]?cands[i].siglas:"?"} ${fmt(v)}`).join(" · ")}</div>
+      <div class="mono" style="font-size:11px; margin-top:4px" title="Huella SHA-256 de la foto publicada">${huellaFoto(f).slice(0,16)}…</div>
+      ${f.pub?`<button class="small linkish" data-denunciar="${f.h}">Denunciar foto</button>`:""}</div></div>`; }).join("")+`</div>`;
+    h+=`<div class="row" style="margin-top:14px"><button id="btnShareM">Compartir esta mesa</button>${abierto()?'<a class="btn" href="#enviar">Enviar otra foto de esta mesa</a>':""}</div>`;
+    $("mesaCuerpo").innerHTML=h;
+    document.querySelectorAll("[data-denunciar]").forEach(b=>b.onclick=async()=>{ if(!confirm("¿Denunciar esta foto? Úsalo si no es un acta o tiene contenido inapropiado. Si varias personas la denuncian, se oculta hasta que la revisemos.")) return;
+      b.disabled=true; try{ const r=await fetch("/api/denuncia",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({hash:b.dataset.denunciar})}); b.textContent=r.ok?"Denuncia enviada, gracias":"No se pudo enviar"; }catch(e){ b.textContent="No se pudo enviar"; } });
+    $("btnShareM").onclick=()=>compartir(`Acta de la mesa ${id}, con sus fotos:`,`${location.origin}/#mesa=${id}`);
+  }catch(e){ $("mesaCuerpo").innerHTML='<div class="meta">No se ha podido cargar la mesa.</div>'; }
+}
+
+// ---------- arranque ----------
+(async()=>{
+  try{ CFG=await getJSON("/api/config"); }catch(e){}
+  $("brand").textContent=CFG.nombre||"Recuento Ciudadano";
+  if(CFG.abre) $("abreTxt").textContent=new Date(CFG.abre).toLocaleString("es-ES",{weekday:"long",day:"numeric",month:"long",hour:"2-digit",minute:"2-digit"});
+  try{ PROVS=await getJSON("/data/provincias.json"); $("sProv").innerHTML='<option value="">Elige…</option>'+[...PROVS].sort((a,b)=>a.nombre.localeCompare(b.nombre,"es")).map(p=>`<option value="${p.prov}">${p.nombre}</option>`).join(""); }catch(e){}
+  cargarTurnstile(); tick(); setInterval(tick,1000); route();
+})();
+</script>
+</body>
+</html>

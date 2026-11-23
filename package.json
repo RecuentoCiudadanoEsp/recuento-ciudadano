@@ -1,0 +1,25 @@
+{
+  "name": "recuento-web",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "d3-composite-projections": "^2.0.0",
+    "d3-geo": "^3.1.2",
+    "es-atlas": "^0.6.0",
+    "topojson-client": "^3.1.0",
+    "wrangler": "^4.166.0"
+  },
+  "dependencies": {
+    "jpeg-js": "^0.4.4"
+  }
+}

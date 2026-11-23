@@ -1,0 +1,114 @@
+# Dos versiones del mismo código:
+#  - PÚBLICA (recuentociudadano.es): la configuración de arriba. Se publica sola desde la rama `main`.
+#  - PRUEBAS (recuento-ciudadano-pruebas): la sección [env.pruebas] de abajo, con su propia base de datos y fotos,
+#    y MODO_PRUEBAS activado. Se publica sola desde la rama `pruebas` (npx wrangler deploy --env pruebas).
+name = "recuento-ciudadano"
+main = "src/worker.js"
+compatibility_date = "2025-06-01"
+
+# Web estática (envío, resultados, panel). El Worker solo atiende /api/* y /admin/api/*
+[assets]
+directory = "./public"
+binding = "ASSETS"
+run_worker_first = ["/api/*", "/admin/api/*"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "recuento"
+database_id = "e4f22b41-1f1e-40c1-9be3-9343ebc18d4b"
+
+[[r2_buckets]]
+binding = "FOTOS"
+bucket_name = "recuento-fotos"
+
+# Recalcula el consenso y regenera los JSON públicos cada minuto
+[triggers]
+crons = ["* * * * *"]
+
+[vars]
+NOMBRE = "Recuento Ciudadano"
+# Hora a partir de la cual se aceptan envíos (cierre de colegios en la península)
+ABRE = "2026-11-29T20:00:00+01:00"
+# Hora a partir de la cual se muestran totales en la web pública (cierre en Canarias)
+TOTALES_DESDE = "2026-11-29T21:00:00+01:00"
+# Clave pública de Turnstile (la secreta va como secreto: npx wrangler secret put TURNSTILE_SECRET)
+TURNSTILE_SITEKEY = "0x4AAAAAAGNuGydN3RWH83nE"
+# Zonas a difuminar automáticamente, en fracciones de la foto [x, y, ancho, alto]. Se calibran con actas reales.
+ZONAS_DIFUMINADO = "[[0,0.28,0.28,0.5]]"  # columna de nombres y firmas del acta del Congreso (calibrado con actas del 23J)
+# Límites antiabuso
+MAX_ENVIOS_IP_10MIN = "300"          # alto a propósito: muchas IP móviles son compartidas por miles de personas
+# Si una misma IP envía actas de tantas mesas distintas en una hora, sus envíos dejan de contar como fuentes independientes
+MAX_MESAS_RED_HORA = "8"
+MAX_ENVIOS_DISPOSITIVO_10MIN = "10"
+DISTANCIA_MAX_METROS = "400"
+LECTURA_IA = "1"               # lectura automática de las fotos con Workers AI ("0" para desactivarla)
+MAX_LECTURAS_IP_10MIN = "300"
+FOTOS_LEIDAS_POR_VERSION = "3"   # con 3 fotos leídas iguales en una mesa, las siguientes iguales esperan sin gastar
+MAX_LECTURAS_IA = "100000"       # red de seguridad: lecturas automáticas en total (100.000 ≈ 50 $ como máximo). Al llegar, se dejan de hacer
+DENUNCIAS_OCULTAR = "2"        # redes distintas que denuncian una foto para ocultarla automáticamente
+# Cloudflare Access (panel): rellénalo al configurar Access. Sin esto el panel no abre fuera del modo pruebas.
+ACCESS_TEAM = "orange-night-ec12"   # equipo de Cloudflare Zero Trust: https://orange-night-ec12.cloudflareaccess.com
+ACCESS_AUD = "06011baec06e7746ba69988ed8c43dc4f176f2111cc8483ca853c5ac9ffc56d1"   # AUD Tag de la aplicación «Panel Recuento» (recuentociudadano.es/admin)
+ACCESS_EMAIL = ""              # opcional: los correos autorizados ya los define la política de Cloudflare Access
+
+# Secretos (no van aquí):
+#   npx wrangler secret put ADMIN_TOKEN        -> contraseña larga para el panel
+#   npx wrangler secret put SAL_IP             -> texto aleatorio para anonimizar IPs
+#   npx wrangler secret put TURNSTILE_SECRET   -> clave secreta de Turnstile
+
+# Workers AI: lee las actas y detecta imágenes que no son actas o son inapropiadas.
+[ai]
+binding = "AI"
+
+
+# ======================================================================== VERSIÓN DE PRUEBAS
+# En Wrangler estas secciones no se heredan de arriba: por eso se repiten enteras.
+[env.pruebas]
+name = "recuento-ciudadano-pruebas"
+
+[env.pruebas.assets]
+directory = "./public"
+binding = "ASSETS"
+run_worker_first = ["/api/*", "/admin/api/*"]
+
+[[env.pruebas.d1_databases]]
+binding = "DB"
+database_name = "recuento-pruebas"
+database_id = "e56a6804-b78b-4d01-8512-90d9cc9dfaeb"
+
+[[env.pruebas.r2_buckets]]
+binding = "FOTOS"
+bucket_name = "recuento-fotos-pruebas"
+
+[env.pruebas.triggers]
+crons = ["* * * * *"]
+
+[env.pruebas.vars]
+MODO_PRUEBAS = "1"             # envíos abiertos ya, panel solo con contraseña y botón para vaciar datos
+NOMBRE = "Recuento Ciudadano"
+# Hora a partir de la cual se aceptan envíos (cierre de colegios en la península)
+ABRE = "2026-11-29T20:00:00+01:00"
+# Hora a partir de la cual se muestran totales en la web pública (cierre en Canarias)
+TOTALES_DESDE = "2026-11-29T21:00:00+01:00"
+# Clave pública de Turnstile (la secreta va como secreto: npx wrangler secret put TURNSTILE_SECRET)
+TURNSTILE_SITEKEY = "0x4AAAAAAGNuGydN3RWH83nE"
+# Zonas a difuminar automáticamente, en fracciones de la foto [x, y, ancho, alto]. Se calibran con actas reales.
+ZONAS_DIFUMINADO = "[[0,0.28,0.28,0.5]]"  # columna de nombres y firmas del acta del Congreso (calibrado con actas del 23J)
+# Límites antiabuso
+MAX_ENVIOS_IP_10MIN = "300"          # alto a propósito: muchas IP móviles son compartidas por miles de personas
+# Si una misma IP envía actas de tantas mesas distintas en una hora, sus envíos dejan de contar como fuentes independientes
+MAX_MESAS_RED_HORA = "8"
+MAX_ENVIOS_DISPOSITIVO_10MIN = "10"
+DISTANCIA_MAX_METROS = "400"
+LECTURA_IA = "1"               # lectura automática de las fotos con Workers AI ("0" para desactivarla)
+MAX_LECTURAS_IP_10MIN = "300"
+FOTOS_LEIDAS_POR_VERSION = "3"   # con 3 fotos leídas iguales en una mesa, las siguientes iguales esperan sin gastar
+MAX_LECTURAS_IA = "2000"         # en pruebas, como mucho unas 2.000 lecturas (≈ 1 $)
+DENUNCIAS_OCULTAR = "2"        # redes distintas que denuncian una foto para ocultarla automáticamente
+# Cloudflare Access (panel): rellénalo al configurar Access. Sin esto el panel no abre fuera del modo pruebas.
+ACCESS_TEAM = ""               # equipo de Cloudflare Zero Trust: https://NOMBRE.cloudflareaccess.com
+ACCESS_AUD = ""                # "Application Audience (AUD) Tag" de la aplicación de Access
+ACCESS_EMAIL = ""              # opcional: único correo autorizado
+
+[env.pruebas.ai]
+binding = "AI"

@@ -1,0 +1,10 @@
+node_modules
+.wrangler/
+.dev.vars
+test/prueba_MESA.zip
+test/acta_prueba.jpg
+__pycache__/
+wrangler.local.toml
+test/acta*.jpg
+*.log
+docs/
