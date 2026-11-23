@@ -236,6 +236,7 @@ test/servidor_local.sh          # Workers AI no funciona en local: simula la lec
 python3 test/api_test.py        # 63 comprobaciones de extremo a extremo con un acta real
 python3 test/poblar_demo.py     # opcional: llena varias provincias de envíos para ver el mapa
 python3 test/ui_test.py         # recorre la web en el móvil con "Mi mesa no aparece" y un acta real
+python3 test/panel_test.py      # recorre el panel: colas, registro de decisiones, abrir y reabrir una mesa (después de api_test)
 ```
 
 **Prueba de carga contra el despliegue real** (antes del día D, con `MODO_PRUEBAS = "1"`):

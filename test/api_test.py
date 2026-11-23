@@ -263,4 +263,13 @@ if __name__ == "__main__":
     body, bnd = multipart({"foto": jpeg(img, 1600, 80, lectura_de(cifras_ain())), "prov": "12", "mesa_id": "12-002-01-001-U"})
     d = json.loads(urllib.request.urlopen(urllib.request.Request(BASE + "/api/leer", data=body, method="POST", headers={"content-type": f"multipart/form-data; boundary={bnd}"})).read())
     check("el formulario no gasta lectura en una mesa ya verificada", d.get("omitida") == "mesa_verificada", d)
+    # ---- Corregir un error: el registro guarda cada decisión y una mesa resuelta se puede reabrir
+    s, r = get("/admin/api/acciones?mesa=" + m4, admin=True)
+    check("el registro de la mesa recoge «Esta es la buena»", s == 200 and any(a["decision"] == "valida" for a in r["acciones"]) and any(a["decision"] == "invalida" for a in r["acciones"]), r)
+    s, r = get("/admin/api/acciones?limit=5", admin=True); check("registro general: las últimas acciones", s == 200 and 0 < len(r["acciones"]) <= 5)
+    s, r = get("/admin/api/reabrir_mesa", admin=True, method="POST", body={"mesa_id": m4}); cron()
+    s2, p = get("/api/public/prov/12.json"); mm = next(x for x in p["mesas"] if x["id"] == m4)
+    s3, q = get("/admin/api/mesa?id=" + m4, admin=True)
+    check("«Volver a revisar esta mesa» deshace la validación", s == 200 and mm["estado"] == "conflicto" and all(e["estado"] == "pendiente" for e in q["mesas"][0]["envios"]), (mm["estado"], r))
+    s, r = get("/admin/api/acciones?mesa=" + m4, admin=True); check("y queda anotado en el registro", r["acciones"][0]["decision"] == "reabierta", r["acciones"][:1])
     print("\nRESULTADO:", "todo correcto" if ok else "HAY FALLOS")

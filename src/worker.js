@@ -475,6 +475,27 @@ async function admin(req, env, url) {
     ]);
     return json({ ok: true });
   }
+  if (p === "acciones" && req.method === "GET") {
+    // Registro de decisiones tomadas en el panel (las más recientes primero), de todas las mesas o de una sola
+    const mesa = url.searchParams.get("mesa"); const lim = Math.min(500, Number(url.searchParams.get("limit")) || 100);
+    const r = mesa
+      ? await env.DB.prepare("SELECT ts, hash, mesa_id, decision, motivo FROM decisiones WHERE mesa_id = ? ORDER BY id DESC LIMIT ?").bind(mesa, lim).all()
+      : await env.DB.prepare("SELECT ts, hash, mesa_id, decision, motivo FROM decisiones ORDER BY id DESC LIMIT ?").bind(lim).all();
+    return json({ acciones: r.results });
+  }
+  if (p === "reabrir_mesa" && req.method === "POST") {
+    // Deshace todas las decisiones sobre las fotos de una mesa: vuelven a «pendiente» y la mesa se recalcula como si
+    // nadie la hubiera revisado. Sirve para corregir un clic equivocado. Queda anotado en el registro de decisiones.
+    const b = await req.json().catch(() => ({}));
+    const es = (await env.DB.prepare("SELECT hash, prov, estado FROM envios WHERE mesa_id = ?").bind(String(b.mesa_id || "")).all()).results;
+    if (!es.length) return json({ error: "parametros" }, 400);
+    const t = ahora(); const st = [];
+    for (const e of es) if (e.estado !== "pendiente") st.push(env.DB.prepare("UPDATE envios SET estado = 'pendiente', motivo = NULL WHERE hash = ?").bind(e.hash));
+    st.push(env.DB.prepare("INSERT INTO decisiones (ts, hash, mesa_id, decision, motivo) VALUES (?,?,?,?,?)").bind(t, "-", b.mesa_id, "reabierta", "Mesa reabierta para revisarla de nuevo: se deshacen las decisiones sobre sus fotos"));
+    st.push(env.DB.prepare("INSERT INTO pendientes (mesa_id, prov, ts) VALUES (?,?,?) ON CONFLICT(mesa_id) DO UPDATE SET ts = excluded.ts").bind(b.mesa_id, es[0].prov, t));
+    await env.DB.batch(st);
+    return json({ ok: true, cambios: st.length - 2 });
+  }
   if (p === "recalcular" && req.method === "POST") return json(await recalcular(env));
   if (p === "aceptar_licencia_ia" && req.method === "POST") {
     // Meta exige aceptar su licencia la primera vez que se usa el modelo de visión en la cuenta.
