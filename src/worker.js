@@ -565,8 +565,9 @@ donde N es la cifra escrita con números y L la cifra escrita con letras convert
 ${lista}`;
   const r = iaSimulada(env) ? iaDePrueba(fotoBuf) : await env.AI.run(env.MODELO_IA || MODELO_IA, { messages: [{ role: "user", content: prompt }], image: [...new Uint8Array(fotoBuf)], max_tokens: 500, temperature: 0 });
   const txt = String((r && (r.response ?? r.result?.response)) || "");
-  const m = txt.match(/\{[\s\S]*\}/); if (!m) throw new Error("respuesta_ia_sin_json");
-  const o = JSON.parse(m[0]);
+  // Si la respuesta no trae un JSON válido, el error incluye el principio del texto para poder ver qué ha contestado
+  const m = txt.match(/\{[\s\S]*\}/); if (!m) throw new Error("respuesta_ia_sin_json: " + txt.slice(0, 400));
+  let o; try { o = JSON.parse(m[0]); } catch { throw new Error("respuesta_ia_json_roto: " + txt.slice(0, 400)); }
   const n = (v) => (Number.isInteger(v) && v >= 0 ? v : (typeof v === "string" && /^\d+$/.test(v.trim()) ? Number(v) : null));
   const fiab = {};
   const leer = (clave, v) => {
@@ -606,7 +607,8 @@ async function leerParaFormulario(req, env) {
   const n = await env.DB.prepare("SELECT COUNT(*) AS n FROM lecturas WHERE ip_hash = ? AND ts > ?").bind(ipHash, ahora() - 600000).first();
   if (n.n >= Number(env.MAX_LECTURAS_IP_10MIN || 300)) return json({ error: "demasiadas_lecturas" }, 429);
   if (!(await hayCupoIA(env))) return json({ error: "tope_alcanzado" }, 429);
-  let lectura; try { lectura = await leerConIA(env, buf, prov); } catch (e) { console.error("IA", e); return json({ error: "lectura_fallida" }, 502); }
+  // En la versión de pruebas se devuelve también el motivo del fallo, para poder ajustar la lectura; en la pública, no
+  let lectura; try { lectura = await leerConIA(env, buf, prov); } catch (e) { console.error("IA", e); return json({ error: "lectura_fallida", ...(env.MODO_PRUEBAS === "1" ? { detalle: String(e && e.message || e).slice(0, 600) } : {}) }, 502); }
   await env.DB.prepare("INSERT OR REPLACE INTO lecturas (hash, lectura, ip_hash, ts) VALUES (?,?,?,?)").bind(hash, JSON.stringify(lectura), ipHash, ahora()).run();
   return json({ hash, lectura });
 }
