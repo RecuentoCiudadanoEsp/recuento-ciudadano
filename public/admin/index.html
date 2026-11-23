@@ -70,11 +70,12 @@ $("btnLogin").onclick=entrar; $("tok").addEventListener("keydown",e=>{ if(e.key=
 async function stats(){ const s=await api("estadisticas"); $("stats").textContent=`${s.envios} envíos · ${s.mesas} mesas · `+s.estados.map(e=>`${e.estado}: ${e.n}`).join(" · ")+` · pendientes de recalcular: ${s.pendientes_recalculo}${s.lecturas_pendientes?` · fotos por leer: ${s.lecturas_pendientes}`:""}${s.fotos_en_espera?` · fotos en espera: ${s.fotos_en_espera}`:""}${s.lecturas_ia?` · lecturas IA: ${s.lecturas_ia} de ${s.tope_lecturas_ia}`:""}`; }
 async function cargar(){ const modo=$("fEstado").value; const q=new URLSearchParams({estado:modo}); if($("fProv").value) q.set("prov",$("fProv").value.padStart(2,"0")); pintar((await api("cola?"+q)).mesas, modo); stats(); }
 async function abrirMesa(){ const id=$("fMesa").value.trim(); if(id) pintar((await api("mesa?id="+encodeURIComponent(id))).mesas, "mesa"); }
-$("btnCargar").onclick=cargar; $("btnMesa").onclick=abrirMesa; $("btnRecalc").onclick=async()=>{ $("btnRecalc").disabled=true; await api("recalcular",{method:"POST"}); $("btnRecalc").disabled=false; cargar(); };
+$("btnCargar").onclick=cargar; $("fEstado").onchange=cargar;   // al cambiar de cola se carga sola $("btnMesa").onclick=abrirMesa; $("btnRecalc").onclick=async()=>{ $("btnRecalc").disabled=true; await api("recalcular",{method:"POST"}); $("btnRecalc").disabled=false; cargar(); };
 // ---------- utilidades de comparación ----------
 const CAMPOS=m=>{ const c=m.candidaturas||[]; return [["electores","Electores"],["votantes","Votantes"],["nulos","Nulos"],["blanco","Blanco"],...c.map(x=>[x.codigo,x.siglas])]; };
 const val=(c,k)=>c==null?null:(k in c?c[k]:(c.cand?c.cand[k]:null));
-function compararIA(e,campos){ if(!e.ia) return null; const dif=[]; let leidos=0;
+// Si la lectura automática dice que la imagen no es un acta, sus cifras no se comparan (no significan nada)
+function compararIA(e,campos){ if(!e.ia||e.ia.es_acta===false) return null; const dif=[]; let leidos=0;
   for(const [k,l] of campos){ const iv=val(e.ia,k); if(iv==null) continue; leidos++; const v=val(e.cifras,k); if(v!==iv) dif.push({k,l,foto:iv,env:v}); }
   return {leidos, dif, acuerdo: leidos? (leidos-dif.length)/leidos : null}; }
 const img=(h,alto)=>`<img data-foto="${h}" alt="Foto del acta" title="Abrir a tamaño completo"${alto?` style="height:${alto}px"`:""}>`;
