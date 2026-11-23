@@ -563,7 +563,10 @@ donde N es la cifra escrita con números y L la cifra escrita con letras convert
 - electores: "Total electores (1+2)". votantes: "Total votantes (A+B)". nulos y blanco: votos nulos y en blanco.
 - votos: los votos de cada candidatura, en el mismo orden que esta lista:
 ${lista}`;
-  const r = iaSimulada(env) ? iaDePrueba(fotoBuf) : await env.AI.run(env.MODELO_IA || MODELO_IA, { messages: [{ role: "user", content: prompt }], image: [...new Uint8Array(fotoBuf)], max_tokens: 500, temperature: 0 });
+  // La imagen se envía como texto base64 («data URL»), que es el formato que acepta el modelo de visión de Cloudflare
+  const r = iaSimulada(env) ? iaDePrueba(fotoBuf) : await env.AI.run(env.MODELO_IA || MODELO_IA, {
+    messages: [{ role: "system", content: "Lees actas electorales españolas y respondes solo con JSON." }, { role: "user", content: prompt }],
+    image: "data:image/jpeg;base64," + aBase64(fotoBuf), max_tokens: 900, temperature: 0 });
   const txt = String((r && (r.response ?? r.result?.response)) || "");
   // Si la respuesta no trae un JSON válido, el error incluye el principio del texto para poder ver qué ha contestado
   const m = txt.match(/\{[\s\S]*\}/); if (!m) throw new Error("respuesta_ia_sin_json: " + txt.slice(0, 400));
@@ -579,6 +582,12 @@ ${lista}`;
   const cand = {}; cands.forEach((c, i) => { cand[c.codigo] = leer(c.codigo, Array.isArray(o.votos) ? o.votos[i] : null); });
   return { es_acta: o.es_acta !== false, inapropiada: o.inapropiada === true, electores: leer("electores", o.electores), votantes: leer("votantes", o.votantes),
     nulos: leer("nulos", o.nulos), blanco: leer("blanco", o.blanco), cand, fiab, modelo: env.MODELO_IA || MODELO_IA };
+}
+// Convierte los bytes de la foto a texto base64 (por trozos, para no desbordar la memoria con fotos grandes)
+function aBase64(buf) {
+  const bytes = new Uint8Array(buf); let txt = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) txt += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(txt);
 }
 // Tope de gasto: como máximo MAX_LECTURAS_IA lecturas en total (todo el día de las elecciones). Al llegar, se deja de leer:
 // la web sigue funcionando igual, sin las sugerencias, y las fotos se publican con el filtro sin IA.
