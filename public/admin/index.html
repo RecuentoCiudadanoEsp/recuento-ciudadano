@@ -34,6 +34,8 @@ td.dif{background:var(--warn-soft); font-weight:700}
 .version h3{margin:0; font-size:15px} .aviso{background:var(--warn-soft); color:var(--warn); border-radius:8px; padding:6px 10px; font-size:13px; margin-top:6px}
 .miniaturas{display:flex; gap:8px; flex-wrap:wrap; margin-top:8px} .miniaturas img{height:150px; width:auto; border-radius:6px; background:#222; cursor:zoom-in}
 td.ia{color:var(--muted)} td.iadif{background:var(--bad-soft); color:var(--bad); font-weight:700}
+/* tablas del registro de decisiones: texto alineado a la izquierda y códigos de mesa sin partir */
+.registro th,.registro td{text-align:left; vertical-align:top} .registro a.mono,.registro td:first-child{white-space:nowrap}
 </style>
 </head>
 <body>
@@ -46,7 +48,7 @@ td.ia{color:var(--muted)} td.iadif{background:var(--bad-soft); color:var(--bad);
   <div id="app" style="display:none">
     <div class="card row">
       <label for="fEstado">Cola</label>
-      <select id="fEstado"><option value="conflicto,revision">Mesas por revisar (conflictos y avisos)</option><option value="fotos">Fotos sospechosas</option><option value="espera">Fotos en espera (mesas ya verificadas, sin prioridad)</option><option value="nuevas">Mesas nuevas por confirmar</option><option value="pendiente">Pendientes (1 fuente)</option><option value="verificada,validada">Verificadas</option></select>
+      <select id="fEstado"><option value="conflicto,revision">Mesas por revisar (conflictos y avisos)</option><option value="fotos">Fotos sospechosas</option><option value="espera">Fotos en espera (mesas ya verificadas, sin prioridad)</option><option value="nuevas">Mesas nuevas por confirmar</option><option value="pendiente">Pendientes (1 fuente)</option><option value="verificada,validada">Verificadas</option><option value="acciones">Últimas acciones (registro de decisiones)</option></select>
       <label for="fProv">Provincia</label><input id="fProv" size="3" placeholder="08">
       <button id="btnCargar">Cargar</button>
       <label for="fMesa">Mesa</label><input id="fMesa" size="18" placeholder="08-187-01-001-A"><button id="btnMesa">Abrir mesa</button>
@@ -68,9 +70,32 @@ async function api(path,opts={}){ const r=await fetch("/admin/api/"+path,{...opt
 async function entrar(){ TOK=$("tok").value||TOK; try{ await stats(); sessionStorage.setItem("rc-admin",TOK); $("login").style.display="none"; $("app").style.display="block"; cargar(); }catch(e){} }
 $("btnLogin").onclick=entrar; $("tok").addEventListener("keydown",e=>{ if(e.key==="Enter") entrar(); });
 async function stats(){ const s=await api("estadisticas"); $("stats").textContent=`${s.envios} envíos · ${s.mesas} mesas · `+s.estados.map(e=>`${e.estado}: ${e.n}`).join(" · ")+` · pendientes de recalcular: ${s.pendientes_recalculo}${s.lecturas_pendientes?` · fotos por leer: ${s.lecturas_pendientes}`:""}${s.fotos_en_espera?` · fotos en espera: ${s.fotos_en_espera}`:""}${s.lecturas_ia?` · lecturas IA: ${s.lecturas_ia} de ${s.tope_lecturas_ia}`:""}`; }
-async function cargar(){ const modo=$("fEstado").value; const q=new URLSearchParams({estado:modo}); if($("fProv").value) q.set("prov",$("fProv").value.padStart(2,"0")); pintar((await api("cola?"+q)).mesas, modo); stats(); }
-async function abrirMesa(){ const id=$("fMesa").value.trim(); if(id) pintar((await api("mesa?id="+encodeURIComponent(id))).mesas, "mesa"); }
-$("btnCargar").onclick=cargar; $("fEstado").onchange=cargar;   // al cambiar de cola se carga sola $("btnMesa").onclick=abrirMesa; $("btnRecalc").onclick=async()=>{ $("btnRecalc").disabled=true; await api("recalcular",{method:"POST"}); $("btnRecalc").disabled=false; cargar(); };
+// VISTA recuerda si se está viendo una cola o una mesa concreta, para volver a ella después de cada acción
+let VISTA={modo:"cola"};
+async function cargar(){ VISTA={modo:"cola"}; const modo=$("fEstado").value;
+  if(modo==="acciones"){ pintarAcciones((await api("acciones?limit=200")).acciones); stats(); return; }
+  const q=new URLSearchParams({estado:modo}); if($("fProv").value) q.set("prov",$("fProv").value.padStart(2,"0")); pintar((await api("cola?"+q)).mesas, modo); stats(); }
+async function abrirMesa(id){ id=(typeof id==="string"?id:$("fMesa").value).trim().toUpperCase(); if(!id) return; $("fMesa").value=id;
+  const r=await api("mesa?id="+encodeURIComponent(id)); if(r.error){ $("cola").innerHTML=`<div class="card meta">No existe la mesa ${esc(id)}.</div>`; return; }
+  VISTA={modo:"mesa",id}; pintar(r.mesas,"mesa"); historial(id); stats(); window.scrollTo(0,0); }
+const recargar=()=>VISTA.modo==="mesa"?abrirMesa(VISTA.id):cargar();
+const esc=t=>String(t??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"})[c]);
+// ---------- registro de decisiones ----------
+const ACCION={valida:"Cifras validadas",invalida:"Invalidada",pendiente:"Decisión deshecha",foto_aprobada:"Foto aprobada",foto_retapada:"Nombres tapados a mano",
+  reasignada:"Foto reasignada a esta mesa",mesa_confirmada:"Mesa nueva confirmada",reabierta:"Mesa reabierta para revisar de nuevo"};
+const filaAccion=(a,conMesa)=>`<tr><td class="meta">${new Date(a.ts).toLocaleString("es-ES")}</td>${conMesa?`<td><a href="#" class="mono" data-abrir="${esc(a.mesa_id)}">${esc(a.mesa_id)}</a></td>`:""}<td>${esc(ACCION[a.decision]||a.decision)}</td><td class="meta">${esc(a.motivo||"")}</td><td class="mono meta">${a.hash&&a.hash!=="-"?esc(a.hash.slice(0,10))+"…":""}</td></tr>`;
+function pintarAcciones(acc){
+  if(!acc.length){ $("cola").innerHTML='<div class="card meta">Todavía no hay ninguna decisión.</div>'; return; }
+  $("cola").innerHTML=`<div class="card"><p class="meta">Las ${acc.length} últimas decisiones, de la más reciente a la más antigua. Pulsa en una mesa para abrirla y revisarla de nuevo: cualquier decisión se puede deshacer.</p>
+    <div style="overflow-x:auto"><table class="registro"><tr><th>Hora</th><th>Mesa</th><th>Acción</th><th>Motivo</th><th>Foto</th></tr>${acc.map(a=>filaAccion(a,true)).join("")}</table></div></div>`;
+  enlazarAbrir(); }
+async function historial(id){ const acc=(await api("acciones?mesa="+encodeURIComponent(id))).acciones; const c=document.querySelector("#cola .card"); if(!c) return;
+  c.insertAdjacentHTML("beforeend",`<div class="row" style="margin-top:10px"><button class="bad" data-reabrir="${esc(id)}">Volver a revisar esta mesa</button><span class="meta">Deshace todas las decisiones sobre sus fotos (quedan pendientes) por si te has equivocado. Queda anotado.</span></div>
+    <details style="margin-top:8px"${acc.length?" open":""}><summary class="meta">Historial de decisiones de esta mesa (${acc.length})</summary>${acc.length?`<div style="overflow-x:auto"><table class="registro"><tr><th>Hora</th><th>Acción</th><th>Motivo</th><th>Foto</th></tr>${acc.map(a=>filaAccion(a,false)).join("")}</table></div>`:'<p class="meta">Sin decisiones todavía.</p>'}</details>`);
+  c.querySelector("button[data-reabrir]").onclick=async ev=>{ if(!confirm("¿Volver a dejar pendientes todas las fotos de esta mesa?")) return; ev.target.disabled=true;
+    await api("reabrir_mesa",{method:"POST",body:JSON.stringify({mesa_id:id})}); await api("recalcular",{method:"POST"}); abrirMesa(id); }; }
+function enlazarAbrir(){ document.querySelectorAll("[data-abrir]").forEach(a=>a.onclick=ev=>{ ev.preventDefault(); abrirMesa(a.dataset.abrir); }); }
+$("btnCargar").onclick=cargar; $("fEstado").onchange=cargar; $("btnMesa").onclick=abrirMesa; $("fMesa").addEventListener("keydown",e=>{ if(e.key==="Enter") abrirMesa(); }); $("btnRecalc").onclick=async()=>{ $("btnRecalc").disabled=true; await api("recalcular",{method:"POST"}); $("btnRecalc").disabled=false; recargar(); };
 // ---------- utilidades de comparación ----------
 const CAMPOS=m=>{ const c=m.candidaturas||[]; return [["electores","Electores"],["votantes","Votantes"],["nulos","Nulos"],["blanco","Blanco"],...c.map(x=>[x.codigo,x.siglas])]; };
 const val=(c,k)=>c==null?null:(k in c?c[k]:(c.cand?c.cand[k]:null));
@@ -105,7 +130,7 @@ function pintarMesa(m){
       <div class="row" style="margin-top:8px"><button class="ok" data-resolver="${m.mesa_id}" data-firma="${encodeURIComponent(v.firma)}">Esta es la buena</button>
       <details><summary class="meta">Opciones por foto</summary>${v.es.map(e=>porFoto(e,m)).join("")}</details></div></div>`; }).join("");
   const invalidas=m.envios.filter(e=>e.estado==="invalida");
-  return `<div class="card"><div class="row" style="justify-content:space-between"><div><h2 class="mono">${m.mesa_id}</h2><div class="meta">${m.municipio||""}${m.local?" · "+m.local:""} · censo ${m.censo??"—"} · ${m.n_envios||0} envíos</div></div><span class="pill p-${m.estado}">${m.estado||"sin envíos"}</span></div>
+  return `<div class="card"><div class="row" style="justify-content:space-between"><div><h2 class="mono"><a href="#" data-abrir="${m.mesa_id}" title="Abrir solo esta mesa, con su historial">${m.mesa_id}</a></h2><div class="meta">${m.municipio||""}${m.local?" · "+m.local:""} · censo ${m.censo??"—"} · ${m.n_envios||0} envíos</div></div><span class="pill p-${m.estado}">${m.estado||"sin envíos"}</span></div>
     ${m.nueva?`<div class="row aviso" style="margin-top:8px"><b>Mesa nueva.</b> Mira la cabecera del acta: si la mesa existe tal cual, confírmala; si es otra, reasigna las fotos (Opciones por foto). <button class="ok" data-confirmar="${m.mesa_id}">Confirmar como mesa real</button></div>`:""}
     ${m.envios.some(e=>e.ia_estado==="en_espera")?`<div class="row meta" style="margin-top:8px">${m.envios.filter(e=>e.ia_estado==="en_espera").length} foto(s) en espera, sin leer ni publicar. <button data-leer="${m.mesa_id}">Leerlas con IA</button></div>`:""}
     ${vs.length>1?`<div class="meta" style="margin-top:8px"><b>${vs.length} versiones distintas.</b> ${razon}</div>`:""}${tabla}${bloques}
@@ -145,7 +170,8 @@ function pintar(mesas, modo){
   document.querySelectorAll("img[data-foto]").forEach(async im=>{ try{ const r=await fetch(`/admin/api/foto/${im.dataset.foto}.jpg`,{headers:{authorization:"Bearer "+TOK}}); if(!r.ok) return;
     im.src=URL.createObjectURL(await r.blob()); im.onclick=()=>window.open(im.src,"_blank"); }catch(e){} });
   document.querySelectorAll("datalist[data-prov]").forEach(async d=>{ try{ const r=await api(`mesas_municipio?prov=${d.dataset.prov}&muni=${d.dataset.muni}`); d.innerHTML=r.mesas.map(x=>`<option value="${x.id}">censo ${x.censo??"—"}</option>`).join(""); }catch(e){} });
-  const tras=async()=>{ await api("recalcular",{method:"POST"}); cargar(); };
+  const tras=async()=>{ await api("recalcular",{method:"POST"}); recargar(); };
+  enlazarAbrir();
   document.querySelectorAll("button[data-confirmar]").forEach(b=>b.onclick=async()=>{ b.disabled=true; await api("confirmar_mesa",{method:"POST",body:JSON.stringify({mesa_id:b.dataset.confirmar})}); tras(); });
   document.querySelectorAll("button[data-resolver]").forEach(b=>b.onclick=async()=>{ b.disabled=true; await api("resolver_mesa",{method:"POST",body:JSON.stringify({mesa_id:b.dataset.resolver,firma:decodeURIComponent(b.dataset.firma)})}); tras(); });
   document.querySelectorAll("button[data-leerfoto]").forEach(b=>b.onclick=async()=>{ b.disabled=true; await api("leer_en_espera",{method:"POST",body:JSON.stringify({hash:b.dataset.leerfoto})}); b.textContent="Se leerá en el próximo minuto"; });
@@ -184,7 +210,7 @@ async function abrirTapar(hash){
     const fd=new FormData(); fd.append("hash",hash); fd.append("foto",foto,"foto.jpg"); fd.append("mini",mini,"mini.jpg");
     const rr=await fetch("/admin/api/retapar",{method:"POST",headers:{authorization:"Bearer "+TOK},body:fd});
     if(!rr.ok){ bt.disabled=false; bt.textContent="Guardar tapada y aprobar"; alert("No se ha podido guardar. Inténtalo de nuevo."); return; }
-    fondo.remove(); await api("recalcular",{method:"POST"}); cargar(); };
+    fondo.remove(); await api("recalcular",{method:"POST"}); recargar(); };
   pinta();
 }
 
