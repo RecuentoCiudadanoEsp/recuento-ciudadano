@@ -78,6 +78,8 @@ export function firmaCifras(c, cods) { return [c.electores, c.votantes, c.nulos,
 
 async function turnstileOK(env, token, ip) {
   if (!env.TURNSTILE_SECRET) return true; // sin configurar (desarrollo)
+  // Solo en la versión de pruebas: los envíos simulados (ensayo del panel, prueba de carga) llevan esta marca en vez de un token real
+  if (env.MODO_PRUEBAS === "1" && token === "envio-simulado-de-pruebas") return true;
   if (!token) return false;
   const f = new FormData(); f.append("secret", env.TURNSTILE_SECRET); f.append("response", token); if (ip) f.append("remoteip", ip);
   const r = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", { method: "POST", body: f });
