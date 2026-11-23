@@ -75,7 +75,7 @@ npx wrangler secret put SAL_IP        # cualquier texto aleatorio largo
 # 6. Publicar
 npx wrangler deploy
 
-# 7. Lectura automática (Workers AI): Meta pide aceptar su licencia una vez por cuenta. Desde el panel, en la consola
+# 7. Lectura automática (Workers AI): para algunos modelos de Meta hay que aceptar su licencia una vez por cuenta. Desde el panel, en la consola
 #    del navegador, o con curl (ver "Lectura automática" más abajo):
 #    POST https://tu-dominio/admin/api/aceptar_licencia_ia
 ```
@@ -167,9 +167,11 @@ lectura. Si llega una foto con otras cifras, la mesa pasa a conflicto y entonces
 verificarse, como mucho `FOTOS_LEIDAS_POR_VERSION` fotos (3) con las mismas cifras se leen, por si llegan muchas a la
 vez. El formulario tampoco gasta lectura en mesas verificadas. Así todo el cupo va a mesas sin verificar.
 
-Mientras una foto no se ha leído, no se publica (el cron lee hasta 150 por minuto). Coste: Workers AI regala 10.000
-"neuronas" al día (unas 200-400 fotos) y después cobra unos 0,0003-0,0005 $ por foto. **Red de seguridad:**
-`MAX_LECTURAS_IA` (100.000 por defecto, unos 50 $ como máximo; con 40.000 mesas se esperan unas 88.000 lecturas, ≈ 44 $). Al llegar, se dejan de hacer lecturas: la web sigue
+Mientras una foto no se ha leído, no se publica (el cron lee hasta 150 por minuto). Modelo: Llama 4 Scout
+(`@cf/meta/llama-4-scout-17b-16e-instruct`), elegido tras compararlo con otros modelos de visión de Workers AI sobre actas
+reales: es el que mejor lee las cifras manuscritas. Coste: Workers AI regala 10.000 "neuronas" al día (unas 120 fotos) y
+después cobra unos 0,0009 $ por foto (unas 80 neuronas; reducir la foto no lo abarata con este modelo). **Red de seguridad:**
+`MAX_LECTURAS_IA` (100.000 por defecto, unos 88 $ como máximo; con 40.000 mesas se esperan unas 88.000 lecturas, ≈ 77 $). Al llegar, se dejan de hacer lecturas: la web sigue
 igual, sin sugerencias, y las fotos se publican con el filtro sin IA. Con `LECTURA_IA = "0"` el coste es cero. El panel
 muestra cuántas lecturas se llevan. Workers AI tiene límites de peticiones por minuto: en el pico, algunas personas no
 verán el amarillo y sus fotos tardarán unos minutos más en publicarse; las cifras cuentan igual.

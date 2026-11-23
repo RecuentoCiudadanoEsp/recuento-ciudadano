@@ -34,7 +34,7 @@ TOTALES_DESDE = "2026-11-29T21:00:00+01:00"
 # Clave pública de Turnstile (la secreta va como secreto: npx wrangler secret put TURNSTILE_SECRET)
 TURNSTILE_SITEKEY = "0x4AAAAAAGNuGydN3RWH83nE"
 # Zonas a difuminar automáticamente, en fracciones de la foto [x, y, ancho, alto]. Se calibran con actas reales.
-ZONAS_DIFUMINADO = "[[0,0.28,0.28,0.5]]"  # columna de nombres y firmas del acta del Congreso (calibrado con actas del 23J)
+ZONAS_DIFUMINADO = "[[0,0.27,0.29,0.7]]"  # columna de nombres y firmas: desde la presidencia hasta los interventores, casi al pie del acta
 # Límites antiabuso
 MAX_ENVIOS_IP_10MIN = "300"          # alto a propósito: muchas IP móviles son compartidas por miles de personas
 # Si una misma IP envía actas de tantas mesas distintas en una hora, sus envíos dejan de contar como fuentes independientes
@@ -44,7 +44,7 @@ DISTANCIA_MAX_METROS = "400"
 LECTURA_IA = "1"               # lectura automática de las fotos con Workers AI ("0" para desactivarla)
 MAX_LECTURAS_IP_10MIN = "300"
 FOTOS_LEIDAS_POR_VERSION = "3"   # con 3 fotos leídas iguales en una mesa, las siguientes iguales esperan sin gastar
-MAX_LECTURAS_IA = "100000"       # red de seguridad: lecturas automáticas en total (100.000 ≈ 50 $ como máximo). Al llegar, se dejan de hacer
+MAX_LECTURAS_IA = "100000"       # red de seguridad: lecturas automáticas en total (100.000 ≈ 88 $ como máximo con Llama 4 Scout). Al llegar, se dejan de hacer
 DENUNCIAS_OCULTAR = "2"        # redes distintas que denuncian una foto para ocultarla automáticamente
 # Cloudflare Access (panel): rellénalo al configurar Access. Sin esto el panel no abre fuera del modo pruebas.
 ACCESS_TEAM = "orange-night-ec12"   # equipo de Cloudflare Zero Trust: https://orange-night-ec12.cloudflareaccess.com
@@ -93,17 +93,17 @@ TOTALES_DESDE = "2026-11-29T21:00:00+01:00"
 # Clave pública de Turnstile (la secreta va como secreto: npx wrangler secret put TURNSTILE_SECRET)
 TURNSTILE_SITEKEY = "0x4AAAAAAGNuGydN3RWH83nE"
 # Zonas a difuminar automáticamente, en fracciones de la foto [x, y, ancho, alto]. Se calibran con actas reales.
-ZONAS_DIFUMINADO = "[[0,0.28,0.28,0.5]]"  # columna de nombres y firmas del acta del Congreso (calibrado con actas del 23J)
+ZONAS_DIFUMINADO = "[[0,0.27,0.29,0.7]]"  # columna de nombres y firmas: desde la presidencia hasta los interventores, casi al pie del acta
 # Límites antiabuso
-MAX_ENVIOS_IP_10MIN = "300"          # alto a propósito: muchas IP móviles son compartidas por miles de personas
+MAX_ENVIOS_IP_10MIN = "1000000"      # en pruebas, sin límite: los envíos simulados salen todos de la misma conexión
 # Si una misma IP envía actas de tantas mesas distintas en una hora, sus envíos dejan de contar como fuentes independientes
-MAX_MESAS_RED_HORA = "8"
+MAX_MESAS_RED_HORA = "1000000"       # en pruebas, desactivado por el mismo motivo (en la pública: 8)
 MAX_ENVIOS_DISPOSITIVO_10MIN = "10"
 DISTANCIA_MAX_METROS = "400"
 LECTURA_IA = "1"               # lectura automática de las fotos con Workers AI ("0" para desactivarla)
 MAX_LECTURAS_IP_10MIN = "300"
 FOTOS_LEIDAS_POR_VERSION = "3"   # con 3 fotos leídas iguales en una mesa, las siguientes iguales esperan sin gastar
-MAX_LECTURAS_IA = "2000"         # en pruebas, como mucho unas 2.000 lecturas (≈ 1 $)
+MAX_LECTURAS_IA = "2000"         # en pruebas, como mucho unas 2.000 lecturas (≈ 2 $)
 DENUNCIAS_OCULTAR = "2"        # redes distintas que denuncian una foto para ocultarla automáticamente
 # Cloudflare Access (panel): rellénalo al configurar Access. Sin esto el panel no abre fuera del modo pruebas.
 ACCESS_TEAM = ""               # equipo de Cloudflare Zero Trust: https://NOMBRE.cloudflareaccess.com
