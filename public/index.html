@@ -122,6 +122,7 @@ footer{margin-top:30px; font-size:13px; color:var(--muted)}
     <a href="#inicio" data-v="inicio">Inicio</a>
     <a href="#enviar" data-v="enviar">Enviar acta</a>
     <a href="#resultados" data-v="resultados">Resultados</a>
+    <a href="#porque" data-v="porque">Por qué</a>
     <a href="#como" data-v="como">Cómo funciona</a>
   </nav>
 
@@ -130,6 +131,7 @@ footer{margin-top:30px; font-size:13px; color:var(--muted)}
     <h1>Cuando cierre tu colegio, fotografía el acta de tu mesa y súbela aquí.</h1>
     <p>Al terminar el recuento, cada mesa pega en la puerta una copia del acta de escrutinio. Si muchas personas las fotografían, cualquiera podrá comprobar los resultados mesa por mesa, con la foto delante.</p>
     <p class="meta">Verificación independiente y descentralizada del recuento oficial: cada foto del acta permite comprobar que el resultado publicado de esa mesa coincide con lo que se firmó en ella.</p>
+    <p><a href="#porque">Por qué existe esta web →</a></p>
     <div id="inicioCerrado">
       <div class="meta">Los envíos se abren el <b id="abreTxt"></b>:</div>
       <div class="count" id="countdown"><div><b>–</b><span>días</span></div><div><b>–</b><span>horas</span></div><div><b>–</b><span>min</span></div><div><b>–</b><span>seg</span></div></div>
@@ -263,6 +265,30 @@ footer{margin-top:30px; font-size:13px; color:var(--muted)}
     <div id="mesaCuerpo" style="margin-top:14px"></div>
   </section>
 
+  <!-- POR QUÉ: carta fundacional de la iniciativa -->
+  <section class="view" id="v-porque">
+    <h1>Por qué existe Recuento Ciudadano</h1>
+    <div class="stack">
+      <div class="card"><h2>La idea</h2>
+        <p>El domingo 29 de noviembre por la noche, cuando cada mesa electoral termine de contar, sus miembros firmarán el acta de escrutinio y colgarán una copia en la puerta del colegio. Lo marca la ley (artículo 98 de la Ley Orgánica del Régimen Electoral General). En esa hoja están los votos de esa mesa, firmados y a la vista de cualquiera.</p>
+        <p>Si esa noche nos acercamos a nuestros colegios, la fotografiamos y la juntamos aquí, cualquier persona podrá verificar el recuento oficial mesa a mesa, con el acta firmada delante.</p></div>
+      <div class="card"><h2>Verificar sin tener que fiarse</h2>
+        <p>Con cada foto, cualquiera puede comparar lo que se firmó en una mesa con el dato oficial de esa misma mesa. Si coincide, queda verificada y con la foto como prueba. Si alguna no coincidiera, ahí está el acta firmada para aclararlo; muchas veces será un número mal copiado o una corrección del escrutinio general.</p>
+        <p>Es una verificación independiente y descentralizada: no depende de ningún organismo ni de ningún partido. La hacemos entre todos, cada uno en su colegio. No hace falta fiarse de nadie, porque se puede comprobar.</p>
+        <p>Y tampoco hace falta fiarse de esta web. Una mesa solo se verifica cuando dos personas distintas envían las mismas cifras, las fotos de las mesas verificadas son públicas, cada decisión de revisión queda en el <a href="/api/public/decisiones.json">registro público</a> y el <a href="https://github.com/RecuentoCiudadanoEsp/recuento-ciudadano" target="_blank" rel="noopener">código está abierto</a>.</p></div>
+      <div class="card"><h2>De todos, votes a quien votes</h2>
+        <p>El acta es la misma para todos y los números son los que son. Por eso esto sale mejor cuanta más gente participe, de todas las ideas.</p>
+        <p>Detrás hay una persona sin afiliación política y sin dinero de ningún partido. Lo demás lo pone cada uno: un móvil y cinco minutos.</p></div>
+      <div class="card"><h2>Qué vas a encontrar aquí</h2>
+        <p>Una ficha por mesa con sus cifras y sus fotos, un mapa con las mesas verificadas y los votos de las mesas fotografiadas, siempre indicando cuántas mesas hay detrás. Aquí no hay predicciones ni cálculo de escaños: solo cuentan las actas firmadas.</p></div>
+      <div class="card"><h2>Súmate</h2>
+        <p>Cada foto vale por sí sola: una mesa verificada es una mesa verificada, aunque sea la única de tu pueblo. Y si te animas con los colegios de tu barrio, o lo hacéis entre vecinos, se podrá verificar el barrio entero.</p>
+        <p>El domingo 29, a partir de las 20:00, acércate a tu colegio. Espera a que cuelguen el acta (suele tardar entre media hora y un par de horas), hazle una foto de frente, entera y con luz, y súbela en «Enviar acta». Si quieres llegar con los deberes hechos, pruébalo hoy en modo práctica.</p>
+        <p>Y cuéntaselo a alguien, sobre todo a quien vote distinto que tú.</p>
+        <div class="row"><a class="btn primary" href="#enviar">Practicar el envío ahora</a><a class="btn" href="#como">Cómo funciona</a></div></div>
+    </div>
+  </section>
+
   <!-- CÓMO FUNCIONA -->
   <section class="view" id="v-como">
     <h1>Cómo funciona</h1>
@@ -283,7 +309,7 @@ footer{margin-top:30px; font-size:13px; color:var(--muted)}
     </div>
   </section>
 
-  <footer>Iniciativa ciudadana sin afiliación política. <a href="https://github.com/RecuentoCiudadanoEsp/recuento-ciudadano" target="_blank" rel="noopener">Código abierto</a>. <a href="#como">Cómo funciona</a>.</footer>
+  <footer>Iniciativa ciudadana sin afiliación política. <a href="https://github.com/RecuentoCiudadanoEsp/recuento-ciudadano" target="_blank" rel="noopener">Código abierto</a>. <a href="#porque">Por qué</a> · <a href="#como">Cómo funciona</a>.</footer>
 </div>
 
 <script>
@@ -303,7 +329,7 @@ const seccTxt=s=>String(Number(s)).padStart(3,"0");
 // ---------- rutas ----------
 function route(){
   const h=location.hash.slice(1)||"inicio"; const [v,arg]=h.split("=");
-  const vista=["inicio","enviar","resultados","prov","mesa","como"].includes(v)?v:"inicio";
+  const vista=["inicio","enviar","resultados","prov","mesa","porque","como"].includes(v)?v:"inicio";
   document.querySelectorAll(".view").forEach(s=>s.classList.toggle("on",s.id==="v-"+vista));
   const tab=vista==="prov"||vista==="mesa"?"resultados":vista;
   document.querySelectorAll("nav.tabs a").forEach(a=>{ if(a.dataset.v===tab) a.setAttribute("aria-current","page"); else a.removeAttribute("aria-current"); });
