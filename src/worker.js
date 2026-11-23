@@ -551,26 +551,34 @@ export function flagsLectura(l) {
 // Fiabilidad de cada cifra: el acta trae cada número dos veces, «en letra» y «en número». Si las dos lecturas
 // coinciden, la cifra es fiable (alta); si solo se lee una, media; si no coinciden, baja.
 // (Los modelos de visión no dan un porcentaje de confianza fiable, así que no se inventa ninguno.)
-async function leerConIA(env, fotoBuf, prov) {
+// Modelos de visión que se pueden probar desde la versión de pruebas (el de la pública se fija con MODELO_IA)
+const MODELOS_IA = ["@cf/meta/llama-3.2-11b-vision-instruct", "@cf/meta/llama-4-scout-17b-16e-instruct",
+  "@cf/mistralai/mistral-small-3.1-24b-instruct", "@cf/google/gemma-3-12b-it"];
+async function leerConIA(env, fotoBuf, prov, modeloPedido) {
+  const modelo = modeloPedido || env.MODELO_IA || MODELO_IA;
   const cands = (await env.DB.prepare("SELECT codigo, siglas, denominacion FROM candidaturas WHERE prov = ? ORDER BY orden").bind(prov).all()).results;
   const lista = cands.map((c, i) => `${i + 1}. ${c.denominacion || c.siglas} (${c.siglas})`).join("\n");
-  const prompt = `Esta imagen debería ser la foto de un ACTA DE ESCRUTINIO de unas elecciones generales españolas (un impreso con una tabla de candidaturas y votos, rellenado a mano).
-Responde SOLO con un objeto JSON, sin texto adicional, con esta forma:
-{"es_acta": true|false, "inapropiada": true|false, "electores": [N, L], "votantes": [N, L], "nulos": [N, L], "blanco": [N, L], "votos": [[N, L], ...]}
-donde N es la cifra escrita con números y L la cifra escrita con letras convertida a número (null si no aparece o no se lee).
-- es_acta: false si la imagen no es un acta de escrutinio.
-- inapropiada: true si contiene desnudos, contenido sexual, violencia o cualquier cosa ofensiva.
-- electores: "Total electores (1+2)". votantes: "Total votantes (A+B)". nulos y blanco: votos nulos y en blanco.
-- votos: los votos de cada candidatura, en el mismo orden que esta lista:
+  const prompt = `Esta imagen debería ser la foto de un ACTA DE ESCRUTINIO de unas elecciones españolas: un impreso con unas casillas
+de totales arriba y una tabla de candidaturas con los votos rellenados a mano.
+Cada cifra aparece dos veces: escrita con letras (columna «En letra») y con números (columna «En número», a la derecha).
+Responde SOLO con un objeto JSON válido, sin texto adicional ni explicaciones, con esta forma exacta:
+{"es_acta": true, "inapropiada": false, "electores": [N, L], "votantes": [N, L], "nulos": [N, L], "blanco": [N, L], "votos": [[N, L], [N, L], ...]}
+- N: la cifra escrita con números. L: la cifra escrita con letras, convertida a número (por ejemplo «treinta y uno» = 31).
+- Usa null cuando la casilla esté vacía o no se lea. Nunca pongas letras, guiones ni la letra N: solo números enteros o null.
+- es_acta: false si la imagen no es un acta de escrutinio. inapropiada: true si contiene desnudos, contenido sexual, violencia u otra cosa ofensiva.
+- electores: «Total electores (1+2)». votantes: «Total votantes (A+B)». nulos y blanco: votos nulos y votos en blanco.
+- votos: una pareja [N, L] por cada fila de la tabla de candidaturas, de arriba abajo, empezando por la fila 1.
+  La tabla tiene ${cands.length} filas con candidatura; si una fila está vacía, pon [null, null]. No repitas filas ni añadas filas de más.
+  Como referencia, las candidaturas de esta provincia en el orden de la tabla son:
 ${lista}`;
-  // La imagen se envía como texto base64 («data URL»), que es el formato que acepta el modelo de visión de Cloudflare
-  const r = iaSimulada(env) ? iaDePrueba(fotoBuf) : await env.AI.run(env.MODELO_IA || MODELO_IA, {
-    messages: [{ role: "system", content: "Lees actas electorales españolas y respondes solo con JSON." }, { role: "user", content: prompt }],
-    image: "data:image/jpeg;base64," + aBase64(fotoBuf), max_tokens: 900, temperature: 0 });
-  const txt = String((r && (r.response ?? r.result?.response)) || "");
-  // Si la respuesta no trae un JSON válido, el error incluye el principio del texto para poder ver qué ha contestado
-  const m = txt.match(/\{[\s\S]*\}/); if (!m) throw new Error("respuesta_ia_sin_json: " + txt.slice(0, 400));
-  let o; try { o = JSON.parse(m[0]); } catch { throw new Error("respuesta_ia_json_roto: " + txt.slice(0, 400)); }
+  const datosFoto = "data:image/jpeg;base64," + aBase64(fotoBuf);
+  const sistema = { role: "system", content: "Lees actas electorales españolas y respondes solo con JSON." };
+  // Llama 3.2 recibe la imagen aparte; el resto de modelos, dentro del mensaje (formato de chat con imagen)
+  const entrada = modelo.includes("llama-3.2")
+    ? { messages: [sistema, { role: "user", content: prompt }], image: datosFoto }
+    : { messages: [sistema, { role: "user", content: [{ type: "text", text: prompt }, { type: "image_url", image_url: { url: datosFoto } }] }] };
+  const r = iaSimulada(env) ? iaDePrueba(fotoBuf) : await env.AI.run(modelo, { ...entrada, max_tokens: 900, temperature: 0 });
+  const o = jsonDeRespuesta(r && (r.response ?? r.result?.response ?? r.choices?.[0]?.message?.content));
   const n = (v) => (Number.isInteger(v) && v >= 0 ? v : (typeof v === "string" && /^\d+$/.test(v.trim()) ? Number(v) : null));
   const fiab = {};
   const leer = (clave, v) => {
@@ -580,8 +588,23 @@ ${lista}`;
     return num != null ? num : letra;
   };
   const cand = {}; cands.forEach((c, i) => { cand[c.codigo] = leer(c.codigo, Array.isArray(o.votos) ? o.votos[i] : null); });
-  return { es_acta: o.es_acta !== false, inapropiada: o.inapropiada === true, electores: leer("electores", o.electores), votantes: leer("votantes", o.votantes),
-    nulos: leer("nulos", o.nulos), blanco: leer("blanco", o.blanco), cand, fiab, modelo: env.MODELO_IA || MODELO_IA };
+  const res = { es_acta: o.es_acta !== false, inapropiada: o.inapropiada === true, electores: leer("electores", o.electores), votantes: leer("votantes", o.votantes),
+    nulos: leer("nulos", o.nulos), blanco: leer("blanco", o.blanco), cand, fiab, modelo };
+  if (env.MODO_PRUEBAS === "1" && r && r.usage) res.uso = r.usage;   // tokens gastados, para calcular el coste en las pruebas
+  return res;
+}
+// Saca el objeto JSON de la respuesta del modelo. Algunos modelos lo devuelven ya como objeto y otros como texto,
+// a veces con texto alrededor o cortado al final (si se acaban los tokens); en ese caso se recorta a la última fila completa.
+function jsonDeRespuesta(resp) {
+  if (resp && typeof resp === "object") return resp;
+  const txt = String(resp || "");
+  const ini = txt.indexOf("{"); if (ini < 0) throw new Error("respuesta_ia_sin_json: " + txt.slice(0, 400));
+  let t = txt.slice(ini).replace(/\bN\b/g, "null");
+  const fin = t.lastIndexOf("}");
+  if (fin > 0) { try { return JSON.parse(t.slice(0, fin + 1)); } catch {} }
+  const corte = t.lastIndexOf("]");   // respuesta cortada: se cierra la lista de votos y el objeto
+  if (corte > 0) { try { return JSON.parse(t.slice(0, corte + 1).replace(/,\s*$/, "") + "]}"); } catch {} }
+  throw new Error("respuesta_ia_json_roto: " + txt.slice(0, 400));
 }
 // Convierte los bytes de la foto a texto base64 (por trozos, para no desbordar la memoria con fotos grandes)
 function aBase64(buf) {
@@ -604,6 +627,8 @@ async function leerParaFormulario(req, env) {
   const ipHash = (await sha256hex(new TextEncoder().encode((env.SAL_IP || "sal") + ip))).slice(0, 32);
   let form; try { form = await req.formData(); } catch { return json({ error: "formato" }, 400); }
   const foto = form.get("foto"); const prov = String(form.get("prov") || "");
+  // Solo en la versión de pruebas: elegir otro modelo para compararlos (no se usa la caché ni se guarda la lectura)
+  const modeloPrueba = env.MODO_PRUEBAS === "1" && MODELOS_IA.includes(String(form.get("modelo") || "")) ? String(form.get("modelo")) : null;
   if (!(foto instanceof File) || foto.size > 2_500_000 || foto.size < 5_000 || !/^\d{2}$/.test(prov)) return json({ error: "parametros" }, 400);
   const buf = await foto.arrayBuffer(); const hash = await sha256hex(buf);
   const ya = await env.DB.prepare("SELECT lectura FROM lecturas WHERE hash = ?").bind(hash).first();
@@ -612,12 +637,13 @@ async function leerParaFormulario(req, env) {
     const c = await env.DB.prepare("SELECT c.estado, (SELECT COUNT(*) FROM envios e WHERE e.mesa_id = c.mesa_id AND e.ia_estado = 'hecha' AND e.estado != 'invalida') AS n FROM consenso c WHERE c.mesa_id = ?").bind(mesaId).first();
     if (c && (c.estado === "verificada" || c.estado === "validada")) return json({ omitida: "mesa_verificada" });
   }
-  if (ya) return json({ hash, lectura: JSON.parse(ya.lectura) });
+  if (ya && !modeloPrueba) return json({ hash, lectura: JSON.parse(ya.lectura) });
   const n = await env.DB.prepare("SELECT COUNT(*) AS n FROM lecturas WHERE ip_hash = ? AND ts > ?").bind(ipHash, ahora() - 600000).first();
   if (n.n >= Number(env.MAX_LECTURAS_IP_10MIN || 300)) return json({ error: "demasiadas_lecturas" }, 429);
   if (!(await hayCupoIA(env))) return json({ error: "tope_alcanzado" }, 429);
   // En la versión de pruebas se devuelve también el motivo del fallo, para poder ajustar la lectura; en la pública, no
-  let lectura; try { lectura = await leerConIA(env, buf, prov); } catch (e) { console.error("IA", e); return json({ error: "lectura_fallida", ...(env.MODO_PRUEBAS === "1" ? { detalle: String(e && e.message || e).slice(0, 600) } : {}) }, 502); }
+  let lectura; try { lectura = await leerConIA(env, buf, prov, modeloPrueba); } catch (e) { console.error("IA", e); return json({ error: "lectura_fallida", ...(env.MODO_PRUEBAS === "1" ? { detalle: String(e && e.message || e).slice(0, 600) } : {}) }, 502); }
+  if (modeloPrueba) return json({ hash, lectura });
   await env.DB.prepare("INSERT OR REPLACE INTO lecturas (hash, lectura, ip_hash, ts) VALUES (?,?,?,?)").bind(hash, JSON.stringify(lectura), ipHash, ahora()).run();
   return json({ hash, lectura });
 }
