@@ -44,7 +44,7 @@ DISTANCIA_MAX_METROS = "400"
 LECTURA_IA = "1"               # lectura automática de las fotos con Workers AI ("0" para desactivarla)
 MAX_LECTURAS_IP_10MIN = "300"
 FOTOS_LEIDAS_POR_VERSION = "3"   # con 3 fotos leídas iguales en una mesa, las siguientes iguales esperan sin gastar
-MAX_LECTURAS_IA = "100000"       # red de seguridad: lecturas automáticas en total (100.000 ≈ 50 $ como máximo). Al llegar, se dejan de hacer
+MAX_LECTURAS_IA = "100000"       # red de seguridad: lecturas automáticas en total (100.000 ≈ 88 $ como máximo con Llama 4 Scout). Al llegar, se dejan de hacer
 DENUNCIAS_OCULTAR = "2"        # redes distintas que denuncian una foto para ocultarla automáticamente
 # Cloudflare Access (panel): rellénalo al configurar Access. Sin esto el panel no abre fuera del modo pruebas.
 ACCESS_TEAM = "orange-night-ec12"   # equipo de Cloudflare Zero Trust: https://orange-night-ec12.cloudflareaccess.com
@@ -103,7 +103,7 @@ DISTANCIA_MAX_METROS = "400"
 LECTURA_IA = "1"               # lectura automática de las fotos con Workers AI ("0" para desactivarla)
 MAX_LECTURAS_IP_10MIN = "300"
 FOTOS_LEIDAS_POR_VERSION = "3"   # con 3 fotos leídas iguales en una mesa, las siguientes iguales esperan sin gastar
-MAX_LECTURAS_IA = "2000"         # en pruebas, como mucho unas 2.000 lecturas (≈ 1 $)
+MAX_LECTURAS_IA = "2000"         # en pruebas, como mucho unas 2.000 lecturas (≈ 2 $)
 DENUNCIAS_OCULTAR = "2"        # redes distintas que denuncian una foto para ocultarla automáticamente
 # Cloudflare Access (panel): rellénalo al configurar Access. Sin esto el panel no abre fuera del modo pruebas.
 ACCESS_TEAM = ""               # equipo de Cloudflare Zero Trust: https://NOMBRE.cloudflareaccess.com
