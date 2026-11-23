@@ -9,7 +9,7 @@ const JSONH = { "content-type": "application/json; charset=utf-8" };
 const EXCLUYENTES = ["foto_reutilizada", "foto_antes_apertura", "muchas_mesas", "lejos", "mesa_nueva", "ia_no_acta", "ia_inapropiada", "nombres_sin_tapar"];
 // Avisos que dejan la FOTO en cuarentena: no se publica nunca hasta que la valides tú (las cifras pueden contar igual).
 export const CUARENTENA = ["nombres_sin_tapar", "no_parece_acta", "ia_no_acta", "ia_inapropiada"];
-const MODELO_IA = "@cf/meta/llama-3.2-11b-vision-instruct";
+const MODELO_IA = "@cf/meta/llama-4-scout-17b-16e-instruct";   // el que mejor lee las actas en las pruebas con fotos reales
 const iaSimulada = (env) => env.MODO_PRUEBAS === "1" && env.IA_SIMULADA === "1";
 const iaActiva = (env) => env.LECTURA_IA === "1" && (!!env.AI || iaSimulada(env));
 // Solo para pruebas locales (Workers AI no funciona sin cuenta): "lee" el JSON que el test esconde en un comentario del JPEG.
@@ -562,14 +562,16 @@ async function leerConIA(env, fotoBuf, prov, modeloPedido) {
 de totales arriba y una tabla de candidaturas con los votos rellenados a mano.
 Cada cifra aparece dos veces: escrita con letras (columna «En letra») y con números (columna «En número», a la derecha).
 Responde SOLO con un objeto JSON válido, sin texto adicional ni explicaciones, con esta forma exacta:
-{"es_acta": true, "inapropiada": false, "electores": [N, L], "votantes": [N, L], "nulos": [N, L], "blanco": [N, L], "votos": [[N, L], [N, L], ...]}
+{"es_acta": true, "inapropiada": false, "electores": [N, L], "votantes": [N, L], "nulos": [N, L], "blanco": [N, L], "votos": [[F, N, L], [F, N, L], ...]}
 - N: la cifra escrita con números. L: la cifra escrita con letras, convertida a número (por ejemplo «treinta y uno» = 31).
 - Usa null cuando la casilla esté vacía o no se lea. Nunca pongas letras, guiones ni la letra N: solo números enteros o null.
 - es_acta: false si la imagen no es un acta de escrutinio. inapropiada: true si contiene desnudos, contenido sexual, violencia u otra cosa ofensiva.
-- electores: «Total electores (1+2)». votantes: «Total votantes (A+B)». nulos y blanco: votos nulos y votos en blanco.
-- votos: una pareja [N, L] por cada fila de la tabla de candidaturas, de arriba abajo, empezando por la fila 1.
-  La tabla tiene ${cands.length} filas con candidatura; si una fila está vacía, pon [null, null]. No repitas filas ni añadas filas de más.
-  Como referencia, las candidaturas de esta provincia en el orden de la tabla son:
+- electores: «Total electores (1+2)». votantes: «Total votantes (A+B)», la suma de A y B, no solo A.
+  nulos y blanco: votos nulos y votos en blanco.
+- votos: un trío [F, N, L] por cada fila de la tabla de candidaturas que tenga algo escrito, donde F es el número
+  de fila impreso a la izquierda (1, 2, 3...). Las filas en blanco no se ponen. Comprueba que cada cifra va con
+  el número de su fila: si una fila está vacía, la siguiente sigue llevando su propio número. No repitas filas.
+  Como referencia, las ${cands.length} candidaturas de esta provincia, en el orden de las filas, son:
 ${lista}`;
   const datosFoto = "data:image/jpeg;base64," + aBase64(fotoBuf);
   const sistema = { role: "system", content: "Lees actas electorales españolas y respondes solo con JSON." };
@@ -587,7 +589,13 @@ ${lista}`;
     fiab[clave] = num != null && letra != null ? (num === letra ? "alta" : "baja") : "media";
     return num != null ? num : letra;
   };
-  const cand = {}; cands.forEach((c, i) => { cand[c.codigo] = leer(c.codigo, Array.isArray(o.votos) ? o.votos[i] : null); });
+  // Cada voto llega como [fila, número, letra]; si el modelo no da la fila ([número, letra]), se toma el orden de la lista
+  const porFila = {}; const votos = Array.isArray(o.votos) ? o.votos : [];
+  votos.forEach((v, i) => {
+    if (Array.isArray(v) && v.length >= 3 && Number.isInteger(Number(v[0])) && Number(v[0]) >= 1) porFila[Number(v[0])] = [v[1], v[2]];
+    else porFila[i + 1] = v;
+  });
+  const cand = {}; cands.forEach((c, i) => { cand[c.codigo] = leer(c.codigo, porFila[i + 1] ?? null); });
   const res = { es_acta: o.es_acta !== false, inapropiada: o.inapropiada === true, electores: leer("electores", o.electores), votantes: leer("votantes", o.votantes),
     nulos: leer("nulos", o.nulos), blanco: leer("blanco", o.blanco), cand, fiab, modelo };
   if (env.MODO_PRUEBAS === "1" && r && r.usage) res.uso = r.usage;   // tokens gastados, para calcular el coste en las pruebas
