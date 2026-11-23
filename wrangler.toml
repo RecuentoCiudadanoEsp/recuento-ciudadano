@@ -34,7 +34,7 @@ TOTALES_DESDE = "2026-11-29T21:00:00+01:00"
 # Clave pública de Turnstile (la secreta va como secreto: npx wrangler secret put TURNSTILE_SECRET)
 TURNSTILE_SITEKEY = "0x4AAAAAAGNuGydN3RWH83nE"
 # Zonas a difuminar automáticamente, en fracciones de la foto [x, y, ancho, alto]. Se calibran con actas reales.
-ZONAS_DIFUMINADO = "[[0,0.28,0.28,0.5]]"  # columna de nombres y firmas del acta del Congreso (calibrado con actas del 23J)
+ZONAS_DIFUMINADO = "[[0,0.27,0.29,0.7]]"  # columna de nombres y firmas: desde la presidencia hasta los interventores, casi al pie del acta
 # Límites antiabuso
 MAX_ENVIOS_IP_10MIN = "300"          # alto a propósito: muchas IP móviles son compartidas por miles de personas
 # Si una misma IP envía actas de tantas mesas distintas en una hora, sus envíos dejan de contar como fuentes independientes
@@ -93,7 +93,7 @@ TOTALES_DESDE = "2026-11-29T21:00:00+01:00"
 # Clave pública de Turnstile (la secreta va como secreto: npx wrangler secret put TURNSTILE_SECRET)
 TURNSTILE_SITEKEY = "0x4AAAAAAGNuGydN3RWH83nE"
 # Zonas a difuminar automáticamente, en fracciones de la foto [x, y, ancho, alto]. Se calibran con actas reales.
-ZONAS_DIFUMINADO = "[[0,0.28,0.28,0.5]]"  # columna de nombres y firmas del acta del Congreso (calibrado con actas del 23J)
+ZONAS_DIFUMINADO = "[[0,0.27,0.29,0.7]]"  # columna de nombres y firmas: desde la presidencia hasta los interventores, casi al pie del acta
 # Límites antiabuso
 MAX_ENVIOS_IP_10MIN = "300"          # alto a propósito: muchas IP móviles son compartidas por miles de personas
 # Si una misma IP envía actas de tantas mesas distintas en una hora, sus envíos dejan de contar como fuentes independientes

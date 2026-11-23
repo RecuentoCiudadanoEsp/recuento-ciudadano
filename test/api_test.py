@@ -1,7 +1,7 @@
 # Prueba de extremo a extremo contra el Worker local (wrangler dev en :8787, MODO_PRUEBAS=1)
 import hashlib, io, json, sys, urllib.request, uuid
 from PIL import Image, ImageOps, ImageDraw
-ZONA = (0, 0.28, 0.28, 0.5)   # misma zona que ZONAS_DIFUMINADO: la web la tapa siempre antes de subir
+ZONA = (0, 0.27, 0.29, 0.7)   # misma zona que ZONAS_DIFUMINADO: la web la tapa siempre antes de subir
 
 BASE = "http://127.0.0.1:8787"
 ADMIN = "token-de-pruebas-1234567890-abcdefghijk"
