@@ -564,9 +564,10 @@ Cada cifra aparece dos veces: escrita con letras (columna «En letra») y con n�
 Responde SOLO con un objeto JSON válido, sin texto adicional ni explicaciones, con esta forma exacta:
 {"es_acta": true, "inapropiada": false, "electores": [N, L], "votantes": [N, L], "nulos": [N, L], "blanco": [N, L], "votos": [[F, N, L], [F, N, L], ...]}
 - N: la cifra escrita con números. L: la cifra escrita con letras, convertida a número (por ejemplo «treinta y uno» = 31).
+  L siempre es un número entero, nunca palabras.
 - Usa null cuando la casilla esté vacía o no se lea. Nunca pongas letras, guiones ni la letra N: solo números enteros o null.
 - es_acta: false si la imagen no es un acta de escrutinio. inapropiada: true si contiene desnudos, contenido sexual, violencia u otra cosa ofensiva.
-- electores: «Total electores (1+2)». votantes: «Total votantes (A+B)», la suma de A y B, no solo A.
+- electores: «Total electores (1+2)»; si esa casilla está vacía, el número de electores según las listas del censo (casilla 1). votantes: «Total votantes (A+B)», la suma de A y B, no solo A.
   nulos y blanco: votos nulos y votos en blanco.
 - votos: un trío [F, N, L] por cada fila de la tabla de candidaturas que tenga algo escrito, donde F es el número
   de fila impreso a la izquierda (1, 2, 3...). Las filas en blanco no se ponen. Comprueba que cada cifra va con
@@ -607,7 +608,8 @@ function jsonDeRespuesta(resp) {
   if (resp && typeof resp === "object") return resp;
   const txt = String(resp || "");
   const ini = txt.indexOf("{"); if (ini < 0) throw new Error("respuesta_ia_sin_json: " + txt.slice(0, 400));
-  let t = txt.slice(ini).replace(/\bN\b/g, "null");
+  // Arreglos de errores típicos: la letra N en vez de null y cifras escritas con palabras sin comillas (se descartan)
+  let t = txt.slice(ini).replace(/\bN\b/g, "null").replace(/([,\[]\s*)(?!null\b|true\b|false\b)[a-záéíóúüñ][a-záéíóúüñ ]*(?=\s*[,\]])/gi, "$1null");
   const fin = t.lastIndexOf("}");
   if (fin > 0) { try { return JSON.parse(t.slice(0, fin + 1)); } catch {} }
   const corte = t.lastIndexOf("]");   // respuesta cortada: se cierra la lista de votos y el objeto
