@@ -312,14 +312,48 @@ footer .xpie{display:inline-flex; align-items:center; gap:5px; vertical-align:-2
           <li><b>En revisión:</b> las cuentas no cuadran o el envío tiene alguna señal de alerta.</li>
           <li><b>Validada:</b> resuelta por revisión humana. Cada decisión queda en el <a href="/api/public/decisiones.json">registro público de decisiones</a>.</li>
         </ul></div>
+      <div class="card"><h2>En el colegio</h2>
+        <ul style="padding-left:20px; margin:0">
+          <li>Haz la foto <b>cuando el acta ya esté colgada</b> en la puerta o la entrada del local. No hace falta entrar mientras se cuentan los votos.</li>
+          <li>Fotografía <b>solo el acta</b>: ni a votantes, ni a los miembros de la mesa, ni papeletas.</li>
+          <li>Si el presidente de la mesa o la policía te piden algo, hazles caso. Dentro del local, quien manda es la presidencia de la mesa.</li>
+        </ul></div>
+      <div class="card"><h2>Cuándo se publican las cifras</h2><p>Los envíos se abren a las 20:00, cuando cierran los colegios de la península y Baleares. Las cifras y las fotos de las actas se publican a partir de las <b>21:00 (hora peninsular)</b>, cuando también han cerrado los de Canarias, para no difundir resultados mientras todavía se vota en algún lugar. Hasta entonces solo se ve cuántas mesas tienen foto y cuántas están verificadas.</p></div>
       <div class="card"><h2>Ninguna foto se borra</h2><p>Si una foto se invalida (no corresponde a la mesa, no se lee, parece manipulada o está repetida), sigue visible, marcada y con el motivo.</p></div>
-      <div class="card"><h2>Privacidad</h2><p>No pedimos nombre, correo ni teléfono. Guardamos una huella anónima de tu navegador y de tu conexión solo para frenar abusos.</p>
+      <div class="card"><h2>Privacidad</h2><p>No pedimos nombre, correo ni teléfono. Guardamos una huella anónima de tu navegador y de tu conexión solo para frenar abusos. Todos los detalles, en la <a href="#privacidad">política de privacidad</a>.</p>
         <p><b>Por qué tapamos los nombres del acta.</b> En el acta firman las personas que han formado la mesa: presidencia, vocales e interventores. Son ciudadanos que han cumplido con su deber, y sus nombres y firmas no hacen falta para comprobar los resultados. Por eso la web tapa automáticamente, antes de subir nada, la columna de la izquierda donde suelen ir; la foto con nombres nunca sale de tu móvil. Para que se tape bien, fotografía el acta entera y de frente. Si alguna foto llegara con nombres a la vista, no cuenta ni se publica hasta que el equipo de revisión los tapa.</p></div>
       <div class="card"><h2>Una diferencia no es una prueba</h2><p>Si unas cifras no coinciden con las oficiales, puede ser un error al copiarlas, al leer la foto o una corrección hecha después en el escrutinio general. Es un indicio para revisar, siempre con la foto delante.</p></div>
     </div>
   </section>
 
-  <footer>Iniciativa ciudadana sin afiliación política. <a href="https://github.com/RecuentoCiudadanoEsp/recuento-ciudadano" target="_blank" rel="noopener">Código abierto</a>. <a href="#porque">Por qué</a> · <a href="#como">Cómo funciona</a>. <a class="xpie" href="https://x.com/RecuentoCiud_es" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>@RecuentoCiud_es</a></footer>
+  <!-- PRIVACIDAD -->
+  <section class="view" id="v-privacidad">
+    <h1>Política de privacidad</h1>
+    <div class="stack">
+      <div class="card"><h2>En resumen</h2><p>Para enviar un acta no hace falta registrarse ni dar el nombre, el correo o el teléfono. Solo se guarda lo imprescindible para comprobar las actas y frenar abusos, y nada de ello permite saber quién ha enviado una foto.</p></div>
+      <div class="card"><h2>Quién es responsable</h2><p>Recuento Ciudadano, iniciativa ciudadana sin ánimo de lucro ni afiliación política. Para cualquier consulta sobre privacidad: <a href="mailto:privacidad@recuentociudadano.es">privacidad@recuentociudadano.es</a>.</p></div>
+      <div class="card"><h2>Qué se guarda al enviar un acta</h2>
+        <ul style="padding-left:20px; margin:0">
+          <li><b>La foto del acta</b>, con la columna de nombres y firmas tapada en el propio móvil antes de subirla, y sin los datos ocultos que añade la cámara (ubicación, modelo del teléfono…): la foto se vuelve a generar en el navegador y esos datos no viajan.</li>
+          <li><b>Las cifras</b> que se copian del acta y la mesa a la que corresponden.</li>
+          <li><b>La fecha y hora</b> del envío.</li>
+          <li><b>Una huella de la conexión</b>: la dirección IP pasa por una función irreversible con una clave secreta, y solo se guarda el resultado. La IP en sí no se guarda.</li>
+          <li><b>Un identificador aleatorio del navegador</b>, que se crea en el propio navegador la primera vez y no contiene ningún dato sobre la persona.</li>
+          <li><b>Si se pulsa «confirmar ubicación»</b>, solo se guarda si el envío se hizo cerca del colegio y a qué distancia. La ubicación en sí no se guarda.</li>
+        </ul>
+        <p style="margin-top:10px">Al denunciar una foto se guarda la misma huella de la conexión, para que una sola persona no pueda ocultar fotos por su cuenta.</p></div>
+      <div class="card"><h2>Para qué</h2><p>Las cifras y las fotos sirven para mostrar el acta de cada mesa y comprobar que coincide entre personas distintas. La huella de la conexión y el identificador del navegador sirven solo para frenar abusos: limitar los envíos masivos, detectar si una misma persona intenta hacerse pasar por varias y evitar los bots. No se usan para nada más, no se cruzan con otros datos y no se ceden a nadie.</p>
+        <p>La base legal es el interés legítimo en que la verificación funcione y no se pueda manipular (artículo 6.1.f del Reglamento General de Protección de Datos).</p></div>
+      <div class="card"><h2>Qué se publica</h2><p>Las fotos de las actas (con los nombres y firmas tapados), sus cifras, el estado de cada mesa y la hora de cada envío. Nunca se publican la huella de la conexión ni el identificador del navegador. Las decisiones de revisión quedan en un registro público, sin ningún dato de quien envió la foto.</p></div>
+      <div class="card"><h2>Durante cuánto tiempo</h2><p>Las fotos, las cifras y el registro de decisiones se conservan de forma indefinida, porque son la prueba pública de cada acta. La huella de la conexión y el identificador del navegador se borrarán como tarde el <b>28 de febrero de 2027</b>, una vez cerradas las posibles reclamaciones sobre el recuento.</p></div>
+      <div class="card"><h2>Servicios externos</h2><p>La web funciona sobre Cloudflare (alojamiento, base de datos, almacenamiento de fotos, protección antibots Turnstile y lectura automática de las actas), que trata la conexión como encargado del tratamiento y según sus propias condiciones. No hay publicidad, ni herramientas de analítica, ni botones de redes sociales que rastreen la visita.</p></div>
+      <div class="card"><h2>Almacenamiento en el navegador</h2><p>No se usan cookies de publicidad ni de analítica. Solo se guarda en el navegador el identificador aleatorio mencionado arriba, que es necesario para la seguridad del servicio. Turnstile, el sistema antibots de Cloudflare, puede usar sus propios mecanismos técnicos para comprobar que quien envía no es un robot.</p></div>
+      <div class="card"><h2>Derechos</h2><p>Se pueden ejercer los derechos de acceso, rectificación, supresión, oposición y limitación escribiendo a <a href="mailto:privacidad@recuentociudadano.es">privacidad@recuentociudadano.es</a>. Como no se guarda ningún dato que identifique a nadie, es posible que no se pueda saber qué envíos corresponden a quien lo pide; en ese caso, indicar la mesa y la hora aproximada ayuda a localizarlos. Si alguien aparece en una foto publicada, puede pedir que se tape o se retire. También es posible reclamar ante la Agencia Española de Protección de Datos (<a href="https://www.aepd.es" target="_blank" rel="noopener">aepd.es</a>).</p></div>
+      <p class="meta">Última actualización: 24 de noviembre de 2026.</p>
+    </div>
+  </section>
+
+  <footer>Iniciativa ciudadana sin afiliación política. <a href="https://github.com/RecuentoCiudadanoEsp/recuento-ciudadano" target="_blank" rel="noopener">Código abierto</a>. <a href="#porque">Por qué</a> · <a href="#como">Cómo funciona</a> · <a href="#privacidad">Privacidad</a>. <a class="xpie" href="https://x.com/RecuentoCiud_es" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>@RecuentoCiud_es</a></footer>
 </div>
 
 <script>
@@ -328,6 +362,8 @@ const $=id=>document.getElementById(id);
 const fmt=n=>(n==null||isNaN(n))?"—":Number(n).toLocaleString("es-ES");
 const ESTADOS={verificada:"Verificada",validada:"Validada por revisión",pendiente:"Pendiente de contraste",conflicto:"En conflicto",revision:"En revisión",invalidada:"Invalidada",valida:"Válida",invalida:"Invalidada"};
 const MOTIVOS_F={red_muchas_mesas:"red con muchos envíos",mesa_nueva:"mesa pendiente de confirmar",foto_reutilizada:"foto repetida en otra mesa",foto_antes_apertura:"foto anterior al cierre",muchas_mesas:"muchas mesas desde el mismo dispositivo",lejos:"enviada lejos del colegio",censo_distinto:"electores distintos al censo",nombres_sin_tapar:"nombres sin tapar (pendiente de revisión)",no_parece_acta:"pendiente de revisar la imagen",ia_no_acta:"pendiente de revisar la imagen",ia_inapropiada:"imagen retirada de la vista"};
+// Antes de que cierren todos los colegios (21:00 peninsular) no se publican cifras ni fotos. En pruebas se ven siempre.
+const antesDeTotales=()=>!CFG.modo_pruebas&&!!CFG.totales_desde&&Date.now()<Date.parse(CFG.totales_desde);
 const huellaFoto=f=>{ const r=(f.f||[]).find(x=>x.startsWith("retapada:")); return r?r.slice(9):f.h; };
 let CFG={abre:null,turnstile_sitekey:"",zonas_difuminado:[]}; let PROVS=[]; const cacheJSON={};
 async function getJSON(u,{fresh}={}){ if(!fresh&&cacheJSON[u]) return cacheJSON[u]; const r=await fetch(u); if(!r.ok) throw new Error(u+" "+r.status); const d=await r.json(); cacheJSON[u]=d; return d; }
@@ -339,7 +375,7 @@ const seccTxt=s=>String(Number(s)).padStart(3,"0");
 // ---------- rutas ----------
 function route(){
   const h=location.hash.slice(1)||"inicio"; const [v,arg]=h.split("=");
-  const vista=["inicio","enviar","resultados","prov","mesa","porque","como"].includes(v)?v:"inicio";
+  const vista=["inicio","enviar","resultados","prov","mesa","porque","como","privacidad"].includes(v)?v:"inicio";
   document.querySelectorAll(".view").forEach(s=>s.classList.toggle("on",s.id==="v-"+vista));
   const tab=vista==="prov"||vista==="mesa"?"resultados":vista;
   document.querySelectorAll("nav.tabs a").forEach(a=>{ if(a.dataset.v===tab) a.setAttribute("aria-current","page"); else a.removeAttribute("aria-current"); });
@@ -504,7 +540,7 @@ $("btnEnviar").addEventListener("click",async()=>{
     let r, d; for(let intento=0; intento<3; intento++){ try{ r=await fetch("/api/envio",{method:"POST",body:fd}); d=await r.json(); break; }catch(err){ if(intento===2) throw err; await new Promise(z=>setTimeout(z,1500*(intento+1))); } }
     if(!r.ok){ $("resultado").innerHTML=`<div class="banner b-bad">${ERRORES[d.error]||d.mensaje||"No se ha podido enviar. Inténtalo de nuevo."}</div>`; if(window.turnstile&&CFG.turnstile_sitekey){ turnstile.reset("#turnstile"); TS_TOKEN=null; } return; }
     const url=`${location.origin}/#mesa=${d.mesa_id}`;
-    $("resultado").innerHTML=`<div class="banner b-ok"><b>¡Enviada, gracias!</b> Tus cifras aparecerán en la ficha de la mesa en un minuto. La foto se hará pública cuando otra persona envíe la misma acta (o la revisemos).${d.foto_en_revision?" Hemos detectado algo raro en la foto (mucho fondo o algún nombre sin tapar), así que la revisaremos antes de publicarla.":""}
+    $("resultado").innerHTML=`<div class="banner b-ok"><b>¡Enviada, gracias!</b> ${antesDeTotales()?"Las cifras y las fotos se publicarán a partir de las 21:00 (hora peninsular), cuando cierren todos los colegios, también en Canarias. Hasta entonces la ficha de la mesa solo muestra si está verificada.":"Tus cifras aparecerán en la ficha de la mesa en un minuto. La foto se hará pública cuando otra persona envíe la misma acta (o la revisemos)."}${d.foto_en_revision?" Hemos detectado algo raro en la foto (mucho fondo o algún nombre sin tapar), así que la revisaremos antes de publicarla.":""}
       <div class="row" style="margin-top:10px"><a class="btn small" href="#mesa=${d.mesa_id}">Ver mi mesa</a><button class="small" id="btnShareMesa">Compartir</button><button class="small" id="btnOtra">Enviar otra mesa</button></div></div>`;
     $("btnShareMesa").onclick=()=>compartir(`He fotografiado el acta de mi mesa electoral. Cuando cierre tu colegio, haz lo mismo:`,url);
     $("btnOtra").onclick=()=>{ IMG=null; RECTS=[]; $("foto").value=""; $("editorBox").classList.add("hide"); document.querySelectorAll("#fBasicos input,#fCands input").forEach(i=>i.value=""); $("resultado").innerHTML=""; validar(); window.scrollTo(0,0); };
@@ -617,11 +653,12 @@ async function verMesa(id){
     if(!m){ $("mesaCuerpo").innerHTML=`<div class="card"><p>Aún no hay fotos de esta mesa.</p>${abierto()?'<a class="btn primary" href="#enviar">¿Estás allí? Envía la tuya</a>':""}</div>`; return; }
     const cands=d.candidaturas||[]; const fila=c=>c?[c.electores,c.votantes,c.nulos,c.blanco,...cands.map(k=>c.cand[k.codigo])]:[];
     const cab=["Electores","Votantes","Nulos","Blanco",...cands.map(k=>k.siglas)];
-    let h=(m.nueva?`<div class="banner b-warn" style="margin-bottom:12px">Esta mesa no figura en nuestra lista de referencia. Está pendiente de que revisemos las fotos para confirmarla.</div>`:"")+`<div class="row" style="margin-bottom:12px"><span class="pill p-${m.estado}" style="font-size:15px">${ESTADOS[m.estado]||m.estado}</span><span class="meta">${m.n} foto(s) · ${m.indep} fuente(s) independiente(s) coincidente(s)</span></div>`;
+    const oculto=d.totales_visibles===false;
+    let h=(oculto?`<div class="banner b-warn" style="margin-bottom:12px">Las cifras y las fotos de las actas se publican a partir de las 21:00 (hora peninsular), cuando cierran todos los colegios, también en Canarias. Hasta entonces solo se muestra el estado de la mesa.</div>`:"")+(m.nueva?`<div class="banner b-warn" style="margin-bottom:12px">Esta mesa no figura en nuestra lista de referencia. Está pendiente de que revisemos las fotos para confirmarla.</div>`:"")+`<div class="row" style="margin-bottom:12px"><span class="pill p-${m.estado}" style="font-size:15px">${ESTADOS[m.estado]||m.estado}</span><span class="meta">${m.n} foto(s) · ${m.indep} fuente(s) independiente(s) coincidente(s)</span></div>`;
     if(m.cifras) h+=`<div class="card" style="margin-bottom:14px"><h2>Cifras ${m.estado==="conflicto"?"de la versión mayoritaria":""}</h2><div class="tablewrap"><table><tr>${cab.map(x=>`<th>${x}</th>`).join("")}</tr><tr>${fila(m.cifras).map(v=>`<td>${fmt(v)}</td>`).join("")}</tr></table></div></div>`;
     h+=`<h2>Fotos enviadas</h2><div class="fotos">`+m.fotos.map(f=>{ const mot=[...(f.mot?[f.mot]:[]),...(f.f||[]).filter(x=>MOTIVOS_F[x]).map(x=>MOTIVOS_F[x]),...((f.f||[]).some(x=>x.startsWith("retapada:"))?["nombres tapados en la revisión"]:[])];
       const img=f.pub?`<a href="/api/foto/${f.h}.jpg" target="_blank" rel="noopener"><img loading="lazy" src="/api/mini/${f.h}.jpg" alt="Foto del acta enviada"></a>`
-        :`<div class="fotoOculta">${f.est==="invalida"?"Foto retirada":f.den?"Foto oculta por denuncias, pendiente de revisión":"La foto se publicará cuando otra persona envíe la misma acta o la revisemos"}</div>`;
+        :`<div class="fotoOculta">${f.est==="invalida"?"Foto retirada":oculto?"Visible a partir de las 21:00":f.den?"Foto oculta por denuncias, pendiente de revisión":"La foto se publicará cuando otra persona envíe la misma acta o la revisemos"}</div>`;
       return `<div class="foto ${f.est==="invalida"?"invalida":""}">${img}
       <div><span class="pill p-${f.est==="pendiente"?(f.ok?"pendiente":"revision"):f.est}">${f.est==="pendiente"?(f.ok?"Recibida":"No cuadra"):ESTADOS[f.est]}</span>
       <div class="meta" style="margin-top:4px">${new Date(f.ts).toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit"})}${f.geo===1?" · en el colegio":""}</div>

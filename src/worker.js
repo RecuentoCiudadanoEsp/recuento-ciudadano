@@ -59,6 +59,11 @@ function config(env) {
     turnstile_sitekey: env.TURNSTILE_SITEKEY || "", zonas_difuminado: zonas, modo_pruebas: env.MODO_PRUEBAS === "1", lectura_ia: iaActiva(env) };
 }
 const abierto = (env) => env.MODO_PRUEBAS === "1" || ahora() >= Date.parse(env.ABRE);
+// Las cifras de votos y las fotos de las actas no se publican hasta que cierran todos los colegios (también en
+// Canarias, a las 21:00 peninsulares), para no difundir resultados mientras todavía se vota en algún sitio.
+// Antes de esa hora solo se ve cuántas mesas tienen foto y cuántas están verificadas.
+// En la versión de pruebas se ven siempre, salvo que OCULTAR_TOTALES_PRUEBAS = "1" (para comprobar este comportamiento).
+const totalesVisibles = (env) => env.MODO_PRUEBAS === "1" ? env.OCULTAR_TOTALES_PRUEBAS !== "1" : ahora() >= Date.parse(env.TOTALES_DESDE || env.ABRE);
 
 // Comprobaciones aritméticas del acta. cods = códigos de candidatura de la provincia.
 export function validarCifras(c, cods, censo) {
@@ -186,7 +191,9 @@ async function conCache(req, ctx, segundos, producir) {
 }
 // Una foto solo se sirve al público si es "publica" (mesa verificada por fuentes independientes o validada a mano).
 // Caché corta (5 min): si se oculta una foto, deja de verse en minutos en todo el mundo.
+// Antes de que cierren todos los colegios no se sirve ninguna foto (la foto del acta ya muestra los votos).
 async function servirFoto(req, env, ctx, tipo, hash) {
+  if (!totalesVisibles(env)) return json({ error: "aun_no_publico" }, 404);
   return conCache(req, ctx, 300, async () => {
     const e = await env.DB.prepare("SELECT publica FROM envios WHERE hash = ?").bind(hash).first();
     if (!e || e.publica !== 1) return json({ error: "no_publica" }, 404);
@@ -277,26 +284,34 @@ export async function recalcular(env) {
     }
     if (stmts.length) await env.DB.batch(stmts);
   }
+  // Al llegar la hora de publicar cifras, se regeneran todas las provincias (no solo las que tienen envíos nuevos),
+  // porque hasta entonces sus JSON se guardaron sin votos ni fotos. El resumen guarda en sus metadatos si ya los mostraba.
+  const resumen = await env.FOTOS.head("public/resumen.json");
+  const visible = totalesVisibles(env);
+  const cambioHora = !!resumen && (resumen.customMetadata?.totales === "1") !== visible;
+  if (cambioHora) for (const r of (await env.DB.prepare("SELECT DISTINCT prov FROM consenso").all()).results) provs.add(r.prov);
   for (const prov of provs) await publicarProvincia(env, prov);
-  if (provs.size || !(await env.FOTOS.head("public/resumen.json"))) { await publicarResumen(env); await publicarDecisiones(env); }
+  if (provs.size || !resumen) { await publicarResumen(env); await publicarDecisiones(env); }
   return { mesas: pend.length, provincias: [...provs], ms: ahora() - t0 };
 }
 
 async function publicarProvincia(env, prov) {
+  const visible = totalesVisibles(env);
   const [cons, envs, cands] = await env.DB.batch([
     env.DB.prepare("SELECT c.mesa_id, c.estado, c.cifras, c.n_envios, c.n_indep, m.municipio, m.censo, m.local, m.nueva FROM consenso c JOIN mesas m ON m.id = c.mesa_id WHERE c.prov = ?").bind(prov),
     env.DB.prepare("SELECT hash, mesa_id, cifras, cuadra, geo_ok, ts, estado, motivo, flags, publica, denuncias FROM envios WHERE prov = ? ORDER BY ts").bind(prov),
     env.DB.prepare("SELECT codigo, siglas, orden FROM candidaturas WHERE prov = ? ORDER BY orden").bind(prov),
   ]);
   const porMesa = new Map(); for (const e of envs.results) { if (!porMesa.has(e.mesa_id)) porMesa.set(e.mesa_id, []);
-    porMesa.get(e.mesa_id).push({ h: e.hash, c: JSON.parse(e.cifras), ok: e.cuadra, geo: e.geo_ok, ts: e.ts, est: e.estado, mot: e.motivo, f: JSON.parse(e.flags || "[]"), pub: e.publica, den: e.denuncias >= Number(env.DENUNCIAS_OCULTAR || 2) && !String(e.flags).includes("foto_aprobada") ? 1 : 0 }); }
-  const mesas = cons.results.map(c => ({ id: c.mesa_id, municipio: c.municipio, local: c.local, censo: c.censo, estado: c.estado, nueva: c.nueva ? 1 : 0, cifras: c.cifras ? JSON.parse(c.cifras) : null,
+    // Antes de la hora de publicar: ni cifras ni foto de cada envío (solo su estado y la hora).
+    porMesa.get(e.mesa_id).push({ h: e.hash, c: visible ? JSON.parse(e.cifras) : null, ok: e.cuadra, geo: e.geo_ok, ts: e.ts, est: e.estado, mot: e.motivo, f: JSON.parse(e.flags || "[]"), pub: visible ? e.publica : 0, den: e.denuncias >= Number(env.DENUNCIAS_OCULTAR || 2) && !String(e.flags).includes("foto_aprobada") ? 1 : 0 }); }
+  const mesas = cons.results.map(c => ({ id: c.mesa_id, municipio: c.municipio, local: c.local, censo: c.censo, estado: c.estado, nueva: c.nueva ? 1 : 0, cifras: visible && c.cifras ? JSON.parse(c.cifras) : null,
     n: c.n_envios, indep: c.n_indep, fotos: porMesa.get(c.mesa_id) || [] }));
-  await env.FOTOS.put(`public/prov/${prov}.json`, JSON.stringify({ prov, generado: ahora(), candidaturas: cands.results, mesas }), { httpMetadata: { contentType: "application/json" } });
+  await env.FOTOS.put(`public/prov/${prov}.json`, JSON.stringify({ prov, generado: ahora(), totales_visibles: visible, candidaturas: cands.results, mesas }), { httpMetadata: { contentType: "application/json" } });
 }
 
 async function publicarResumen(env) {
-  const mostrarTotales = env.MODO_PRUEBAS === "1" || ahora() >= Date.parse(env.TOTALES_DESDE || env.ABRE);
+  const mostrarTotales = totalesVisibles(env);
   const [tot, est, cands, cifras] = await env.DB.batch([
     env.DB.prepare("SELECT m.prov, COALESCE(MAX(p.mesas), SUM(CASE WHEN m.nueva = 0 THEN 1 ELSE 0 END)) AS n FROM mesas m LEFT JOIN provincias p ON p.prov = m.prov GROUP BY m.prov"),
     env.DB.prepare("SELECT prov, estado, COUNT(*) AS n FROM consenso GROUP BY prov, estado"),
@@ -311,7 +326,8 @@ async function publicarResumen(env) {
     for (const [cod, v] of Object.entries(c.cand)) { const s = siglas.get(r.prov + "|" + cod) || cod; p.votos[s] = (p.votos[s] || 0) + v; nac.votos[s] = (nac.votos[s] || 0) + v; }
     for (const k of ["blanco", "nulos", "votantes"]) { p.votos["_" + k] = (p.votos["_" + k] || 0) + c[k]; nac.votos["_" + k] = (nac.votos["_" + k] || 0) + c[k]; } }
   for (const p of P.values()) for (const k of ["mesas", "con_envio", "verificada", "validada", "pendiente", "conflicto", "revision", "invalidada"]) nac[k] += p[k] || 0;
-  await env.FOTOS.put("public/resumen.json", JSON.stringify({ generado: ahora(), totales_visibles: mostrarTotales, nacional: nac, provincias: [...P.values()] }), { httpMetadata: { contentType: "application/json" } });
+  await env.FOTOS.put("public/resumen.json", JSON.stringify({ generado: ahora(), totales_visibles: mostrarTotales, nacional: nac, provincias: [...P.values()] }),
+    { httpMetadata: { contentType: "application/json" }, customMetadata: { totales: mostrarTotales ? "1" : "0" } });
 }
 async function publicarDecisiones(env) {
   const r = await env.DB.prepare("SELECT ts, hash, mesa_id, decision, motivo FROM decisiones ORDER BY id DESC LIMIT 3000").all();
