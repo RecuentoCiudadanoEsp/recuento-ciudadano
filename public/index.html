@@ -29,13 +29,13 @@
   /* Paleta: papel y tinta (el acta), petróleo como color principal y ocre como acento.
      Colores elegidos para no recordar a ningún partido. */
   --paper:#f6f2ea; --card:#fffdf9; --ink:#1e2a32; --muted:#5e6b73; --line:#d9d3c7; --accent:#23626a; --accent-soft:#dcebea;
-  --ocre:#c8963e; --ok:#23626a; --ok-soft:#dcebea; --warn:#8a6420; --warn-soft:#f3e6c8; --bad:#a3402e; --bad-soft:#f6e0da; --info:#23626a; --info-soft:#dcebea; --sin:#e4dccb;
+  --ocre:#c8963e; --ok:#23626a; --ok-soft:#dcebea; --warn:#8a6420; --warn-soft:#f3e6c8; --bad:#a3402e; --bad-soft:#f6e0da; --info:#23626a; --info-soft:#dcebea; --sin:#dbd7cf; --foto:#e7d3a8;
   --display:"Inter","Helvetica Neue",Arial,sans-serif; --body:"Inter","Segoe UI",Arial,sans-serif; --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark){ :root{
   --paper:#111a1f; --card:#18242b; --ink:#eceee9; --muted:#9aa7ae; --line:#2b3a42; --accent:#7cc0c4; --accent-soft:#1c3639;
-  --ocre:#d9ab58; --ok:#7cc0c4; --ok-soft:#1c3639; --warn:#e2b866; --warn-soft:#3a2f17; --bad:#f08f7c; --bad-soft:#3d211c; --info:#7cc0c4; --info-soft:#1c3639; --sin:#26343c; color-scheme: dark; } }
+  --ocre:#d9ab58; --ok:#7cc0c4; --ok-soft:#1c3639; --warn:#e2b866; --warn-soft:#3a2f17; --bad:#f08f7c; --bad-soft:#3d211c; --info:#7cc0c4; --info-soft:#1c3639; --sin:#26343c; --foto:#5a4a26; color-scheme: dark; } }
 *{box-sizing:border-box} html,body{margin:0}
 body{background:var(--paper); color:var(--ink); font-family:var(--body); font-size:16px; line-height:1.5}
 .wrap{max-width:860px; margin:0 auto; padding:16px 16px 64px}
@@ -156,6 +156,16 @@ footer .xpie{display:inline-flex; align-items:center; gap:5px; vertical-align:-2
 .barra.listo span{color:var(--ok); font-weight:600}
 @media (min-width:621px){ .barra{display:none !important} }
 @media (max-width:620px){ #v-enviar{padding-bottom:60px} }
+/* Panal de mesas de un municipio: un hexágono por mesa, y lista por distrito y sección */
+.panal{width:100%; height:auto; max-height:56vh; display:block; margin:6px auto 0}
+.panal path{cursor:pointer; stroke:var(--card); stroke-width:1.2} .panal path:hover{stroke:var(--ink); stroke-width:2}
+.e-ver{fill:var(--accent); background:var(--accent)} .e-foto{fill:var(--foto); background:var(--foto)} .e-sin{fill:var(--sin); background:var(--sin)}
+.dist{border-top:1px solid var(--line); padding:8px 0} .dist summary{cursor:pointer; font-weight:600; padding:4px 0}
+.secc{display:flex; align-items:center; gap:10px; padding:5px 0; font-size:14px}
+.secc .n{width:74px; flex:none; color:var(--muted)} .secc .c{flex:1; display:flex; flex-wrap:wrap; gap:4px}
+.secc .c a{width:16px; height:18px; clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%); display:block}
+.secc .t{flex:none; font-size:12.5px; color:var(--muted); text-align:right}
+
 </style>
 </head>
 <body>
@@ -297,8 +307,16 @@ footer .xpie{display:inline-flex; align-items:center; gap:5px; vertical-align:-2
     <div class="card" style="margin-bottom:14px">
       <div class="row" style="justify-content:space-between; gap:8px"><h2>Municipios</h2>
         <div class="seg" id="segProv"><button data-modo="cobertura" class="on">Cobertura</button><button data-modo="votos">Más votado</button></div></div>
-      <div class="mapaInfo meta" id="infoProv">Toca un municipio para ver sus mesas.</div>
+      <div class="mapaInfo meta" id="infoProv">Toca un municipio para ver sus mesas una a una.</div>
       <div id="mapaProv"></div><div class="leyenda" id="leyProv"></div>
+    </div>
+    <div class="card hide" id="panalCard" style="margin-bottom:14px">
+      <h2 id="panalTit"></h2>
+      <div class="meta" id="panalResumen"></div>
+      <div id="panal"></div>
+      <div class="leyenda"><span><i class="e-ver"></i>Verificada</span><span><i class="e-foto"></i>Con foto, sin verificar</span><span><i class="e-sin"></i>Sin foto aún</span><span>Toca una mesa para ver su ficha</span></div>
+      <h3 style="margin-top:16px">Por distrito y sección</h3>
+      <div id="secciones"></div>
     </div>
     <div class="card hide" id="votosProvCard" style="margin-bottom:14px"><h2>Votos provisionales en la provincia</h2><div class="meta" id="votosProvNota" style="margin:6px 0"></div><div class="tablewrap"><table id="tVotosProv"></table></div></div>
     <div class="grid2" style="margin-bottom:12px" id="filtrosProv">
@@ -731,9 +749,12 @@ const COLORES=[[/PSOE|^PSC|PSdeG|PSE-EE|PSIB/,"#d81e26"],[/^PP$|PARTIDO POPULAR/
   [/PODEMOS/,"#6b2e68"],[/SALF/,"#8a6a3c"],[/^ERC/,"#f0a020"],[/JxCat|JUNTS/,"#1fb5a8"],[/BILDU/,"#94b800"],[/PNV/,"#2e7d32"],[/B\.?N\.?G/,"#5fa8d8"],[/COMPROMIS/,"#e8710a"],
   [/^CC\b|COALICI.N CANARIA/,"#e6c200"],[/UPN/,"#0a3b7c"],[/ADELANTE/,"#00958f"],[/TERUEL/,"#037252"]];
 const colorPartido=s=>{ for(const [re,c] of COLORES) if(re.test(s)) return c; return "#8d96a6"; };
-const ESCALA=[[0,"var(--sin)"],[0.0001,"#e3eeed"],[0.1,"#b9d6d6"],[0.25,"#86b6b8"],[0.5,"#4f8c90"],[0.75,"#23626a"]];
-const colorCob=f=>{ let c=ESCALA[0][1]; for(const [u,col] of ESCALA) if(f>=u) c=col; return c; };
-const leyCob=()=>`<span><i style="background:var(--sin)"></i>Sin verificadas</span>`+[["0–10 %",1],["10–25 %",2],["25–50 %",3],["50–75 %",4],["75–100 %",5]].map(([t,i])=>`<span><i style="background:${ESCALA[i][1]}"></i>${t}</span>`).join("")+`<span>de mesas verificadas</span>`;
+// Colores del mapa, los mismos del panal de mesas: gris = sin fotos, arena = con fotos pero ninguna mesa verificada,
+// petróleo = al menos una mesa verificada (más oscuro cuanta más parte de sus mesas lo está).
+// Así una sola mesa verificada ya se ve, aunque la participación sea baja.
+const ESCALA=[[0,"#7fb3b5"],[0.1,"#5c9a9d"],[0.25,"#3c7f84"],[0.5,"#23626a"],[0.75,"#164850"]];
+const colorCob=(ver,con,total)=>{ if(!ver) return con?"var(--foto)":"var(--sin)"; const f=total?ver/total:0; let c=ESCALA[0][1]; for(const [u,col] of ESCALA) if(f>=u) c=col; return c; };
+const leyCob=()=>`<span><i style="background:var(--sin)"></i>Sin fotos</span><span><i style="background:var(--foto)"></i>Con fotos, aún sin verificar</span>`+[["Alguna mesa verificada",0],["la mitad o más",3]].map(([t,i])=>`<span><i style="background:${ESCALA[i][1]}"></i>${t}</span>`).join("")+`<span>(más oscuro = más mesas verificadas)</span>`;
 const pct=f=>f>0&&f<0.001?"menos del 0,1 %":(f*100).toLocaleString("es-ES",{maximumFractionDigits:1})+" %";
 function svgMapa(cont, datos, items, {color, info, click, marco}){
   cont.innerHTML=`<svg class="mapa" viewBox="0 0 ${datos.ancho} ${datos.alto}" role="img">${items.map(x=>`<path d="${x.d}" data-id="${x.id}" fill="${color(x.id)}"><title>${info(x.id)}</title></path>`).join("")}${marco?`<path class="marco" d="${marco}"/>`:""}</svg>`;
@@ -747,9 +768,9 @@ async function mapaEspana(r){ RESUMEN=r; const m=await getJSON("/data/mapa/espan
   const votosOk=r.totales_visibles;
   $("segEsp").querySelector('[data-modo="votos"]').disabled=!votosOk; if(!votosOk) MODO_ESP="cobertura";
   $("segEsp").querySelectorAll("button").forEach(b=>{ b.classList.toggle("on",b.dataset.modo===MODO_ESP); b.onclick=()=>{ if(b.disabled) return; MODO_ESP=b.dataset.modo; mapaEspana(RESUMEN); }; });
-  const color=id=>{ if(MODO_ESP==="votos"){ const g=ganador((P.get(id)||{}).votos); return g?colorPartido(g.siglas):"var(--sin)"; } return colorCob(cob(id)); };
+  const color=id=>{ if(MODO_ESP==="votos"){ const g=ganador((P.get(id)||{}).votos); return g?colorPartido(g.siglas):"var(--sin)"; } const p=P.get(id)||{}; return colorCob((p.verificada||0)+(p.validada||0),p.con_envio||0,p.mesas||0); };
   const info=id=>{ const p=P.get(id)||{}; const v=(p.verificada||0)+(p.validada||0); const g=votosOk?ganador(p.votos):null;
-    return `${nombreProv(id)}: ${fmt(v)} de ${fmt(p.mesas||0)} mesas verificadas (${pct(cob(id))})${g?` · más votado en ellas: ${g.siglas}`:""}`; };
+    return `${natural(nombreProv(id))}: ${fmt(v)} de ${fmt(p.mesas||0)} mesas verificadas (${pct(cob(id))})${(p.con_envio||0)>v?`, ${fmt((p.con_envio||0)-v)} más con foto`:""}${g?` · más votado en ellas: ${g.siglas}`:""}`; };
   svgMapa($("mapaEsp"), m, m.provincias.map(x=>({id:x.prov,d:x.d})), {color, info, click:id=>location.hash="prov="+id, marco:m.marcoCanarias});
   $("mapaEsp").addEventListener("info",()=>$("infoEsp").textContent=$("mapaEsp").dataset.info);
   if(MODO_ESP==="votos"){ const vistos=new Map(); for(const p of P.values()){ const g=ganador(p.votos); if(g) vistos.set(colorPartido(g.siglas), g.siglas); }
@@ -773,9 +794,9 @@ async function verProvincia(p,refresco){
     const cob=k=>{ const x=M[k]; return x&&x.total?x.ver/x.total:0; };
     if(mapa){ $("segProv").querySelector('[data-modo="votos"]').disabled=!votosOk; if(!votosOk) MODO_PROV="cobertura";
       const pintarMapa=()=>{ $("segProv").querySelectorAll("button").forEach(b=>{ b.classList.toggle("on",b.dataset.modo===MODO_PROV); b.onclick=()=>{ if(b.disabled) return; MODO_PROV=b.dataset.modo; pintarMapa(); }; });
-        const color=k=>{ if(MODO_PROV==="votos"){ const g=ganador((M[k]||{}).votos); return g?colorPartido(g.siglas):"var(--sin)"; } return colorCob(cob(k)); };
+        const color=k=>{ if(MODO_PROV==="votos"){ const g=ganador((M[k]||{}).votos); return g?colorPartido(g.siglas):"var(--sin)"; } const x=M[k]||{}; return colorCob(x.ver||0,x.con||0,x.total||0); };
         const info=k=>{ const x=M[k]||{total:0,ver:0,con:0}; const g=votosOk?ganador(x.votos):null; return `${nombreMuni(k)}: ${fmt(x.ver)} de ${fmt(x.total)} mesas verificadas${x.con>x.ver?`, ${fmt(x.con-x.ver)} más con foto`:""}${g?` · más votado en ellas: ${g.siglas}`:""}`; };
-        svgMapa($("mapaProv"), mapa, mapa.municipios.map(x=>({id:x.muni,d:x.d})), {color, info, click:k=>{ $("fMuni").value=k; pintar(); $("infoProv").textContent=info(k); $("filtrosProv").scrollIntoView({behavior:"smooth"}); }});
+        svgMapa($("mapaProv"), mapa, mapa.municipios.map(x=>({id:x.muni,d:x.d})), {color, info, click:k=>{ $("fMuni").value=k; pintar(); $("infoProv").textContent=info(k); $("panalCard").scrollIntoView({behavior:"smooth"}); }});
         if(MODO_PROV==="votos"){ const vistos=new Map(); for(const x of Object.values(M)){ const g=ganador(x.votos); if(g) vistos.set(colorPartido(g.siglas),g.siglas); }
           $("leyProv").innerHTML=[...vistos].map(([c,s])=>`<span><i style="background:${c}"></i>${s}</span>`).join("")+"<span>Más votado en las mesas verificadas de cada municipio</span>"; }
         else $("leyProv").innerHTML=leyCob(); };
@@ -801,7 +822,35 @@ async function verProvincia(p,refresco){
       $("tMesas").innerHTML=ms.length?`<tr><th>Mesa</th><th>Estado</th></tr>`+ms.map(m=>{ const q=partes(m.id); return `<tr class="link" data-id="${m.id}"><td style="white-space:nowrap"><b>Mesa ${q[4]}</b><div class="meta" style="font-size:12.5px">Dto. ${Number(q[2])} · Secc. ${seccTxt(q[3])}${m.n?` · ${m.n} foto${m.n>1?"s":""}`:""}</div></td><td>${m.estado?`<span class="pill p-${m.estado}">${ESTADOS[m.estado]||m.estado}</span>`:'<span class="meta">Sin foto</span>'} ›<div class="meta" style="font-size:12.5px; white-space:normal">${natural(m.municipio||"")}</div></td></tr>`; }).join("")
         :`<tr><td class="meta">${fm||fe?"No hay mesas con ese filtro.":"Aún no hay mesas con foto en esta provincia."}</td></tr>`;
       if(totalMs>ms.length) $("tMesas").innerHTML+=`<tr><td colspan="2" class="meta" style="text-align:left">Se muestran 150 de ${fmt(totalMs)} mesas. Elige un municipio en el mapa o en la lista para ver el resto.</td></tr>`;
-      $("tMesas").querySelectorAll("tr.link").forEach(tr=>tr.onclick=()=>location.hash="mesa="+tr.dataset.id); }
+      $("tMesas").querySelectorAll("tr.link").forEach(tr=>tr.onclick=()=>location.hash="mesa="+tr.dataset.id);
+      panal(fm); }
+    // Panal del municipio elegido: un hexágono por mesa (en el orden de distrito, sección y mesa) y lista por sección
+    function panal(k){ const card=$("panalCard"); if(!k){ card.classList.add("hide"); return; } card.classList.remove("hide");
+      const ids=[...new Set([...ref.mesas.filter(([id])=>id.split("-")[1]===k).map(([id])=>id),...d.mesas.filter(m=>m.id.split("-")[1]===k).map(m=>m.id)])].sort();
+      const est=id=>{ const m=porId.get(id); return !m?"sin":(m.estado==="verificada"||m.estado==="validada")?"ver":"foto"; };
+      const txt={ver:"verificada",foto:"con foto, sin verificar",sin:"sin foto aún"};
+      const nom=id=>{ const q=partes(id); return `Distrito ${Number(q[2])} · Sección ${seccTxt(q[3])} · Mesa ${q[4]}`; };
+      const nv=ids.filter(id=>est(id)==="ver").length, nf=ids.filter(id=>est(id)==="foto").length;
+      $("panalTit").textContent=`Mesas de ${nombreMuni(k)}`;
+      $("panalResumen").innerHTML=`${fmt(ids.length)} mesas · <b style="color:var(--ok)">${fmt(nv)} verificada${nv===1?"":"s"}</b> · ${fmt(nf)} con foto sin verificar. Las verificadas se agrupan en el centro.`;
+      // Hexágonos en espiral desde el centro, como un panal. Las verificadas van en el centro y alrededor las que tienen
+      // foto, para que el panal «se vaya llenando» desde dentro aunque haya pocas. La lista de debajo mantiene el orden real.
+      const rango={ver:0,foto:1,sin:2}; const orden=[...ids].sort((a,b)=>rango[est(a)]-rango[est(b)]||a.localeCompare(b));
+      const pos=[[0,0]], dirs=[[1,0],[1,-1],[0,-1],[-1,0],[-1,1],[0,1]];
+      for(let ring=1; pos.length<ids.length; ring++){ let q=-ring, r=ring; for(const [dq,dr] of dirs) for(let i=0;i<ring&&pos.length<ids.length;i++){ pos.push([q,r]); q+=dq; r+=dr; } }
+      const R=10, W=Math.sqrt(3)*R; const pts=pos.map(([q,r])=>[W*(q+r/2),1.5*R*r]);
+      const xs=pts.map(p=>p[0]), ys=pts.map(p=>p[1]); const x0=Math.min(...xs)-W, y0=Math.min(...ys)-R*1.2, w=Math.max(...xs)-x0+W, h=Math.max(...ys)-y0+R*1.2;
+      const hex=(x,y)=>"M"+[0,1,2,3,4,5].map(i=>{ const a=Math.PI/180*(60*i-90); return `${(x+R*.94*Math.cos(a)).toFixed(1)},${(y+R*.94*Math.sin(a)).toFixed(1)}`; }).join("L")+"Z";
+      $("panal").innerHTML=`<svg class="panal" viewBox="${x0.toFixed(1)} ${y0.toFixed(1)} ${w.toFixed(1)} ${h.toFixed(1)}" style="max-width:${Math.max(220,Math.min(640,w*2.2))}px" role="img" aria-label="Mesas de ${esc(nombreMuni(k))}">`+
+        orden.map((id,i)=>`<path d="${hex(...pts[i])}" class="e-${est(id)}" data-id="${id}"><title>${nom(id)}: ${txt[est(id)]}</title></path>`).join("")+`</svg>`;
+      $("panal").querySelectorAll("path").forEach(el=>el.onclick=()=>location.hash="mesa="+el.dataset.id);
+      // lista por distrito y sección
+      const D=new Map(); for(const id of ids){ const q=partes(id); if(!D.has(q[2])) D.set(q[2],new Map()); const S=D.get(q[2]); if(!S.has(q[3])) S.set(q[3],[]); S.get(q[3]).push(id); }
+      const abrir=ids.length<=200||D.size===1;
+      $("secciones").innerHTML=[...D].map(([dd,S])=>{ const todas=[...S.values()].flat(), v=todas.filter(id=>est(id)==="ver").length;
+        return `<details class="dist" ${abrir?"open":""}><summary>Distrito ${Number(dd)} · ${fmt(todas.length)} mesas · <span style="color:${v?"var(--ok)":"var(--muted)"}">${fmt(v)} verificada${v===1?"":"s"}</span></summary>`+
+          [...S].map(([ss,ms])=>{ const vs=ms.filter(id=>est(id)==="ver").length;
+            return `<div class="secc"><span class="n">Secc. ${seccTxt(ss)}</span><span class="c">${ms.map(id=>`<a href="#mesa=${id}" class="e-${est(id)}" title="Mesa ${partes(id)[4]}: ${txt[est(id)]}" aria-label="Mesa ${partes(id)[4]}: ${txt[est(id)]}"></a>`).join("")}</span><span class="t">${vs} de ${ms.length}</span></div>`; }).join("")+`</details>`; }).join(""); }
     $("fMuni").onchange=pintar; $("fEst").onchange=pintar; pintar();
   }catch(e){ console.error(e); $("tMesas").innerHTML='<tr><td class="meta">No se han podido cargar las mesas.</td></tr>'; }
 }
