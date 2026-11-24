@@ -272,4 +272,18 @@ if __name__ == "__main__":
     s3, q = get("/admin/api/mesa?id=" + m4, admin=True)
     check("«Volver a revisar esta mesa» deshace la validación", s == 200 and mm["estado"] == "conflicto" and all(e["estado"] == "pendiente" for e in q["mesas"][0]["envios"]), (mm["estado"], r))
     s, r = get("/admin/api/acciones?mesa=" + m4, admin=True); check("y queda anotado en el registro", r["acciones"][0]["decision"] == "reabierta", r["acciones"][:1])
+    # ---- Registro de decisiones encadenado: se comprueba con el mismo programa que puede usar cualquiera
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("verificar_registro", "scripts/verificar_registro.py"); vr = importlib.util.module_from_spec(spec); spec.loader.exec_module(vr)
+    s, d = get("/api/public/decisiones.json")
+    check("registro de decisiones completo y con huella", s == 200 and d["total"] == len(d["decisiones"]) > 5 and d["huella"] == d["decisiones"][0]["huella"], {k: d.get(k) for k in ("total", "huella")})
+    check("el registro cuadra al recalcular las huellas", vr.comprobar(d) == [], vr.comprobar(d)[:3])
+    alterado = json.loads(json.dumps(d)); alterado["decisiones"][-2]["motivo"] = "cambiado a escondidas"
+    check("si se cambia una decisión antigua, se detecta", any("no cuadra" in x for x in vr.comprobar(alterado)))
+    borrado = json.loads(json.dumps(d)); del borrado["decisiones"][-3]
+    check("si se borra una decisión, se detecta", len(vr.comprobar(borrado)) > 0)
+    h_antes = d["huella"]; s, r = get("/admin/api/reabrir_mesa", admin=True, method="POST", body={"mesa_id": m4}); cron()
+    s, d2 = get("/api/public/decisiones.json")
+    check("una decisión nueva se añade sin cambiar las anteriores", d2["total"] == d["total"] + 1 and d2["decisiones"][1]["huella"] == h_antes and vr.comprobar(d2) == [], (d2["total"], d["total"]))
+
     print("\nRESULTADO:", "todo correcto" if ok else "HAY FALLOS")

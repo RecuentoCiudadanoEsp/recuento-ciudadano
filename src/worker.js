@@ -329,9 +329,30 @@ async function publicarResumen(env) {
   await env.FOTOS.put("public/resumen.json", JSON.stringify({ generado: ahora(), totales_visibles: mostrarTotales, nacional: nac, provincias: [...P.values()] }),
     { httpMetadata: { contentType: "application/json" }, customMetadata: { totales: mostrarTotales ? "1" : "0" } });
 }
+// Registro público de decisiones, encadenado. Cada decisión lleva una «huella» (SHA-256) calculada a partir de la huella
+// de la decisión anterior y de sus propios datos; la huella de la última resume todo el registro. Si alguien cambiara o
+// borrara una decisión antigua directamente en la base de datos, cambiarían todas las huellas desde ese punto y ya no
+// coincidirían con las publicadas antes (por ejemplo, en un mensaje en redes o en una copia guardada del archivo).
+// Cualquiera puede comprobarlo con scripts/verificar_registro.py.
+// Solo se regenera cuando hay decisiones nuevas, para no repetir trabajo cada minuto.
+const HUELLA_INICIAL = "0".repeat(64);
+export async function encadenar(decisiones) {
+  const enc = new TextEncoder(); let h = HUELLA_INICIAL; const salida = [];
+  for (const d of decisiones) {
+    h = await sha256hex(enc.encode(h + "\n" + JSON.stringify([d.id, d.ts, d.hash, d.mesa_id, d.decision, d.motivo ?? null])));
+    salida.push({ ...d, huella: h });
+  }
+  return { huella: h, decisiones: salida };
+}
 async function publicarDecisiones(env) {
-  const r = await env.DB.prepare("SELECT ts, hash, mesa_id, decision, motivo FROM decisiones ORDER BY id DESC LIMIT 3000").all();
-  await env.FOTOS.put("public/decisiones.json", JSON.stringify({ generado: ahora(), decisiones: r.results }), { httpMetadata: { contentType: "application/json" } });
+  const ultima = String((await env.DB.prepare("SELECT MAX(id) AS m FROM decisiones").first())?.m || 0);
+  const previo = await env.FOTOS.head("public/decisiones.json");
+  if (previo && previo.customMetadata?.ultima === ultima) return;
+  const r = await env.DB.prepare("SELECT id, ts, hash, mesa_id, decision, motivo FROM decisiones ORDER BY id").all();
+  const { huella, decisiones } = await encadenar(r.results);
+  // Se publican todas, de la más reciente a la más antigua; la huella del registro completo va arriba.
+  await env.FOTOS.put("public/decisiones.json", JSON.stringify({ generado: ahora(), total: decisiones.length, huella, decisiones: decisiones.reverse() }),
+    { httpMetadata: { contentType: "application/json" }, customMetadata: { ultima } });
 }
 
 // ---------------------------------------------------------------- panel de validación

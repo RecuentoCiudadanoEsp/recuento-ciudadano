@@ -184,6 +184,21 @@ distintas (2 por defecto), se oculta al momento (en menos de 5 minutos deja de v
 Nada se borra: las invalidadas siguen en la ficha con el motivo, sin imagen, y cada decisión queda en
 `/api/public/decisiones.json`.
 
+**Registro encadenado.** Cada decisión del registro lleva una `huella` (SHA-256) calculada con la huella de la decisión
+anterior y sus propios datos, y la `huella` de arriba del archivo resume el registro completo. Si alguien cambiara o
+borrara una decisión antigua en la base de datos, cambiarían todas las huellas desde ese punto y ya no coincidirían con
+las publicadas antes. Para que esto sirva, conviene publicar la huella de vez en cuando fuera de la web (por ejemplo,
+en redes sociales) o guardar copias del archivo. Para comprobarlo:
+
+```
+python3 scripts/verificar_registro.py                                   # descarga el registro y recalcula las huellas
+python3 scripts/verificar_registro.py decisiones.json --huella HUELLA   # comprueba que una huella publicada sigue ahí
+python3 scripts/verificar_registro.py URL_O_ARCHIVO --anterior COPIA    # compara con una copia guardada antes
+```
+
+El archivo solo se regenera cuando hay decisiones nuevas. Los envíos de cada mesa (huella de la foto, cifras, hora y
+estado) están en `/api/public/prov/PP.json`, así que cualquiera puede rehacer los totales sin depender de esta web.
+
 ## Panel de validación
 
 Entra en `https://tu-dominio/admin/`: primero el código de Cloudflare Access que llega a tu correo, después la contraseña
