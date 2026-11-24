@@ -49,6 +49,9 @@ export default {
 
 // ---------------------------------------------------------------- utilidades
 function json(obj, status = 200, extra = {}) { return new Response(JSON.stringify(obj), { status, headers: { ...JSONH, ...extra } }); }
+// Identificador seudonimizado de la conexión: SHA-256 de la clave secreta SAL_IP seguida de la IP, recortado a 32
+// caracteres. La IP nunca se guarda. Sin la clave no se puede saber de qué IP viene (con ella, sí: no debe salir de Cloudflare).
+async function huellaIP(env, ip) { return (await sha256hex(new TextEncoder().encode((env.SAL_IP || "sal") + ip))).slice(0, 32); }
 async function sha256hex(buf) { const d = await crypto.subtle.digest("SHA-256", buf); return [...new Uint8Array(d)].map(b => b.toString(16).padStart(2, "0")).join(""); }
 const num = (v) => Number.isInteger(v) && v >= 0;
 function distanciaM(a, b, c, d) { const R = 6371000, r = Math.PI / 180; const x = Math.sin((c - a) * r / 2) ** 2 + Math.cos(a * r) * Math.cos(c * r) * Math.sin((d - b) * r / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(x)); }
@@ -133,7 +136,7 @@ async function recibirEnvio(req, env) {
   const avisosFoto = [...new Set([...avisosImagen(anaFoto), ...avisosImagen(anaMini)])];
 
   const t = ahora(); const desde = t - 10 * 60 * 1000;
-  const ipHash = (await sha256hex(new TextEncoder().encode((env.SAL_IP || "sal") + ip))).slice(0, 32);
+  const ipHash = await huellaIP(env, ip);
   const disp = String(d.dispositivo || "").slice(0, 64) || "sin-id";
   const [dup, nIp, nDisp, mesasDisp, mesasRed, reuso] = await env.DB.batch([
     env.DB.prepare("SELECT 1 AS x FROM envios WHERE hash = ?").bind(hash),
@@ -149,7 +152,9 @@ async function recibirEnvio(req, env) {
 
   const flags = [...val.avisos, ...avisosFoto];
   if (mesa.nueva) flags.push("mesa_nueva");
-  if (mesasDisp.results[0].n >= 4) flags.push("muchas_mesas");
+  // Un mismo navegador con actas de más de MAX_MESAS_DISPOSITIVO_30MIN mesas distintas en media hora: se acepta, pero va
+  // a revisión. Con 8, se puede fotografiar hasta 8 mesas (un colegio grande) sin aviso; la 9.ª ya se revisa.
+  if (mesasDisp.results[0].n >= Number(env.MAX_MESAS_DISPOSITIVO_30MIN || 8)) flags.push("muchas_mesas");
   // Muchas IP son compartidas (las operadoras móviles agrupan a miles de clientes): esto no bloquea ni excluye,
   // solo impide que varios "dispositivos" detrás de una misma red muy activa cuenten como fuentes independientes.
   if (mesasRed.results[0].n >= Number(env.MAX_MESAS_RED_HORA || 8)) flags.push("red_muchas_mesas");
@@ -213,7 +218,7 @@ async function recibirDenuncia(req, env) {
   const b = await req.json().catch(() => ({}));
   if (!/^[a-f0-9]{64}$/.test(b.hash || "")) return json({ error: "parametros" }, 400);
   const ip = req.headers.get("cf-connecting-ip") || "0.0.0.0";
-  const ipHash = await sha256hex(new TextEncoder().encode((env.SAL_IP || "") + ip));
+  const ipHash = await huellaIP(env, ip);
   const t = ahora();
   const rec = await env.DB.prepare("SELECT COUNT(*) AS n FROM denuncias WHERE ip_hash = ? AND ts > ?").bind(ipHash, t - 600000).first();
   if (rec.n >= 20) return json({ error: "demasiadas_denuncias" }, 429);
@@ -562,7 +567,8 @@ async function admin(req, env, url) {
       env.DB.prepare("SELECT SUM(ia_estado IN ('pendiente','forzada')) AS n, SUM(ia_estado = 'en_espera') AS espera FROM envios"),
       env.DB.prepare("SELECT COALESCE(MAX(n), 0) AS n FROM contador WHERE clave = 'lecturas_ia'"),
     ]);
-    return json({ ...a.results[0], estados: b.results, pendientes_recalculo: c.results[0].n, lecturas_pendientes: dd.results[0].n || 0, fotos_en_espera: dd.results[0].espera || 0, lecturas_ia: ee.results[0].n, tope_lecturas_ia: Number(env.MAX_LECTURAS_IA || 100000) });
+    return json({ ...a.results[0], estados: b.results, pendientes_recalculo: c.results[0].n, lecturas_pendientes: dd.results[0].n || 0, fotos_en_espera: dd.results[0].espera || 0, lecturas_ia: ee.results[0].n, tope_lecturas_ia: Number(env.MAX_LECTURAS_IA || 100000),
+      clave_ip_ok: !!env.SAL_IP && env.SAL_IP.length >= 12 });
   }
   return json({ error: "no_encontrado" }, 404);
 }
@@ -694,7 +700,7 @@ async function leerParaFormulario(req, env) {
   if (!iaActiva(env)) return json({ error: "desactivada" }, 404);
   if (!abierto(env)) return json({ error: "cerrado" }, 403);
   const ip = req.headers.get("cf-connecting-ip") || "0.0.0.0";
-  const ipHash = (await sha256hex(new TextEncoder().encode((env.SAL_IP || "sal") + ip))).slice(0, 32);
+  const ipHash = await huellaIP(env, ip);
   let form; try { form = await req.formData(); } catch { return json({ error: "formato" }, 400); }
   const foto = form.get("foto"); const prov = String(form.get("prov") || "");
   // Solo en la versión de pruebas: elegir otro modelo para compararlos (no se usa la caché ni se guarda la lectura)

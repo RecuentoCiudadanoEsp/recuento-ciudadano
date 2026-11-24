@@ -286,4 +286,11 @@ if __name__ == "__main__":
     s, d2 = get("/api/public/decisiones.json")
     check("una decisión nueva se añade sin cambiar las anteriores", d2["total"] == d["total"] + 1 and d2["decisiones"][1]["huella"] == h_antes and vr.comprobar(d2) == [], (d2["total"], d["total"]))
 
+    # ---- Muchas mesas desde el mismo navegador: hasta 8 en media hora es normal (colegio grande); la 9.ª va a revisión
+    mesas_d = [m[0] for m in json.load(open("public/data/mesas/12.json"))["mesas"] if not m[0].startswith("12-002-")][40:49]
+    disp_m = uuid.uuid4().hex
+    res = [post_envio(cifras_ain(), variante=500 + i, ip=f"10.40.0.{i}", disp=disp_m, mesa=mesas_d[i])[1] for i in range(9)]
+    check("8 mesas distintas desde un navegador: sin aviso", all("muchas_mesas" not in r.get("avisos", []) for r in res[:8]), [r.get("avisos") for r in res[:8]])
+    check("la 9.ª mesa desde el mismo navegador va a revisión", "muchas_mesas" in res[8].get("avisos", []), res[8])
+    s, r = get("/admin/api/estadisticas", admin=True); check("el panel confirma que la clave SAL_IP está puesta", s == 200 and r.get("clave_ip_ok") is True, r.get("clave_ip_ok"))
     print("\nRESULTADO:", "todo correcto" if ok else "HAY FALLOS")

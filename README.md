@@ -139,7 +139,8 @@ la web no deja y el servidor la rechaza.
 - **Pendiente:** un solo envío. Se muestra, pero no cuenta en los totales.
 - **En conflicto:** envíos válidos con cifras distintas. Va a la cola del panel.
 - **En revisión:** la mesa es nueva ("Mi mesa no aparece") o el envío tiene alertas (foto repetida en otra mesa, foto
-  anterior al cierre, muchas mesas desde el mismo dispositivo, ubicación lejos del colegio, o la lectura automática dice
+  anterior al cierre, muchas mesas desde el mismo dispositivo —`MAX_MESAS_DISPOSITIVO_30MIN`: a partir de la 9.ª mesa
+  distinta en media hora—, ubicación lejos del colegio, o la lectura automática dice
   que no es un acta). No cuenta hasta que lo revises.
 - **Validada:** has marcado un envío como válido en el panel; manda sobre lo demás.
 
