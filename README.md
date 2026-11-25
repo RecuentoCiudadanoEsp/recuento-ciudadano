@@ -140,8 +140,9 @@ la web no deja y el servidor la rechaza.
 - **En conflicto:** envíos válidos con cifras distintas. Va a la cola del panel.
 - **En revisión:** la mesa es nueva ("Mi mesa no aparece") o el envío tiene alertas (foto repetida en otra mesa, foto
   anterior al cierre, muchas mesas desde el mismo dispositivo —`MAX_MESAS_DISPOSITIVO_30MIN`: a partir de la 9.ª mesa
-  distinta en media hora—, ubicación lejos del colegio, o la lectura automática dice
-  que no es un acta). No cuenta hasta que lo revises.
+  distinta en media hora—, o la lectura automática dice que no es un acta). No cuenta hasta que lo revises.
+  (El servidor aún admite una comprobación de distancia al colegio, `DISTANCIA_MAX_METROS`, pero la lista oficial de
+  mesas no trae coordenadas de los colegios y el formulario ya no pide la ubicación, así que no se aplica.)
 - **Validada:** has marcado un envío como válido en el panel; manda sobre lo demás.
 
 **Qué fotos son públicas.** Una foto solo se muestra cuando su mesa está verificada (y la foto coincide con la
@@ -265,3 +266,16 @@ python3 test/panel_test.py      # recorre el panel: colas, registro de decisione
 - Sube temporalmente `MAX_ENVIOS_IP_10MIN` a `1000000`, porque todo el tráfico de k6 sale de tu IP (el valor normal es 300).
 - Copia una foto de acta como `test/acta_prueba.jpg` y ejecuta `k6 run -e BASE=https://tu-dominio test/carga_k6.js`.
 - Después, vacía los datos desde el panel y deja todo como estaba (ver "Antes de abrir").
+
+## Vista «Por zonas» del panal de mesas
+
+Al abrir un municipio en Resultados se ve un panal con un hexágono por mesa. En la vista «Por zonas» el panal tiene la
+forma del municipio y cada mesa está en la zona de su sección censal; en «Agrupadas», las verificadas se juntan en el
+centro. Las posiciones de «Por zonas» están precalculadas en `public/data/zonas/PP.json` con
+`scripts/zonas.py`, a partir de la cartografía de secciones censales del INE (no incluida por su tamaño; se descarga en
+https://ine.es/dyngs/DAB/index.htm?cid=1389). Si cambian las listas de mesas, hay que volver a ejecutarlo:
+
+```
+pip install pyshp shapely numpy
+python3 scripts/zonas.py RUTA/SECC_CE_20260101
+```

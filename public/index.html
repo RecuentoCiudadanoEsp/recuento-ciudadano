@@ -225,7 +225,6 @@ footer .xpie{display:inline-flex; align-items:center; gap:5px; vertical-align:-2
           <div><label for="sDist">Distrito</label><select id="sDist" disabled></select></div>
           <div><label for="sSecc">Sección</label><select id="sSecc" disabled></select></div>
           <div><label for="sMesa">Mesa</label><select id="sMesa" disabled></select></div>
-          <div><label>&nbsp;</label><button id="btnGeo" style="width:100%">Confirmar que estoy en el colegio</button></div>
         </div>
         <div class="meta" id="mesaInfo" style="margin-top:8px"></div>
         <button class="small" id="btnNoAparece" style="margin-top:10px">Mi mesa no aparece</button>
@@ -311,7 +310,8 @@ footer .xpie{display:inline-flex; align-items:center; gap:5px; vertical-align:-2
       <div id="mapaProv"></div><div class="leyenda" id="leyProv"></div>
     </div>
     <div class="card hide" id="panalCard" style="margin-bottom:14px">
-      <h2 id="panalTit"></h2>
+      <div class="row" style="justify-content:space-between; gap:8px"><h2 id="panalTit"></h2>
+        <div class="seg" id="segPanal"><button data-modo="zonas" class="on">Por zonas</button><button data-modo="agrupadas">Agrupadas</button></div></div>
       <div class="meta" id="panalResumen"></div>
       <div id="panal"></div>
       <div class="leyenda"><span><i class="e-ver"></i>Verificada</span><span><i class="e-foto"></i>Con foto, sin verificar</span><span><i class="e-sin"></i>Sin foto aún</span><span>Toca una mesa para ver su ficha</span></div>
@@ -379,7 +379,7 @@ footer .xpie{display:inline-flex; align-items:center; gap:5px; vertical-align:-2
         </ul></div>
       <div class="card"><h2>Cuándo se publican las cifras</h2><p>Los envíos se abren a las 20:00, cuando cierran los colegios de la península y Baleares. Las cifras y las fotos de las actas se publican a partir de las <b>21:00 (hora peninsular)</b>, cuando también han cerrado los de Canarias, para no difundir resultados mientras todavía se vota en algún lugar. Hasta entonces solo se ve cuántas mesas tienen foto y cuántas están verificadas.</p></div>
       <div class="card"><h2>Ninguna foto se borra</h2><p>Si una foto se invalida (no corresponde a la mesa, no se lee, parece manipulada o está repetida), sigue visible, marcada y con el motivo.</p></div>
-      <div class="card"><h2>Privacidad</h2><p>No pedimos nombre, correo ni teléfono. Guardamos una huella anónima de tu navegador y de tu conexión solo para frenar abusos. Todos los detalles, en la <a href="#privacidad">política de privacidad</a>.</p>
+      <div class="card"><h2>Privacidad</h2><p>No pedimos nombre, correo, teléfono ni ubicación. Guardamos una huella anónima de tu navegador y de tu conexión solo para frenar abusos. Todos los detalles, en la <a href="#privacidad">política de privacidad</a>.</p>
         <p><b>Por qué tapamos los nombres del acta.</b> En el acta firman las personas que han formado la mesa: presidencia, vocales e interventores. Son ciudadanos que han cumplido con su deber, y sus nombres y firmas no hacen falta para comprobar los resultados. Por eso la web tapa automáticamente, antes de subir nada, la columna de la izquierda donde suelen ir; la foto con nombres nunca sale de tu móvil. Para que se tape bien, fotografía el acta entera y de frente. Si alguna foto llegara con nombres a la vista, no cuenta ni se publica hasta que el equipo de revisión los tapa.</p></div>
       <div class="card"><h2>Una diferencia no es una prueba</h2><p>Si unas cifras no coinciden con las oficiales, puede ser un error al copiarlas, al leer la foto o una corrección hecha después en el escrutinio general. Es un indicio para revisar, siempre con la foto delante.</p></div>
     </div>
@@ -398,12 +398,11 @@ footer .xpie{display:inline-flex; align-items:center; gap:5px; vertical-align:-2
           <li><b>La fecha y hora</b> del envío y la que indica el propio archivo de la foto (para detectar fotos anteriores al cierre de los colegios).</li>
           <li><b>Un identificador seudonimizado de la conexión.</b> La dirección IP no se almacena: solo se guarda un código obtenido a partir de ella mediante un algoritmo criptográfico con clave secreta, que no permite recuperarla.</li>
           <li><b>Un identificador aleatorio del navegador</b>, generado en el propio dispositivo, que no contiene información sobre la persona usuaria.</li>
-          <li><b>Si se usa la opción «Confirmar ubicación»</b>, únicamente la distancia al colegio y si el envío se hizo en sus proximidades. Las coordenadas no se almacenan.</li>
         </ul>
         <p style="margin-top:10px">Al denunciar una foto se guarda también el identificador seudonimizado de la conexión, de modo que cada conexión solo cuenta una vez.</p></div>
       <div class="card"><h2>Para qué</h2><p>Las cifras y las fotos sirven para mostrar el acta de cada mesa y comprobar que coincide entre personas distintas. El identificador seudonimizado de la conexión y el identificador del navegador sirven solo para frenar abusos: limitar los envíos masivos, detectar si una misma persona intenta hacerse pasar por varias y evitar los bots. No se usan para nada más, no se cruzan con otros datos y no se ceden a nadie.</p>
         <p>La base legal es el interés legítimo en que la verificación funcione y no se pueda manipular (artículo 6.1.f del Reglamento General de Protección de Datos).</p></div>
-      <div class="card"><h2>Qué se publica</h2><p>Las fotos de las actas (con los nombres y firmas tapados), sus cifras, el estado de cada mesa, la hora de cada envío y, si se confirmó la ubicación, si se envió desde las proximidades del colegio. Nunca se publican el identificador seudonimizado de la conexión ni el identificador del navegador. Las decisiones de revisión quedan en un registro público, sin ningún dato de quien envió la foto.</p></div>
+      <div class="card"><h2>Qué se publica</h2><p>Las fotos de las actas (con los nombres y firmas tapados), sus cifras, el estado de cada mesa y la hora de cada envío. Nunca se publican el identificador seudonimizado de la conexión ni el identificador del navegador. Las decisiones de revisión quedan en un registro público, sin ningún dato de quien envió la foto.</p></div>
       <div class="card"><h2>Durante cuánto tiempo</h2><p>Las fotos, las cifras y el registro de decisiones se conservan de forma indefinida, porque son la prueba pública de cada acta. El identificador seudonimizado de la conexión y el identificador del navegador se borrarán como tarde el <b>28 de febrero de 2027</b>, una vez cerradas las posibles reclamaciones sobre el recuento.</p></div>
       <div class="card"><h2>Proveedor del servicio</h2><p>La web está alojada en Cloudflare, que actúa como encargado del tratamiento conforme al Reglamento General de Protección de Datos. No hay publicidad, ni herramientas de analítica, ni botones de redes sociales que rastreen la visita.</p></div>
       <div class="card"><h2>Almacenamiento en el navegador</h2><p>No se usan cookies de publicidad ni de analítica. El navegador guarda el identificador aleatorio descrito arriba, necesario para la seguridad del servicio. Mientras se rellena el formulario, también guarda la mesa elegida y las cifras escritas, para no perderlas si la página se recarga (por ejemplo, al abrir la cámara); no salen del dispositivo y se borran al enviar o al cerrar la pestaña. El formulario de envío incluye una verificación antibots de Cloudflare, que analiza datos técnicos de la conexión y del navegador con el único fin de distinguir a las personas de los programas automáticos (<a href="https://www.cloudflare.com/turnstile-privacy-policy/" target="_blank" rel="noopener">aviso de privacidad de Cloudflare</a>).</p></div>
@@ -479,7 +478,7 @@ function compartir(texto,url){ if(navigator.share){ navigator.share({text:texto,
 $("btnShareHome").addEventListener("click",()=>compartir("El día de las elecciones, cuando cierre tu colegio, fotografía el acta de tu mesa y súbela. Así cualquiera puede comprobar los resultados con la foto delante:",location.origin));
 
 // ---------- formulario: mesa ----------
-let MESAS=null, CANDS=[], GEO=null;
+let MESAS=null, CANDS=[];
 // Los desplegables ocultos guardan el valor elegido; los buscadores (BUSC) solo son la forma de elegirlo
 const BUSC={};
 function opts(sel,items,ph){ sel.innerHTML=`<option value="">${ph}</option>`+items.map(([v,t])=>`<option value="${v}">${t}</option>`).join(""); sel.disabled=!items.length; if(BUSC[sel.id]) BUSC[sel.id].sync(); }
@@ -548,7 +547,7 @@ function mesaNueva(){ const p=$("sProv").value, mu=$("sMuni").value, d=$("nDist"
   const id=`${p}-${mu}-${d.padStart(2,"0")}-${sc.padStart(3,"0")}-${m}`; const ex=MESAS.mesas.find(x=>x[0]===id);
   return {id,censo:ex?ex[1]:null,local:ex?ex[2]||null:null,prov:p,municipio:MESAS.municipios[mu],nueva:!ex}; }
 function mesaSel(){ if(MODO_NUEVA) return mesaNueva(); const id=$("sMesa").value; if(!id||!MESAS) return null; const m=MESAS.mesas.find(x=>x[0]===id); return m?{id,censo:m[1],local:m[2]||null,prov:$("sProv").value,municipio:MESAS.municipios[partes(id)[1]]}:null; }
-function mesaInfo(){ const m=mesaSel(); $("mesaInfo").innerHTML=m?`${m.local?`<b style="color:var(--ink); font-size:16px">${m.local}</b><br>`:""}${natural(m.municipio)} · Mesa ${partes(m.id)[4]} · código <span class="mono">${m.id}</span>${m.censo?` · electores aprox. ${fmt(m.censo)}`:""}${m.nueva?" · <b>mesa nueva, se revisará a mano</b>":""}${GEO?" · ubicación confirmada":""}`:""; validar(); guardarBorrador(); }
+function mesaInfo(){ const m=mesaSel(); $("mesaInfo").innerHTML=m?`${m.local?`<b style="color:var(--ink); font-size:16px">${m.local}</b><br>`:""}${natural(m.municipio)} · Mesa ${partes(m.id)[4]} · código <span class="mono">${m.id}</span>${m.censo?` · electores aprox. ${fmt(m.censo)}`:""}${m.nueva?" · <b>mesa nueva, se revisará a mano</b>":""}`:""; validar(); guardarBorrador(); }
 // Pone una mesa concreta en el formulario (desde la ficha de una mesa o al recuperar el borrador)
 async function ponerMesa(id){ const pt=partes(id); if(pt.length!==5) return false;
   if($("sMesa").value===id&&!MODO_NUEVA) return true;
@@ -556,10 +555,6 @@ async function ponerMesa(id){ const pt=partes(id); if(pt.length!==5) return fals
   for(const [sid,v] of [["sMuni",pt[1]],["sDist",pt[2]],["sSecc",pt[3]],["sMesa",id]]){ const sel=$(sid); if(sel.value===v) continue;
     if(![...sel.options].some(o=>o.value===v)) return false; sel.value=v; sel.dispatchEvent(new Event("change")); }
   BUSC.sMuni.sync(); return true; }
-$("btnGeo").addEventListener("click",()=>{ if(!navigator.geolocation){ $("btnGeo").textContent="Ubicación no disponible"; return; }
-  $("btnGeo").textContent="Obteniendo ubicación…";
-  navigator.geolocation.getCurrentPosition(p=>{ GEO={lat:+p.coords.latitude.toFixed(5),lon:+p.coords.longitude.toFixed(5),acc:Math.round(p.coords.accuracy)}; $("btnGeo").textContent="Ubicación confirmada ✓"; mesaInfo(); },
-    ()=>{ GEO=null; $("btnGeo").textContent="Sin ubicación (puedes enviar igual)"; mesaInfo(); },{enableHighAccuracy:true,timeout:15000}); });
 
 // ---------- borrador: si la página se recarga (pasa en algunos móviles al abrir la cámara), no se pierde nada ----------
 // Se guarda solo en este navegador y en esta pestaña (sessionStorage), y se borra al enviar.
@@ -664,7 +659,6 @@ function comprobar(){
     if(c.votantes!==suma) add("bad",`No cuadra: candidaturas + blanco + nulos = ${fmt(suma)}, pero votantes = ${fmt(c.votantes)}. Revisa lo copiado${LECTURA?" (empieza por las casillas en amarillo)":""}. Un acta que no cuadra no se puede enviar.`);
     else add("ok","Las cuentas cuadran.");
     if(m&&m.censo&&!m.nueva&&Math.abs(c.electores-m.censo)>Math.max(15,m.censo*0.08)) add("warn",`Electores (${fmt(c.electores)}) muy distinto al censo de referencia (${fmt(m.censo)}). ¿Es la mesa correcta?`); }
-  if(!GEO) add("warn","Sin ubicación: se puede enviar igual. Si la confirmas en el paso 1, ayuda a comprobar que la foto se hizo en el colegio (tu ubicación no se guarda).");
   const listo=!!(m&&IMG&&CANDS.length&&!faltan.length&&!it.some(i=>i.l==="bad"));
   const cuadra=!!(CANDS.length&&!faltan.length&&!it.some(i=>i.l==="bad"));
   return {it,listo,m,c,faltan,cuadra};
@@ -709,7 +703,7 @@ $("btnEnviar").addEventListener("click",async()=>{
     if(CFG.turnstile_sitekey&&!TS_TOKEN){ $("resultado").innerHTML='<div class="banner b-warn">Completa la verificación antirrobots de arriba y vuelve a pulsar Enviar.</div>'; return; }
     $("resultado").innerHTML='<span class="spinner"></span> Enviando…';
     const fd=new FormData(); fd.append("foto",foto,"acta.jpg"); fd.append("mini",mini,"mini.jpg"); if(TS_TOKEN) fd.append("turnstile",TS_TOKEN);
-    fd.append("datos",JSON.stringify({mesa_id:m.id,mesa_nueva:!!m.nueva,cifras:c,hash,dhash:dhash(grande),dispositivo:disp,geo:GEO,ts_foto:FOTO_TS}));
+    fd.append("datos",JSON.stringify({mesa_id:m.id,mesa_nueva:!!m.nueva,cifras:c,hash,dhash:dhash(grande),dispositivo:disp,ts_foto:FOTO_TS}));
     let r, d; for(let intento=0; intento<3; intento++){ try{ r=await fetch("/api/envio",{method:"POST",body:fd}); d=await r.json(); break; }catch(err){ if(intento===2) throw err; await new Promise(z=>setTimeout(z,1500*(intento+1))); } }
     if(!r.ok){ $("resultado").innerHTML=`<div class="banner b-bad">${ERRORES[d.error]||d.mensaje||"No se ha podido enviar. Inténtalo de nuevo."}</div>`; if(window.turnstile&&CFG.turnstile_sitekey){ turnstile.reset("#turnstile"); TS_TOKEN=null; } return; }
     const url=`${location.origin}/#mesa=${d.mesa_id}`; borrarBorrador();
@@ -780,11 +774,11 @@ async function mapaEspana(r){ RESUMEN=r; const m=await getJSON("/data/mapa/espan
 
 let PROV_DATA=null;
 async function cargarProv(p,fresh){ const d=await getJSON(`/api/public/prov/${p}.json`,{fresh}); PROV_DATA=d; return d; }
-let MODO_PROV="cobertura";
+let MODO_PROV="cobertura", MODO_PANAL="zonas";
 async function verProvincia(p,refresco){
   const filtroPrev=refresco?$("fMuni").value:"";
   $("provTit").textContent=natural(nombreProv(p)); if(!refresco) $("tMesas").innerHTML='<tr><td><span class="spinner"></span> Cargando…</td></tr>';
-  try{ const [d,ref,mapa,r]=await Promise.all([cargarProv(p,true),getJSON(`/data/mesas/${p}.json`),getJSON(`/data/mapa/municipios/${p}.json`).catch(()=>null),getJSON("/api/public/resumen.json",{fresh:true}).catch(()=>({}))]);
+  try{ const [d,ref,mapa,zonas,r]=await Promise.all([cargarProv(p,true),getJSON(`/data/mesas/${p}.json`),getJSON(`/data/mapa/municipios/${p}.json`).catch(()=>null),getJSON(`/data/zonas/${p}.json`).catch(()=>null),getJSON("/api/public/resumen.json",{fresh:true}).catch(()=>({}))]);
     const votosOk=!!r.totales_visibles; const cods=Object.fromEntries((d.candidaturas||[]).map(c=>[c.codigo,c.siglas]));
     // por municipio: total de mesas (lista oficial), verificadas y votos de las verificadas
     const M={}; for(const [id] of ref.mesas){ const k=id.split("-")[1]; (M[k]=M[k]||{total:0,ver:0,con:0,votos:{}}).total++; }
@@ -832,16 +826,24 @@ async function verProvincia(p,refresco){
       const nom=id=>{ const q=partes(id); return `Distrito ${Number(q[2])} · Sección ${seccTxt(q[3])} · Mesa ${q[4]}`; };
       const nv=ids.filter(id=>est(id)==="ver").length, nf=ids.filter(id=>est(id)==="foto").length;
       $("panalTit").textContent=`Mesas de ${nombreMuni(k)}`;
-      $("panalResumen").innerHTML=`${fmt(ids.length)} mesas · <b style="color:var(--ok)">${fmt(nv)} verificada${nv===1?"":"s"}</b> · ${fmt(nf)} con foto sin verificar. Las verificadas se agrupan en el centro.`;
-      // Hexágonos en espiral desde el centro, como un panal. Las verificadas van en el centro y alrededor las que tienen
-      // foto, para que el panal «se vaya llenando» desde dentro aunque haya pocas. La lista de debajo mantiene el orden real.
-      const rango={ver:0,foto:1,sin:2}; const orden=[...ids].sort((a,b)=>rango[est(a)]-rango[est(b)]||a.localeCompare(b));
-      const pos=[[0,0]], dirs=[[1,0],[1,-1],[0,-1],[-1,0],[-1,1],[0,1]];
-      for(let ring=1; pos.length<ids.length; ring++){ let q=-ring, r=ring; for(const [dq,dr] of dirs) for(let i=0;i<ring&&pos.length<ids.length;i++){ pos.push([q,r]); q+=dq; r+=dr; } }
-      const R=10, W=Math.sqrt(3)*R; const pts=pos.map(([q,r])=>[W*(q+r/2),1.5*R*r]);
+            // Dos vistas: «Por zonas» (cada mesa en el sitio de su sección censal, con la silueta del municipio; posiciones
+      // calculadas de antemano con scripts/zonas.py) y «Agrupadas» (espiral con las verificadas en el centro, para ver
+      // cuánto se ha llenado aunque haya pocas). La lista de debajo mantiene el orden real.
+      const z=zonas&&zonas[k]; const refIds=ref.mesas.filter(([id])=>id.split("-")[1]===k).map(([id])=>id).sort();
+      const conZonas=!!(z&&z.length===refIds.length*2);
+      $("segPanal").classList.toggle("hide",!conZonas); const modo=conZonas?MODO_PANAL:"agrupadas";
+      $("segPanal").querySelectorAll("button").forEach(b=>{ b.classList.toggle("on",b.dataset.modo===modo); b.onclick=()=>{ MODO_PANAL=b.dataset.modo; panal(k); }; });
+      $("panalResumen").innerHTML=`${fmt(ids.length)} mesas · <b style="color:var(--ok)">${fmt(nv)} verificada${nv===1?"":"s"}</b> · ${fmt(nf)} con foto sin verificar. `+
+        (modo==="zonas"?"Cada mesa, en la zona de su sección.":"Las verificadas se agrupan en el centro.");
+      const R=10, W=Math.sqrt(3)*R; let orden, pts;
+      if(modo==="zonas"){ orden=refIds; pts=refIds.map((id,i)=>{ const c=z[2*i], f=z[2*i+1]; return [W*(c+(f%2)/2),1.5*R*f]; }); }
+      else { const rango={ver:0,foto:1,sin:2}; orden=[...ids].sort((a,b)=>rango[est(a)]-rango[est(b)]||a.localeCompare(b));
+        const pos=[[0,0]], dirs=[[1,0],[1,-1],[0,-1],[-1,0],[-1,1],[0,1]];
+        for(let ring=1; pos.length<orden.length; ring++){ let q=-ring, r=ring; for(const [dq,dr] of dirs) for(let i=0;i<ring&&pos.length<orden.length;i++){ pos.push([q,r]); q+=dq; r+=dr; } }
+        pts=pos.map(([q,r])=>[W*(q+r/2),1.5*R*r]); }
       const xs=pts.map(p=>p[0]), ys=pts.map(p=>p[1]); const x0=Math.min(...xs)-W, y0=Math.min(...ys)-R*1.2, w=Math.max(...xs)-x0+W, h=Math.max(...ys)-y0+R*1.2;
       const hex=(x,y)=>"M"+[0,1,2,3,4,5].map(i=>{ const a=Math.PI/180*(60*i-90); return `${(x+R*.94*Math.cos(a)).toFixed(1)},${(y+R*.94*Math.sin(a)).toFixed(1)}`; }).join("L")+"Z";
-      $("panal").innerHTML=`<svg class="panal" viewBox="${x0.toFixed(1)} ${y0.toFixed(1)} ${w.toFixed(1)} ${h.toFixed(1)}" style="max-width:${Math.max(220,Math.min(640,w*2.2))}px" role="img" aria-label="Mesas de ${esc(nombreMuni(k))}">`+
+      $("panal").innerHTML=`<svg class="panal" viewBox="${x0.toFixed(1)} ${y0.toFixed(1)} ${w.toFixed(1)} ${h.toFixed(1)}" style="max-width:${Math.max(220,Math.min(640,w*(modo==="zonas"?4:2.2)))}px" role="img" aria-label="Mesas de ${esc(nombreMuni(k))}">`+
         orden.map((id,i)=>`<path d="${hex(...pts[i])}" class="e-${est(id)}" data-id="${id}"><title>${nom(id)}: ${txt[est(id)]}</title></path>`).join("")+`</svg>`;
       $("panal").querySelectorAll("path").forEach(el=>el.onclick=()=>location.hash="mesa="+el.dataset.id);
       // lista por distrito y sección
@@ -882,7 +884,7 @@ async function verMesa(id,refresco){
         :`<div class="fotoOculta">${f.est==="invalida"?"Foto retirada":oculto?"Visible a partir de las 21:00":f.den?"Foto oculta por denuncias, pendiente de revisión":"La foto se publicará cuando otra persona envíe la misma acta o la revisemos"}</div>`;
       return `<div class="foto ${f.est==="invalida"?"invalida":""}">${img}
       <div><span class="pill p-${f.est==="pendiente"?(f.ok?"pendiente":"revision"):f.est}">${f.est==="pendiente"?(f.ok?"Recibida":"No cuadra"):ESTADOS[f.est]}</span>
-      <div class="meta" style="margin-top:4px">${hhmm(f.ts)}${f.geo===1?" · en el colegio":""}</div>
+      <div class="meta" style="margin-top:4px">${hhmm(f.ts)}</div>
       ${mot.length?`<div class="meta">${mot.join(" · ")}</div>`:""}
       <div class="meta">${difs(f.c)}</div>
       <div class="mono" style="font-size:11px; margin-top:4px" title="Huella SHA-256 de la foto publicada">${huellaFoto(f).slice(0,16)}…</div>
