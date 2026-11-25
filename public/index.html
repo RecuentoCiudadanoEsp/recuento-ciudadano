@@ -144,6 +144,10 @@ footer .xpie{display:inline-flex; align-items:center; gap:5px; vertical-align:-2
 .step .n.hecho{background:var(--accent); color:var(--card); font-weight:600}
 /* Ficha de mesa: cifras principales en casillas y votos en lista */
 .basicas{display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:12px}
+/* Comparación acta / dato oficial: números alineados a la derecha y las filas que no coinciden, resaltadas */
+table.comp td:not(:first-child), table.comp th:not(:first-child){text-align:right; white-space:nowrap}
+table.comp td .meta{font-size:12px}
+table.comp tr.difiere td{background:var(--warn-soft)}
 .basicas div{background:var(--paper); border-radius:8px; padding:8px 10px}
 .basicas b{display:block; font-family:var(--mono); font-size:20px; font-variant-numeric:tabular-nums}
 .basicas span{font-size:12.5px; color:var(--muted)}
@@ -330,6 +334,7 @@ footer .xpie{display:inline-flex; align-items:center; gap:5px; vertical-align:-2
       <div id="secciones"></div>
     </div>
     <div class="card hide" id="votosProvCard" style="margin-bottom:14px"><h2>Votos provisionales en la provincia</h2><div class="meta" id="votosProvNota" style="margin:6px 0"></div><div class="tablewrap"><table id="tVotosProv"></table></div></div>
+    <div class="card hide" id="ofiProvCard" style="margin-bottom:14px"><h2>Comparación con el dato oficial</h2><div id="ofiProv"></div></div>
     <div class="grid2" style="margin-bottom:12px" id="filtrosProv">
       <div class="hide"><select id="fMuni" tabindex="-1" aria-hidden="true"><option value="">Todos</option></select></div>
       <div><label for="fEst">Estado</label><select id="fEst"><option value="">Todos</option><option value="verificada">Verificadas</option><option value="validada">Validadas por revisión</option><option value="pendiente">Pendientes (1 envío)</option><option value="conflicto">En conflicto</option><option value="revision">En revisión</option></select></div>
@@ -353,7 +358,8 @@ footer .xpie{display:inline-flex; align-items:center; gap:5px; vertical-align:-2
         <p>El domingo 29 de noviembre por la noche, cuando cada mesa electoral termine de contar, sus miembros firmarán el acta de escrutinio y colgarán una copia en la puerta del colegio. Lo marca la ley (artículo 98 de la Ley Orgánica del Régimen Electoral General). En esa hoja están los votos de esa mesa, firmados y a la vista de cualquiera.</p>
         <p>Si esa noche nos acercamos a nuestros colegios, la fotografiamos y la juntamos aquí, cualquier persona podrá verificar el recuento oficial mesa a mesa, con el acta firmada delante.</p></div>
       <div class="card"><h2>Verificar sin tener que fiarse</h2>
-        <p>Con cada foto, cualquiera puede comparar lo que se firmó en una mesa con el dato oficial de esa misma mesa. Si coincide, queda verificada y con la foto como prueba. Si alguna no coincidiera, ahí está el acta firmada para aclararlo; muchas veces será un número mal copiado o una corrección del escrutinio general.</p>
+        <p>Con cada foto, cualquiera puede comparar lo que se firmó en una mesa con el dato oficial de esa misma mesa. Si coincide, queda comprobado con la foto como prueba. Si alguna no coincidiera, ahí está el acta firmada para aclararlo; muchas veces será un número mal copiado, una reclamación resuelta por la Junta Electoral o una corrección del escrutinio general.</p>
+        <p>El Ministerio del Interior no publica el dato de cada mesa la misma noche: esa noche da los resultados provisionales por municipio, y el de cada mesa llega días o semanas después. Por eso, la noche electoral la comparación solo es posible en los municipios que tienen una sola mesa (unos 5.000) y en los que tengan todas sus mesas verificadas. El resto se compara en cuanto Interior publique el dato de cada mesa. El voto desde el extranjero (CERA) no se suma a ninguna mesa: se cuenta aparte en cada provincia.</p>
         <p>Es una verificación independiente y descentralizada: no depende de ningún organismo ni de ningún partido. La hacemos entre todos, cada uno en su colegio. No hace falta fiarse de nadie, porque se puede comprobar.</p>
         <p>Y tampoco hace falta fiarse de esta web. Una mesa solo se verifica cuando dos personas distintas envían las mismas cifras, las fotos de las mesas verificadas son públicas, cada decisión de revisión queda en el <a href="/api/public/decisiones.json">registro público</a> y el <a href="https://github.com/RecuentoCiudadanoEsp/recuento-ciudadano" target="_blank" rel="noopener">código está abierto</a>.</p></div>
       <div class="card"><h2>De todos, votes a quien votes</h2>
@@ -392,7 +398,14 @@ footer .xpie{display:inline-flex; align-items:center; gap:5px; vertical-align:-2
       <div class="card"><h2>Ninguna foto se borra</h2><p>Si una foto se invalida (no corresponde a la mesa, no se lee, parece manipulada o está repetida), sigue visible, marcada y con el motivo.</p></div>
       <div class="card"><h2>Privacidad</h2><p>No pedimos nombre, correo, teléfono ni ubicación. Guardamos una huella anónima de tu navegador y de tu conexión solo para frenar abusos. Todos los detalles, en la <a href="#privacidad">política de privacidad</a>.</p>
         <p><b>Por qué tapamos los nombres del acta.</b> En el acta firman las personas que han formado la mesa: presidencia, vocales e interventores. Son ciudadanos que han cumplido con su deber, y sus nombres y firmas no hacen falta para comprobar los resultados. Por eso la web tapa automáticamente, antes de subir nada, la columna de la izquierda donde suelen ir; la foto con nombres nunca sale de tu móvil. Para que se tape bien, fotografía el acta entera y de frente. Si alguna foto llegara con nombres a la vista, no cuenta ni se publica hasta que el equipo de revisión los tapa.</p></div>
-      <div class="card"><h2>Una diferencia no es una prueba</h2><p>Si unas cifras no coinciden con las oficiales, puede ser un error al copiarlas, al leer la foto o una corrección hecha después en el escrutinio general. Es un indicio para revisar, siempre con la foto delante.</p></div>
+      <div class="card"><h2>Comparación con el dato oficial</h2>
+        <p>Cuando hay dato oficial de una mesa, su ficha muestra al lado las cifras del acta, las oficiales y la diferencia, en votos y en puntos porcentuales. La página de cada provincia lista las mesas comparadas, de mayor a menor diferencia, sin valorar a quién afecta.</p>
+        <ul style="padding-left:20px; margin:0">
+          <li><b>La noche electoral:</b> el Ministerio del Interior publica los resultados provisionales por municipio, no por mesa. Se comparan los municipios que tienen una sola mesa y los que tienen todas sus mesas verificadas, cuando su escrutinio provisional está al 100 %.</li>
+          <li><b>Días o semanas después:</b> Interior publica el resultado definitivo de cada mesa. Entonces se compara cada mesa con foto.</li>
+          <li><b>El voto desde el extranjero (CERA)</b> no se suma a ninguna mesa: se cuenta aparte en cada provincia. Por eso no explica ninguna diferencia en una mesa.</li>
+        </ul></div>
+      <div class="card"><h2>Una diferencia no es una prueba</h2><p>Si unas cifras no coinciden con las oficiales, puede ser un error al copiarlas o al leer la foto, una reclamación resuelta por la Junta Electoral o una corrección hecha después en el escrutinio general. Es un indicio para revisar, siempre con la foto delante. Cada uno puede sacar sus conclusiones según el tamaño de la diferencia.</p></div>
     </div>
   </section>
 
@@ -487,7 +500,7 @@ const FASES={
     txt:"¿Tienes delante el acta de tu mesa? Súbela. ¿Quieres ver cómo va? Entra en el mapa y busca tu municipio: si tu barrio sale en gris, sus colegios aún esperan a alguien.",
     estado:"En directo · envíos abiertos", enviar:"Enviar el acta de mi mesa", grande:true, ver:["cifras","mapa","colegio"]},
   resultados:{tit:"Así va la verificación del recuento, mesa a mesa.",
-    txt:"Busca tu municipio en el mapa: cada mesa verificada tiene su acta firmada a la vista para compararla con el dato oficial.",
+    txt:"Busca tu municipio en el mapa: cada mesa verificada tiene su acta firmada a la vista. Donde ya hay dato oficial comparable, la web enseña si coincide.",
     estado:"Envíos abiertos · resultados actualizados cada minuto", enviar:"¿Aún tienes la foto de un acta? Súbela", mapaPrimero:true, ver:["cifras","mapa"]},
 };
 function faseActual(){
@@ -834,10 +847,39 @@ async function mapaEspana(r){ RESUMEN=r; const m=await getJSON("/data/mapa/espan
 let PROV_DATA=null;
 async function cargarProv(p,fresh){ const d=await getJSON(`/api/public/prov/${p}.json`,{fresh}); PROV_DATA=d; return d; }
 let MODO_PROV="cobertura", MODO_PANAL="zonas";
+// ---------- comparación con el dato oficial de Interior (public/oficial/PP.json, lo carga el panel)
+const cargarOficial=p=>getJSON(`/api/public/oficial/${p}.json`,{fresh:true}).catch(()=>null);
+// Dato oficial con el que se puede comparar una mesa: el suyo propio o, si su municipio solo tiene esa mesa,
+// el del municipio cuando está escrutado al 100 %.
+function oficialMesa(ofi,id,ref){ if(!ofi) return null; if(ofi.mesas&&ofi.mesas[id]) return {o:ofi.mesas[id],nivel:"mesa"};
+  const k=id.split("-")[1], o=(ofi.municipios||{})[k]; if(!o||o.escrutado<100||!ref) return null;
+  const n=ref.mesas.filter(([x])=>x.split("-")[1]===k).length; return n===1?{o,nivel:"muni1"}:null; }
+// Suma las cifras de varias actas (para comparar un municipio entero)
+function sumarActas(lista){ const s={votantes:0,nulos:0,blanco:0,cand:{}}; for(const c of lista){ for(const k of ["votantes","nulos","blanco"]) s[k]+=c[k]||0; for(const [k,v] of Object.entries(c.cand||{})) s.cand[k]=(s.cand[k]||0)+(v||0); } return s; }
+// Filas de la comparación: votos del acta y oficiales, diferencia y, en las candidaturas, el porcentaje sobre votos válidos
+function comparar(a,o,cands){ const sig=Object.fromEntries(cands.map(k=>[k.codigo,k.siglas]));
+  const codigos=[...new Set([...cands.map(k=>k.codigo),...Object.keys(o.cand||{})])];
+  const validos=x=>codigos.reduce((t,c)=>t+((x.cand||{})[c]||0),0)+(x.blanco||0); const va=validos(a), vo=validos(o);
+  const filas=[["Votantes","votantes"],["Nulos","nulos"],["En blanco","blanco"]].map(([t,k])=>({t,a:a[k],o:o[k]}));
+  const cf=codigos.map(c=>({t:c.startsWith("?")?c.slice(1):(sig[c]||c),cand:true,a:(a.cand||{})[c]??(c.startsWith("?")?null:0),o:(o.cand||{})[c]??0}))
+    .map(f=>({...f,pa:va&&f.a!=null?f.a/va*100:null,po:vo?f.o/vo*100:null})).sort((x,y)=>(y.o||0)-(x.o||0));
+  const todas=[...filas,...cf].map(f=>({...f,d:f.a==null||f.o==null?null:f.o-f.a}));
+  const total=todas.reduce((t,f)=>t+Math.abs(f.d||0),0); const mayor=todas.filter(f=>f.d).sort((x,y)=>Math.abs(y.d)-Math.abs(x.d))[0]||null;
+  return {filas:todas,total,mayor}; }
+const conSigno=(n,dec)=>n==null?"":(n>0?"+":n<0?"−":"±")+Math.abs(n).toLocaleString("es-ES",dec!=null?{minimumFractionDigits:dec,maximumFractionDigits:dec}:{});
+const pc=v=>v==null?"":v.toLocaleString("es-ES",{minimumFractionDigits:1,maximumFractionDigits:1})+" %";
+const AVISO_OFI=`<p class="meta" style="margin-top:8px">Una diferencia no es una prueba: puede ser un error al copiar o leer el acta, una reclamación resuelta por la Junta Electoral o una corrección del escrutinio general. El voto desde el extranjero (CERA) no se suma a ninguna mesa.</p>`;
+function tablaComparacion(cmp){ return `<div class="tablewrap"><table class="comp"><tr><th></th><th>Acta</th><th>Oficial</th><th>Dif.</th></tr>`+
+  cmp.filas.map(f=>`<tr${f.d?' class="difiere"':""}><td>${f.cand?`<i class="cuad" style="background:${colorPartido(f.t)}"></i>`:""}${esc(f.t)}</td><td>${fmt(f.a)}${f.cand?`<div class="meta">${pc(f.pa)}</div>`:""}</td><td>${fmt(f.o)}${f.cand?`<div class="meta">${pc(f.po)}</div>`:""}</td>`+
+    `<td>${f.d==null?"—":f.d?conSigno(f.d):"="}${f.cand&&f.pa!=null&&f.po!=null&&Math.abs(f.po-f.pa)>=0.05?`<div class="meta">${conSigno(Math.round((f.po-f.pa)*10)/10,1)} p.</div>`:""}</td></tr>`).join("")+`</table></div>`; }
+function resumenComparacion(cmp){ return cmp.total?`<div class="banner b-warn" style="margin:8px 0">Hay diferencias: <b>${fmt(cmp.total)} voto${cmp.total===1?"":"s"}</b> en total, en ${cmp.filas.filter(f=>f.d).length} de las ${cmp.filas.length} cifras (resaltadas abajo).</div>`
+  :`<div class="banner b-ok" style="margin:8px 0">✓ Todas las cifras coinciden con el dato oficial.</div>`; }
+const fuenteOfi=(ofi,nivel)=>`${nivel==="muni1"?"Este municipio tiene una sola mesa, así que su resultado oficial es el de esta mesa. ":""}${ofi.tipo==="provisional"?"Dato provisional de la noche electoral":"Escrutinio definitivo"} · ${esc(ofi.fuente||"Ministerio del Interior")}${ofi.actualizado?` · ${new Date(ofi.actualizado).toLocaleString("es-ES",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit",timeZone:"Europe/Madrid"})}`:""}`;
 async function verProvincia(p,refresco){
   const filtroPrev=refresco?$("fMuni").value:"";
   $("provTit").textContent=natural(nombreProv(p)); if(!refresco) $("tMesas").innerHTML='<tr><td><span class="spinner"></span> Cargando…</td></tr>';
   try{ const [d,ref,mapa,zonas,r]=await Promise.all([cargarProv(p,true),getJSON(`/data/mesas/${p}.json`),getJSON(`/data/mapa/municipios/${p}.json`).catch(()=>null),getJSON(`/data/zonas/${p}.json`).catch(()=>null),getJSON("/api/public/resumen.json",{fresh:true}).catch(()=>({}))]);
+    const ofi=r.totales_visibles?await cargarOficial(p):null;
     const votosOk=!!r.totales_visibles; const cods=Object.fromEntries((d.candidaturas||[]).map(c=>[c.codigo,c.siglas]));
     // por municipio: total de mesas (lista oficial), verificadas y votos de las verificadas
     const M={}; for(const [id] of ref.mesas){ const k=id.split("-")[1]; (M[k]=M[k]||{total:0,ver:0,con:0,votos:{}}).total++; }
@@ -863,6 +905,22 @@ async function verProvincia(p,refresco){
       $("tVotosProv").innerHTML=`<tr><th>Candidatura</th><th>Votos</th><th>% s/ válidos</th></tr>`+partidos.map(([s,v])=>`<tr><td><i style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${colorPartido(s)};margin-right:6px"></i>${s}</td><td>${fmt(v)}</td><td>${tot?(v/tot*100).toFixed(2):"—"}</td></tr>`).join("")+`<tr><td>En blanco</td><td>${fmt(pr.votos._blanco)}</td><td></td></tr><tr><td>Nulos</td><td>${fmt(pr.votos._nulos)}</td><td></td></tr>`;
       $("votosProvCard").classList.remove("hide"); }
     else $("votosProvCard").classList.add("hide");
+    // comparación con el dato oficial: mesas verificadas con dato oficial y municipios enteros verificados
+    const cmpItems=[];
+    if(ofi&&(Object.keys(ofi.mesas||{}).length||Object.keys(ofi.municipios||{}).length)){ const cands=d.candidaturas||[]; const verif={};
+      for(const m of d.mesas) if((m.estado==="verificada"||m.estado==="validada")&&m.cifras){ (verif[m.id.split("-")[1]]=verif[m.id.split("-")[1]]||[]).push(m);
+        const om=oficialMesa(ofi,m.id,ref); if(om) cmpItems.push({id:m.id,k:m.id.split("-")[1],cmp:comparar(m.cifras,om.o,cands)}); }
+      for(const [k,lista] of Object.entries(verif)){ const o=(ofi.municipios||{})[k], tot=(M[k]||{}).total||0;
+        if(o&&o.escrutado>=100&&tot>1&&lista.length===tot&&!lista.some(m=>ofi.mesas&&ofi.mesas[m.id])) cmpItems.push({k,n:tot,cmp:comparar(sumarActas(lista.map(m=>m.cifras)),o,cands)}); } }
+    if(cmpItems.length){ const dif=cmpItems.filter(x=>x.cmp.total).sort((a,b)=>b.cmp.total-a.cmp.total);
+      $("ofiProv").innerHTML=`<p class="meta" style="margin:6px 0">${ofi.tipo==="provisional"?"Con los resultados provisionales de la noche electoral, por municipio: se comparan los municipios con una sola mesa y los que tienen todas sus mesas verificadas.":"Con el escrutinio definitivo de cada mesa."} ${esc(ofi.fuente||"")}</p>
+        <div class="basicas"><div><b>${fmt(cmpItems.length)}</b><span>comparadas</span></div><div><b>${fmt(cmpItems.length-dif.length)}</b><span>coinciden</span></div><div><b>${fmt(dif.length)}</b><span>con diferencias</span></div></div>`+
+        (dif.length?`<p class="meta" style="margin:10px 0 4px">De mayor a menor diferencia (votos que cambian en total):</p><div class="tablewrap"><table>`+dif.slice(0,100).map(x=>{ const q=x.id?partes(x.id):null;
+          return `<tr class="link" ${x.id?`data-id="${x.id}"`:`data-muni="${x.k}"`}><td><b>${esc(natural(nombreMuni(x.k)))}</b><div class="meta" style="font-size:12.5px">${q?`Mesa ${q[4]} · Dto. ${Number(q[2])} · Secc. ${seccTxt(q[3])}`:`Municipio entero · ${fmt(x.n)} mesas`}</div></td><td style="white-space:nowrap">${fmt(x.cmp.total)} voto${x.cmp.total===1?"":"s"} ›</td></tr>`; }).join("")+`</table></div>`+(dif.length>100?`<p class="meta">Se muestran 100 de ${fmt(dif.length)}.</p>`:""):"")+AVISO_OFI;
+      $("ofiProv").querySelectorAll("tr[data-id]").forEach(tr=>tr.onclick=()=>location.hash="mesa="+tr.dataset.id);
+      $("ofiProv").querySelectorAll("tr[data-muni]").forEach(tr=>tr.onclick=()=>{ $("fMuni").value=tr.dataset.muni; BUSC.fMuni.sync(); $("fMuni").onchange(); $("panalCard").scrollIntoView({behavior:"smooth"}); });
+      $("ofiProvCard").classList.remove("hide"); }
+    else $("ofiProvCard").classList.add("hide");
     // lista de mesas: todos los municipios con mesas (aunque aún no tengan foto)
     const codsMuni=Object.keys(ref.municipios).sort((a,b)=>nombreMuni(a).localeCompare(nombreMuni(b),"es"));
     $("fMuni").innerHTML='<option value="">Todos los que tienen foto</option>'+codsMuni.map(k=>`<option value="${k}">${nombreMuni(k)}</option>`).join("");
@@ -918,7 +976,7 @@ async function verProvincia(p,refresco){
 async function verMesa(id,refresco){
   const p=(id||"").slice(0,2), pt=(id||"").split("-"); $("mesaBack").href="#prov="+p;
   if(!refresco){ $("mesaTit").textContent="Mesa "+(pt[4]||id); $("mesaSub").textContent=""; $("mesaCuerpo").innerHTML='<span class="spinner"></span> Cargando…'; }
-  try{ const [d,ms]=await Promise.all([cargarProv(p,true),getJSON(`/data/mesas/${p}.json`).catch(()=>null)]); const m=d.mesas.find(x=>x.id===id);
+  try{ const [d,ms,ofi]=await Promise.all([cargarProv(p,true),getJSON(`/data/mesas/${p}.json`).catch(()=>null),cargarOficial(p)]); const m=d.mesas.find(x=>x.id===id);
     const ref=ms&&ms.mesas.find(x=>x[0]===id); const muni=natural(ms?ms.municipios[pt[1]]:pt[1]);
     // Título como lo pone el acta: municipio y letra de la mesa. El código completo, debajo.
     $("mesaTit").textContent=`${muni} · Mesa ${pt[4]}`;
@@ -934,6 +992,10 @@ async function verMesa(id,refresco){
       h+=`<div class="card" style="margin-bottom:14px"><h2>Cifras${m.estado==="conflicto"?" de la versión mayoritaria":""}</h2>
         <div class="basicas">${BAS.map(([k,t])=>`<div><b>${fmt(c[k])}</b><span>${t}</span></div>`).join("")}</div>
         <table><tr><th>Candidatura</th><th>Votos</th></tr>${lista.map(([k,v])=>`<tr><td><i class="cuad" style="background:${colorPartido(k.siglas)}"></i>${esc(k.siglas)}</td><td>${fmt(v)}</td></tr>`).join("")}</table></div>`; }
+    // Comparación con el dato oficial, si ya lo hay para esta mesa
+    const om=!oculto&&m.cifras?oficialMesa(ofi,id,ms):null;
+    if(om){ const cmp=comparar(m.cifras,om.o,cands);
+      h+=`<div class="card" style="margin-bottom:14px"><h2>Comparación con el dato oficial</h2><p class="meta" style="margin:4px 0">${fuenteOfi(ofi,om.nivel)}${m.estado==="verificada"||m.estado==="validada"?"":". <b>El acta de esta mesa aún no está verificada.</b>"}</p>${resumenComparacion(cmp)}${tablaComparacion(cmp)}${AVISO_OFI}</div>`; }
     // En cada foto, solo lo que difiere de las cifras de arriba
     const difs=fc=>{ if(!fc) return ""; if(!m.cifras) return cands.map(k=>`${esc(k.siglas)} ${fmt(fc.cand[k.codigo])}`).join(" · ");
       const d2=[...BAS.filter(([k])=>fc[k]!==m.cifras[k]).map(([k,t])=>`${t} ${fmt(fc[k])}`),...cands.filter(k=>fc.cand[k.codigo]!==m.cifras.cand[k.codigo]).map(k=>`${esc(k.siglas)} ${fmt(fc.cand[k.codigo])}`)];

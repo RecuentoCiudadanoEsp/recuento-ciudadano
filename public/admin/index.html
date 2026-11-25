@@ -62,6 +62,8 @@ td.ia{color:var(--muted)} td.iadif{background:var(--bad-soft); color:var(--bad);
       <button id="btnRecalc">Recalcular ahora</button>
       <button id="btnVaciar" class="bad">Vaciar datos de prueba</button>
       <button id="btnDemo">Rellenar 10 % con datos inventados</button>
+      <button id="btnOficial">Cargar dato oficial…</button><input type="file" id="fOficial" accept=".json,application/json" multiple hidden>
+      <button id="btnOfiDemo">Inventar dato oficial (pruebas)</button>
       <span class="meta" id="stats"></span>
     </div>
     <div id="cola"></div>
@@ -232,6 +234,18 @@ $("btnDemo").onclick=async()=>{ if(prompt("Esto añade actas INVENTADAS en unas 
     if(!r.ok){ alertar(r.error==="solo_en_modo_pruebas"?"Solo se puede rellenar con MODO_PRUEBAS activado.":"Error en la provincia "+p+": "+(r.error||"")); return; } n+=r.mesas; }
   for(let i=0;i<10;i++){ alertar(`Recalculando ${n} mesas… (paso ${i+1})`); const e=await api("recalcular",{method:"POST"}); if(!e.mesas) break; }
   alertar(`Listo: ${n} mesas con actas inventadas.`); cargar(); };
+// Dato oficial: uno o varios archivos PP.json generados con scripts/oficial_desde_interior.py (o por el lector de la noche)
+$("btnOficial").onclick=()=>$("fOficial").click();
+$("fOficial").onchange=async e=>{ const fs=[...e.target.files]; e.target.value=""; if(!fs.length) return; let ok=0;
+  for(const f of fs){ alertar(`Cargando ${f.name}…`); let datos; try{ datos=JSON.parse(await f.text()); }catch(err){ alertar(`${f.name} no es un JSON válido.`); return; }
+    const prov=String(datos.prov||f.name.slice(0,2)); const r=await api("oficial",{method:"POST",body:JSON.stringify({prov,datos})});
+    if(!r.ok){ alertar(`Error en ${f.name}: ${r.error}${r.clave?" ("+r.clave+")":""}`); return; } ok++; }
+  alertar(`Dato oficial cargado: ${ok} provincia${ok===1?"":"s"}.`); };
+$("btnOfiDemo").onclick=async()=>{ const n=(prompt("Inventa un «dato oficial» a partir de las actas verificadas (solo en modo pruebas), con algunas diferencias. Escribe MUNICIPIO para simular la noche electoral o MESA para simular el escrutinio definitivo:")||"").trim().toLowerCase();
+  if(!["municipio","mesa"].includes(n)) return;
+  for(let i=1;i<=52;i++){ const p=String(i).padStart(2,"0"); alertar(`Provincia ${p}…`); const r=await api("oficial_demo",{method:"POST",body:JSON.stringify({prov:p,nivel:n})});
+    if(!r.ok){ alertar(r.error==="solo_en_modo_pruebas"?"Solo en modo pruebas.":"Error: "+r.error); return; } }
+  alertar("Dato oficial inventado en las 52 provincias."); };
 function alertar(t){ $("stats").textContent="⚠ "+t; }
 if(TOK){ entrar(); }
 </script>

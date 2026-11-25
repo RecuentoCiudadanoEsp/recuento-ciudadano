@@ -279,3 +279,25 @@ https://ine.es/dyngs/DAB/index.htm?cid=1389). Si cambian las listas de mesas, ha
 pip install pyshp shapely numpy
 python3 scripts/zonas.py RUTA/SECC_CE_20260101
 ```
+
+## Comparación con el dato oficial de Interior
+
+La web compara las cifras de las actas con las que publica el Ministerio del Interior: en la ficha de cada mesa
+(acta, dato oficial y diferencia, en votos y en puntos sobre votos válidos) y en la página de cada provincia
+(mesas comparadas, de mayor a menor diferencia, sin valorar a quién afecta). Solo se muestra cuando ya se
+publican las cifras (a partir de las 21:00 del día de la votación).
+
+- **Noche electoral.** Interior da resultados provisionales por municipio, no por mesa. Se comparan los
+  municipios con una sola mesa y los que tienen todas sus mesas verificadas, si su escrutinio está al 100 %.
+- **Después.** Interior publica el resultado de cada mesa en el área de descargas de Infoelectoral (ZIP «MESA»
+  del Congreso). Se convierte con:
+
+      python3 scripts/oficial_desde_interior.py 02202611_MESA.zip
+
+  y se cargan los archivos de la carpeta `oficial/` desde el panel, con «Cargar dato oficial…».
+- **Voto CERA.** El voto desde el extranjero no se suma a ninguna mesa (en los ficheros es el municipio 999),
+  así que no explica diferencias en una mesa.
+
+El dato oficial se guarda por provincia en R2 (`public/oficial/PP.json`) y se sirve en `/api/public/oficial/PP.json`.
+El formato está descrito en `src/worker.js` (función `limpiarOficial`). En la versión de pruebas, el botón
+«Inventar dato oficial (pruebas)» del panel crea uno a partir de las actas verificadas, con algunas diferencias.

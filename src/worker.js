@@ -35,7 +35,7 @@ export default {
       if (url.pathname === "/api/leer" && req.method === "POST") return await leerParaFormulario(req, env);
       let m;
       if ((m = url.pathname.match(/^\/api\/(foto|mini)\/([a-f0-9]{64})\.jpg$/))) return await servirFoto(req, env, ctx, m[1], m[2]);
-      if ((m = url.pathname.match(/^\/api\/public\/(resumen|decisiones|prov\/\d{2})\.json$/))) return await servirPublico(req, env, ctx, m[1]);
+      if ((m = url.pathname.match(/^\/api\/public\/(resumen|decisiones|prov\/\d{2}|oficial\/\d{2})\.json$/))) return await servirPublico(req, env, ctx, m[1]);
       return json({ error: "no_encontrado" }, 404);
     } catch (e) {
       console.error(e && e.stack || e);
@@ -241,7 +241,8 @@ async function recibirDenuncia(req, env) {
 async function servirPublico(req, env, ctx, nombre) {
   return conCache(req, ctx, env.MODO_PRUEBAS === "1" ? 1 : 30, async () => {
     const o = await env.FOTOS.get(`public/${nombre}.json`);
-    if (!o) return json(nombre === "resumen" ? { generado: null, provincias: [], nacional: null } : nombre === "decisiones" ? { decisiones: [] } : { mesas: [] }, 200);
+    if (!o) return json(nombre === "resumen" ? { generado: null, provincias: [], nacional: null } : nombre === "decisiones" ? { decisiones: [] }
+      : nombre.startsWith("oficial/") ? { prov: nombre.slice(8), municipios: {}, mesas: {} } : { mesas: [] }, 200);
     return new Response(o.body, { headers: JSONH });
   });
 }
@@ -597,6 +598,25 @@ async function admin(req, env, url) {
     if (!/^\d\d$/.test(String(b.prov || ""))) return json({ error: "provincia" }, 400);
     return json(await rellenarDemo(env, String(b.prov), Math.min(0.5, Math.max(0.01, Number(b.fraccion) || 0.1))));
   }
+  if (p === "oficial" && req.method === "POST") {
+    // Carga el dato oficial de Interior de una provincia (ya convertido con scripts/oficial_desde_interior.py o con el
+    // lector de la noche electoral). Sustituye entero al que hubiera de esa provincia. La web lo compara con las actas.
+    const b = await req.json().catch(() => ({}));
+    if (!/^\d\d$/.test(String(b.prov || ""))) return json({ error: "provincia" }, 400);
+    const limpio = limpiarOficial(String(b.prov), b.datos);
+    if (limpio.error) return json(limpio, 400);
+    await env.FOTOS.put(`public/oficial/${b.prov}.json`, JSON.stringify(limpio), { httpMetadata: { contentType: "application/json" } });
+    return json({ ok: true, municipios: Object.keys(limpio.municipios).length, mesas: Object.keys(limpio.mesas).length });
+  }
+  if (p === "oficial_demo" && req.method === "POST") {
+    // Inventa un «dato oficial» a partir de las actas verificadas, con algunas diferencias, para ver la comparación. Solo en pruebas.
+    if (env.MODO_PRUEBAS !== "1") return json({ error: "solo_en_modo_pruebas" }, 403);
+    const b = await req.json().catch(() => ({}));
+    if (!/^\d\d$/.test(String(b.prov || "")) || !["municipio", "mesa"].includes(b.nivel)) return json({ error: "parametros" }, 400);
+    const datos = await oficialDemo(env, String(b.prov), b.nivel);
+    await env.FOTOS.put(`public/oficial/${b.prov}.json`, JSON.stringify(datos), { httpMetadata: { contentType: "application/json" } });
+    return json({ ok: true, municipios: Object.keys(datos.municipios).length, mesas: Object.keys(datos.mesas).length });
+  }
   if (p === "vaciar_pruebas" && req.method === "POST") {
     // Borra todos los envíos, fotos y JSON públicos de las pruebas. Solo funciona con MODO_PRUEBAS = "1".
     if (env.MODO_PRUEBAS !== "1") return json({ error: "solo_en_modo_pruebas" }, 403);
@@ -623,6 +643,58 @@ async function admin(req, env, url) {
       clave_ip_ok: !!env.SAL_IP && env.SAL_IP.length >= 12 });
   }
   return json({ error: "no_encontrado" }, 404);
+}
+// ---------------------------------------------------------------- dato oficial de Interior
+// Formato (uno por provincia, en R2: public/oficial/PP.json):
+//   { prov, tipo: "provisional" | "definitivo", fuente, actualizado,
+//     municipios: { "079": { escrutado, votantes, nulos, blanco, cand: { C02: 123, ... } } },
+//     mesas:      { "28-079-01-001-A": { votantes, nulos, blanco, cand: {...} } } }
+// Los códigos de candidatura son los de la web (C01, C02…). Si una candidatura oficial no se ha podido emparejar,
+// va con su sigla precedida de «?». «escrutado» es el porcentaje de mesas escrutadas del municipio (0 a 100).
+const entero = (v) => v == null ? null : (Number.isInteger(v) && v >= 0 && v < 10_000_000 ? v : undefined);
+function cifrasOficiales(x) {
+  if (!x || typeof x !== "object") return null;
+  const r = { votantes: entero(x.votantes), nulos: entero(x.nulos), blanco: entero(x.blanco), cand: {} };
+  if ([r.votantes, r.nulos, r.blanco].includes(undefined)) return null;
+  if (x.escrutado != null) { const e = Number(x.escrutado); if (!(e >= 0 && e <= 100)) return null; r.escrutado = e; }
+  for (const [k, v] of Object.entries(x.cand || {})) {
+    if (!/^[^<>"&]{1,60}$/.test(k)) return null; const n = entero(v); if (n == null) return null; r.cand[k] = n;
+  }
+  return r;
+}
+function limpiarOficial(prov, d) {
+  if (!d || typeof d !== "object") return { error: "datos" };
+  if (!["provisional", "definitivo"].includes(d.tipo)) return { error: "tipo" };
+  const out = { prov, tipo: d.tipo, fuente: String(d.fuente || "Ministerio del Interior").slice(0, 200), actualizado: String(d.actualizado || new Date().toISOString()).slice(0, 40), municipios: {}, mesas: {} };
+  for (const [k, v] of Object.entries(d.municipios || {})) { if (!/^\d{3}$/.test(k)) return { error: "municipio", clave: k }; const c = cifrasOficiales(v); if (!c) return { error: "cifras", clave: k }; out.municipios[k] = c; }
+  for (const [k, v] of Object.entries(d.mesas || {})) { if (!RE_MESA.test(k) || k.slice(0, 2) !== prov) return { error: "mesa", clave: k }; const c = cifrasOficiales(v); if (!c) return { error: "cifras", clave: k }; out.mesas[k] = c; }
+  return out;
+}
+async function oficialDemo(env, prov, nivel) {
+  // Copia las cifras de las mesas verificadas y cambia unas pocas (unos votos de una candidatura a otra, o votos de más),
+  // para que en pruebas se vean tanto coincidencias como diferencias.
+  const rs = (await env.DB.prepare("SELECT mesa_id, cifras FROM consenso WHERE prov = ? AND estado IN ('verificada','validada') AND cifras IS NOT NULL").bind(prov).all()).results;
+  const total = new Map((await env.DB.prepare("SELECT muni, COUNT(*) AS n FROM mesas WHERE prov = ? AND COALESCE(de_usuario, 0) = 0 GROUP BY muni").bind(prov).all()).results.map(r => [r.muni, r.n]));
+  const mesas = {};
+  for (const r of rs) {
+    const c = JSON.parse(r.cifras); const o = { votantes: c.votantes, nulos: c.nulos, blanco: c.blanco, cand: { ...c.cand } };
+    const ks = Object.keys(o.cand); const azar = Math.random();
+    if (ks.length >= 2 && azar < 0.06) { const [a, b] = [ks[Math.floor(Math.random() * ks.length)], ks[Math.floor(Math.random() * ks.length)]]; const k = Math.min(o.cand[b] || 0, 1 + Math.floor(Math.random() * 12)); if (a !== b && k) { o.cand[a] += k; o.cand[b] -= k; } }
+    else if (ks.length && azar < 0.09) { const a = ks[Math.floor(Math.random() * ks.length)]; const k = 1 + Math.floor(Math.random() * 5); o.cand[a] += k; o.votantes += k; }
+    mesas[r.mesa_id] = o;
+  }
+  const municipios = {};
+  if (nivel === "municipio") {
+    const por = {}; for (const [id, o] of Object.entries(mesas)) (por[id.split("-")[1]] = por[id.split("-")[1]] || []).push(o);
+    for (const [k, lista] of Object.entries(por)) {
+      const s = { escrutado: 100, votantes: 0, nulos: 0, blanco: 0, cand: {} };
+      for (const o of lista) { s.votantes += o.votantes || 0; s.nulos += o.nulos || 0; s.blanco += o.blanco || 0; for (const [c, v] of Object.entries(o.cand)) s.cand[c] = (s.cand[c] || 0) + (v || 0); }
+      // Solo el municipio entero tiene sentido: si faltan mesas por verificar, su «escrutado» oficial seguiría siendo 100, pero aquí no se inventa.
+      if (lista.length === (total.get(k) || 0)) municipios[k] = s;
+    }
+  }
+  return { prov, tipo: nivel === "mesa" ? "definitivo" : "provisional", fuente: "DATOS INVENTADOS para la versión de pruebas", actualizado: new Date().toISOString(),
+    municipios, mesas: nivel === "mesa" ? mesas : {} };
 }
 async function conEnvios(env, mesas) {
   if (!mesas.length) return [];

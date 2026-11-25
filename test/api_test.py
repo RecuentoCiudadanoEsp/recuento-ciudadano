@@ -293,4 +293,16 @@ if __name__ == "__main__":
     check("8 mesas distintas desde un navegador: sin aviso", all("muchas_mesas" not in r.get("avisos", []) for r in res[:8]), [r.get("avisos") for r in res[:8]])
     check("la 9.ª mesa desde el mismo navegador va a revisión", "muchas_mesas" in res[8].get("avisos", []), res[8])
     s, r = get("/admin/api/estadisticas", admin=True); check("el panel confirma que la clave SAL_IP está puesta", s == 200 and r.get("clave_ip_ok") is True, r.get("clave_ip_ok"))
+    # ---- Dato oficial de Interior: se carga desde el panel, se valida y se publica para compararlo con las actas
+    s, r = get("/api/public/oficial/46.json"); check("sin dato oficial cargado, el archivo sale vacío", s == 200 and r["mesas"] == {} and r["municipios"] == {}, r)
+    malo = {"tipo": "definitivo", "mesas": {"28-079-01-001-A": {"votantes": 1, "nulos": 0, "blanco": 0, "cand": {}}}}
+    s, r = get("/admin/api/oficial", admin=True, method="POST", body={"prov": "12", "datos": malo}); check("no admite mesas de otra provincia", s == 400 and r.get("error") == "mesa", r)
+    malo = {"tipo": "definitivo", "mesas": {"12-002-01-001-U": {"votantes": -3, "nulos": 0, "blanco": 0, "cand": {}}}}
+    s, r = get("/admin/api/oficial", admin=True, method="POST", body={"prov": "12", "datos": malo}); check("no admite cifras negativas", s == 400 and r.get("error") == "cifras", r)
+    bueno = {"tipo": "provisional", "fuente": "prueba", "municipios": {"002": {"escrutado": 100, "votantes": 100, "nulos": 1, "blanco": 2, "cand": {"C01": 50, "?OTRA": 3}}},
+             "mesas": {"12-002-01-001-U": {"votantes": 100, "nulos": 1, "blanco": 2, "cand": {"C01": 50}}}, "extra": "<script>"}
+    s, r = get("/admin/api/oficial", admin=True, method="POST", body={"prov": "12", "datos": bueno}); check("carga el dato oficial de una provincia", s == 200 and r.get("mesas") == 1 and r.get("municipios") == 1, r)
+    s, r = get("/api/public/oficial/12.json")
+    check("y se publica tal cual, sin campos desconocidos", s == 200 and r["mesas"]["12-002-01-001-U"]["cand"] == {"C01": 50} and r["municipios"]["002"]["cand"]["?OTRA"] == 3 and "extra" not in r, r)
+    s, r = get("/admin/api/oficial", method="POST", body={"prov": "12", "datos": bueno}); check("sin contraseña no se puede cargar", s in (401, 403), s)
     print("\nRESULTADO:", "todo correcto" if ok else "HAY FALLOS")
