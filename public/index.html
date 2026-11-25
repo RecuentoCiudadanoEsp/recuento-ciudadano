@@ -52,6 +52,25 @@ nav.tabs::-webkit-scrollbar{display:none}
 .visorBarra{position:fixed; top:0; left:0; right:0; display:flex; justify-content:space-between; align-items:center; padding:10px 12px}
 .visorBarra a{color:#fff; font-weight:600}
 .visorBarra button{background:#fff; color:#1e2a32; border:0}
+/* Botón de menú al final de las pestañas: solo aparece si no caben todas (móviles estrechos) */
+.navwrap{position:relative}
+.navwrap.corta nav.tabs{padding-right:52px}
+.menuBtn{display:none; position:absolute; right:0; top:0; height:44px; width:48px; padding:0; border:0; border-radius:0; background:linear-gradient(90deg,transparent,var(--paper) 35%); flex-direction:column; align-items:flex-end; justify-content:center; gap:4px; padding-right:8px}
+.navwrap.corta .menuBtn{display:flex}
+.menuBtn span{display:block; width:20px; height:2px; background:var(--ink); border-radius:2px}
+.menuLista{position:absolute; right:0; top:46px; z-index:20; background:var(--card); border:1px solid var(--line); border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,.12); padding:6px; min-width:200px}
+.menuLista a{display:block; padding:11px 14px; text-decoration:none; color:var(--ink); font-weight:600; border-radius:8px}
+.menuLista a:hover{background:var(--accent-soft, #DCEBEA)}
+/* Portada: ilustración del acta con su sello junto al título */
+.heroe{display:flex; align-items:center; gap:14px}
+.heroe h1{flex:1; margin-bottom:8px}
+.ilu{flex:none; width:84px; height:auto}
+/* En el móvil, el botón principal ocupa la línea entera y los secundarios comparten la siguiente */
+@media (max-width:520px){ #inicioBotones>*{flex:1 1 0; white-space:nowrap; text-align:center; justify-content:center; padding-left:10px; padding-right:10px} #inicioBotones>.primary{flex-basis:100%} }
+@media (min-width:700px){ .ilu{width:130px} }
+/* Barras de votos: cuánto saca cada candidatura, de un vistazo */
+.barv{height:6px; background:var(--line); border-radius:3px; margin-top:5px; overflow:hidden}
+.barv i{display:block; height:100%; border-radius:3px}
 nav.tabs a{padding:10px 12px; text-decoration:none; color:var(--muted); font-weight:600; white-space:nowrap; border-bottom:3px solid transparent}
 nav.tabs a[aria-current="page"]{color:var(--ink); border-color:var(--accent)}
 h1{font-family:var(--display); font-weight:800; font-size:30px; line-height:1.15; margin:6px 0 10px; text-wrap:balance}
@@ -186,34 +205,35 @@ table.comp tr.difiere td{background:var(--warn-soft)}
     <a class="brand" href="#inicio"><img src="/logo.svg" alt="" width="36" height="36"><span id="brand">Recuento Ciudadano</span></a>
     <a class="xlink" href="https://x.com/RecuentoCiud_es" target="_blank" rel="noopener" title="Recuento Ciudadano en X (@RecuentoCiud_es)" aria-label="Recuento Ciudadano en X"><svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a>
   </header>
-  <nav class="tabs" aria-label="Secciones">
+  <div class="navwrap"><nav class="tabs" aria-label="Secciones">
     <a href="#inicio" data-v="inicio">Inicio</a>
     <a href="#enviar" data-v="enviar">Enviar acta</a>
     <a href="#resultados" data-v="resultados">Resultados</a>
     <a href="#porque" data-v="porque">Por qué</a>
     <a href="#como" data-v="como">Cómo funciona</a>
-  </nav>
+  </nav><button class="menuBtn" id="menuBtn" aria-label="Todas las secciones" aria-expanded="false" aria-controls="menuLista"><span></span><span></span><span></span></button>
+  <div class="menuLista hide" id="menuLista"><a href="#inicio">Inicio</a><a href="#enviar">Enviar acta</a><a href="#resultados">Resultados</a><a href="#porque">Por qué</a><a href="#como">Cómo funciona</a><a href="#privacidad">Privacidad</a></div></div>
   <div class="estado" id="estadoGlobal" role="status"><i></i><span></span></div>
 
   <!-- INICIO -->
   <section class="view" id="v-inicio">
     <!-- La portada cambia según el momento (ver «fases» en el código): antes del domingo, el domingo hasta las 20:00,
          de 20:00 a 21:00, en directo (21:00 a 01:00) y después, cuando lo que interesa son los resultados. -->
-    <h1 id="inicioTit">Cuando cierre tu colegio, fotografía el acta de tu mesa y súbela aquí.</h1>
+    <div class="heroe"><h1 id="inicioTit">Cuando cierre tu colegio, fotografía el acta de tu mesa y súbela aquí.</h1><svg class="ilu" viewBox="0 0 120 140" aria-hidden="true"><rect x="14" y="8" width="88" height="118" rx="6" fill="var(--card)" stroke="var(--line)" stroke-width="2"/><rect x="26" y="22" width="46" height="7" rx="2" fill="var(--ink)" opacity=".8"/><g fill="var(--muted)" opacity=".55"><rect x="26" y="40" width="40" height="4" rx="2"/><rect x="74" y="40" width="16" height="4" rx="2"/><rect x="26" y="52" width="34" height="4" rx="2"/><rect x="74" y="52" width="16" height="4" rx="2"/><rect x="26" y="64" width="44" height="4" rx="2"/><rect x="74" y="64" width="16" height="4" rx="2"/><rect x="26" y="76" width="30" height="4" rx="2"/><rect x="74" y="76" width="16" height="4" rx="2"/></g><g transform="rotate(-14 78 104)"><circle cx="78" cy="104" r="22" fill="none" stroke="var(--accent)" stroke-width="4"/><path d="M67 104l8 8 14-16" fill="none" stroke="var(--accent)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></g></svg></div>
     <p id="inicioTxt">Al terminar el recuento, cada mesa pega en la puerta una copia del acta de escrutinio. Si muchas personas las fotografían, cualquiera podrá comprobar los resultados mesa por mesa, con la foto delante.</p>
     <p class="meta" id="inicioLema">Verificación independiente y descentralizada del recuento oficial: cada foto del acta permite comprobar que el resultado publicado de esa mesa coincide con lo que se firmó en ella.</p>
-    <p id="inicioPorque"><a href="#porque">Por qué existe esta web →</a></p>
-    <div id="inicioCuenta">
-      <div class="meta">Los envíos se abren el <b id="abreTxt"></b>:</div>
-      <div class="count" id="countdown"><div><b>–</b><span>días</span></div><div><b>–</b><span>horas</span></div><div><b>–</b><span>min</span></div><div><b>–</b><span>seg</span></div></div>
-    </div>
-    <div class="tiles hide" id="inicioCifras" style="margin-top:14px"></div>
-    <div class="row" style="margin:14px 0 4px">
+    <div class="row" id="inicioBotones" style="margin:14px 0 4px">
       <a class="btn primary" href="#enviar" id="bEnviar">Practicar el envío ahora</a>
       <a class="btn" href="#resultados" id="bMapa">Ver el mapa</a>
       <button id="btnIcs">Añadir aviso al calendario</button>
       <button id="btnShareHome">Compartir</button>
     </div>
+    <div id="inicioCuenta">
+      <div class="meta">Los envíos se abren el <b id="abreTxt"></b>:</div>
+      <div class="count" id="countdown"><div><b>–</b><span>días</span></div><div><b>–</b><span>horas</span></div><div><b>–</b><span>min</span></div><div><b>–</b><span>seg</span></div></div>
+    </div>
+    <p id="inicioPorque"><a href="#porque">Por qué existe esta web →</a></p>
+    <div class="tiles hide" id="inicioCifras" style="margin-top:14px"></div>
     <p class="meta" id="inicioNota"></p>
     <div class="card hide" id="colegioCard" style="margin-top:18px">
       <h2>En el colegio</h2>
@@ -497,11 +517,11 @@ let abPrev=null;
 // directo: de 21:00 a 01:00 · resultados: después. En la versión de pruebas se puede ver cada una con ?fase=nombre.
 const FASES={
   previa:{tit:"Cuando cierre tu colegio, fotografía el acta de tu mesa y súbela aquí.",
-    txt:"Al terminar el recuento, cada mesa pega en la puerta una copia del acta de escrutinio. Si muchas personas las fotografían, cualquiera podrá comprobar los resultados mesa por mesa, con la foto delante.",
-    estado:"Envíos cerrados hasta el cierre de los colegios", enviar:"Practicar el envío ahora", ver:["lema","porque","cuenta","ics","pasos"]},
+    txt:"Al terminar el recuento, cada mesa cuelga en la puerta una copia del acta. Si muchas personas la fotografían, cualquiera podrá comprobar el recuento oficial mesa por mesa, con la foto delante: una verificación independiente y descentralizada.",
+    estado:"Envíos cerrados hasta el cierre de los colegios", enviar:"Practicar el envío ahora", ver:["porque","cuenta","ics","pasos"]},
   votacion:{tit:"Hoy se vota. Esta noche, fotografía el acta de tu mesa.",
     txt:"Cuando cierre tu colegio y cuelguen el acta en la puerta (normalmente entre las 21:00 y las 22:30), hazle una foto y súbela aquí. Así cualquiera podrá comprobar el recuento de tu mesa con la foto delante.",
-    estado:"Hoy se vota · los envíos se abren a las 20:00 (hora peninsular)", enviar:"Prepárate: practica el envío", ver:["lema","porque","cuenta","ics","colegio","pasos"]},
+    estado:"Hoy se vota · los envíos se abren a las 20:00 (hora peninsular)", enviar:"Prepárate: practica el envío", ver:["porque","cuenta","ics","colegio","pasos"]},
   envio:{tit:"Ya han cerrado los colegios. Fotografía el acta de tu mesa.",
     txt:"En cuanto cuelguen el acta en la puerta, hazle una foto entera y de frente y súbela. Suele estar entre las 21:00 y las 22:30.",
     nota:"Las cifras y las fotos se publican a partir de las 21:00 (hora peninsular), cuando cierran los colegios de Canarias. Hasta entonces, el mapa solo muestra cuántas mesas hay verificadas.",
@@ -809,7 +829,7 @@ async function verResultados(){
       .map(([k,v])=>`<div class="tile"><div class="v">${typeof v==="number"?fmt(v):v}</div><div class="k">${k}</div></div>`).join("");
     if(r.totales_visibles&&n.votos&&Object.keys(n.votos).length){ $("totalesCard").classList.remove("hide");
       const partidos=Object.entries(n.votos).filter(([k])=>!k.startsWith("_")).sort((a,b)=>b[1]-a[1]); const tot=partidos.reduce((a,[,v])=>a+v,0)+(n.votos._blanco||0);
-      $("tTotales").innerHTML=`<tr><th>Candidatura</th><th>Votos</th><th>% s/ válidos</th></tr>`+partidos.map(([s,v])=>`<tr><td>${s}</td><td>${fmt(v)}</td><td>${tot?(v/tot*100).toFixed(2):"—"}</td></tr>`).join("")
+      $("tTotales").innerHTML=`<tr><th>Candidatura</th><th>Votos</th><th>% s/ válidos</th></tr>`+partidos.map(([s,v])=>`<tr><td>${s}${barraVotos(v,partidos[0][1],s)}</td><td>${fmt(v)}</td><td>${tot?dec2(v/tot*100):"—"}</td></tr>`).join("")
         +`<tr><td>En blanco</td><td>${fmt(n.votos._blanco)}</td><td></td></tr><tr><td>Nulos</td><td>${fmt(n.votos._nulos)}</td><td></td></tr>`+
         `<tr><td colspan="3" class="meta" style="text-align:left; white-space:normal">Solo ${fmt(verif)} mesas verificadas: no es representativo del total.</td></tr>`; }
     else { $("totalesCard").classList.add("hide"); }
@@ -824,6 +844,9 @@ async function verResultados(){
 const COLORES=[[/PSOE|^PSC|PSdeG|PSE-EE|PSIB/,"#d81e26"],[/^PP$|PARTIDO POPULAR/,"#1d84ce"],[/VOX/,"#5aa61f"],[/FRENTE AMPLIO|^FA$|COMUNS|SUMAR|ARAM.S|CHA-IU/,"#c2337a"],
   [/PODEMOS/,"#6b2e68"],[/SALF/,"#8a6a3c"],[/^ERC/,"#f0a020"],[/JxCat|JUNTS/,"#1fb5a8"],[/BILDU/,"#94b800"],[/PNV/,"#2e7d32"],[/B\.?N\.?G/,"#5fa8d8"],[/COMPROMIS/,"#e8710a"],
   [/^CC\b|COALICI.N CANARIA/,"#e6c200"],[/UPN/,"#0a3b7c"],[/ADELANTE/,"#00958f"],[/TERUEL/,"#037252"]];
+// Barra proporcional a la candidatura más votada de la tabla, con su color
+const barraVotos=(v,max,s)=>`<div class="barv"><i style="width:${max?(v/max*100).toFixed(1):0}%;background:${colorPartido(s)}"></i></div>`;
+const dec2=x=>x.toLocaleString("es-ES",{minimumFractionDigits:2,maximumFractionDigits:2});
 const colorPartido=s=>{ for(const [re,c] of COLORES) if(re.test(s)) return c; return "#8d96a6"; };
 // Colores del mapa, los mismos del panal de mesas: gris = sin fotos, arena = con fotos pero ninguna mesa verificada,
 // petróleo = al menos una mesa verificada (más oscuro cuanta más parte de sus mesas lo está).
@@ -912,7 +935,7 @@ async function verProvincia(p,refresco){
     if(votosOk&&pr&&pr.votos&&Object.keys(pr.votos).length){ const ver=(pr.verificada||0)+(pr.validada||0);
       const partidos=Object.entries(pr.votos).filter(([k])=>!k.startsWith("_")).sort((a,b)=>b[1]-a[1]); const tot=partidos.reduce((a,[,v])=>a+v,0)+(pr.votos._blanco||0);
       $("votosProvNota").innerHTML=`Suma de los votos de <b>${fmt(ver)} de ${fmt(pr.mesas)} mesas</b> (${pct(pr.mesas?ver/pr.mesas:0)}) que están verificadas. <b>No es una estimación</b> del resultado de la provincia ni de los escaños: las mesas fotografiadas no son una muestra representativa.`;
-      $("tVotosProv").innerHTML=`<tr><th>Candidatura</th><th>Votos</th><th>% s/ válidos</th></tr>`+partidos.map(([s,v])=>`<tr><td><i style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${colorPartido(s)};margin-right:6px"></i>${s}</td><td>${fmt(v)}</td><td>${tot?(v/tot*100).toFixed(2):"—"}</td></tr>`).join("")+`<tr><td>En blanco</td><td>${fmt(pr.votos._blanco)}</td><td></td></tr><tr><td>Nulos</td><td>${fmt(pr.votos._nulos)}</td><td></td></tr>`;
+      $("tVotosProv").innerHTML=`<tr><th>Candidatura</th><th>Votos</th><th>% s/ válidos</th></tr>`+partidos.map(([s,v])=>`<tr><td><i style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${colorPartido(s)};margin-right:6px"></i>${s}${barraVotos(v,partidos[0][1],s)}</td><td>${fmt(v)}</td><td>${tot?dec2(v/tot*100):"—"}</td></tr>`).join("")+`<tr><td>En blanco</td><td>${fmt(pr.votos._blanco)}</td><td></td></tr><tr><td>Nulos</td><td>${fmt(pr.votos._nulos)}</td><td></td></tr>`;
       $("votosProvCard").classList.remove("hide"); }
     else $("votosProvCard").classList.add("hide");
     // comparación con el dato oficial: mesas verificadas con dato oficial y municipios enteros verificados
@@ -1035,6 +1058,11 @@ function verFoto(h){ const d=$("visor"); $("visorImg").src=`/api/foto/${h}.jpg`;
 $("visorCerrar").onclick=()=>$("visor").close();
 $("visor").addEventListener("click",e=>{ if(e.target.id==="visor"||e.target.id==="visorCaja") $("visor").close(); });
 $("visor").addEventListener("close",()=>{ $("visorImg").removeAttribute("src"); });
+// Menú: el botón solo se muestra cuando las pestañas no caben
+function menuNav(){ const w=document.querySelector(".navwrap"), n=w.querySelector("nav"); w.classList.remove("corta"); w.classList.toggle("corta",n.scrollWidth>n.clientWidth+2); }
+$("menuBtn").onclick=e=>{ e.stopPropagation(); const l=$("menuLista"), abrir=l.classList.contains("hide"); l.classList.toggle("hide",!abrir); $("menuBtn").setAttribute("aria-expanded",abrir); };
+document.addEventListener("click",()=>{ $("menuLista").classList.add("hide"); $("menuBtn").setAttribute("aria-expanded","false"); });
+addEventListener("resize",menuNav); menuNav();
 // ---------- arranque ----------
 (async()=>{
   try{ CFG=await getJSON("/api/config"); }catch(e){}
