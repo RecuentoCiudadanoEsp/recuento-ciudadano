@@ -35,7 +35,7 @@ export default {
       if (url.pathname === "/api/leer" && req.method === "POST") return await leerParaFormulario(req, env);
       let m;
       if ((m = url.pathname.match(/^\/api\/(foto|mini)\/([a-f0-9]{64})\.jpg$/))) return await servirFoto(req, env, ctx, m[1], m[2]);
-      if ((m = url.pathname.match(/^\/api\/public\/(resumen|decisiones|prov\/\d{2})\.json$/))) return await servirPublico(req, env, ctx, m[1]);
+      if ((m = url.pathname.match(/^\/api\/public\/(resumen|decisiones|prov\/\d{2}|oficial\/\d{2})\.json$/))) return await servirPublico(req, env, ctx, m[1]);
       return json({ error: "no_encontrado" }, 404);
     } catch (e) {
       console.error(e && e.stack || e);
@@ -49,6 +49,9 @@ export default {
 
 // ---------------------------------------------------------------- utilidades
 function json(obj, status = 200, extra = {}) { return new Response(JSON.stringify(obj), { status, headers: { ...JSONH, ...extra } }); }
+// Identificador seudonimizado de la conexión: SHA-256 de la clave secreta SAL_IP seguida de la IP, recortado a 32
+// caracteres. La IP nunca se guarda. Sin la clave no se puede saber de qué IP viene (con ella, sí: no debe salir de Cloudflare).
+async function huellaIP(env, ip) { return (await sha256hex(new TextEncoder().encode((env.SAL_IP || "sal") + ip))).slice(0, 32); }
 async function sha256hex(buf) { const d = await crypto.subtle.digest("SHA-256", buf); return [...new Uint8Array(d)].map(b => b.toString(16).padStart(2, "0")).join(""); }
 const num = (v) => Number.isInteger(v) && v >= 0;
 function distanciaM(a, b, c, d) { const R = 6371000, r = Math.PI / 180; const x = Math.sin((c - a) * r / 2) ** 2 + Math.cos(a * r) * Math.cos(c * r) * Math.sin((d - b) * r / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(x)); }
@@ -59,6 +62,11 @@ function config(env) {
     turnstile_sitekey: env.TURNSTILE_SITEKEY || "", zonas_difuminado: zonas, modo_pruebas: env.MODO_PRUEBAS === "1", lectura_ia: iaActiva(env) };
 }
 const abierto = (env) => env.MODO_PRUEBAS === "1" || ahora() >= Date.parse(env.ABRE);
+// Las cifras de votos y las fotos de las actas no se publican hasta que cierran todos los colegios (también en
+// Canarias, a las 21:00 peninsulares), para no difundir resultados mientras todavía se vota en algún sitio.
+// Antes de esa hora solo se ve cuántas mesas tienen foto y cuántas están verificadas.
+// En la versión de pruebas se ven siempre, salvo que OCULTAR_TOTALES_PRUEBAS = "1" (para comprobar este comportamiento).
+const totalesVisibles = (env) => env.MODO_PRUEBAS === "1" ? env.OCULTAR_TOTALES_PRUEBAS !== "1" : ahora() >= Date.parse(env.TOTALES_DESDE || env.ABRE);
 
 // Comprobaciones aritméticas del acta. cods = códigos de candidatura de la provincia.
 export function validarCifras(c, cods, censo) {
@@ -128,7 +136,7 @@ async function recibirEnvio(req, env) {
   const avisosFoto = [...new Set([...avisosImagen(anaFoto), ...avisosImagen(anaMini)])];
 
   const t = ahora(); const desde = t - 10 * 60 * 1000;
-  const ipHash = (await sha256hex(new TextEncoder().encode((env.SAL_IP || "sal") + ip))).slice(0, 32);
+  const ipHash = await huellaIP(env, ip);
   const disp = String(d.dispositivo || "").slice(0, 64) || "sin-id";
   const [dup, nIp, nDisp, mesasDisp, mesasRed, reuso] = await env.DB.batch([
     env.DB.prepare("SELECT 1 AS x FROM envios WHERE hash = ?").bind(hash),
@@ -144,7 +152,9 @@ async function recibirEnvio(req, env) {
 
   const flags = [...val.avisos, ...avisosFoto];
   if (mesa.nueva) flags.push("mesa_nueva");
-  if (mesasDisp.results[0].n >= 4) flags.push("muchas_mesas");
+  // Un mismo navegador con actas de más de MAX_MESAS_DISPOSITIVO_30MIN mesas distintas en media hora: se acepta, pero va
+  // a revisión. Con 8, se puede fotografiar hasta 8 mesas (un colegio grande) sin aviso; la 9.ª ya se revisa.
+  if (mesasDisp.results[0].n >= Number(env.MAX_MESAS_DISPOSITIVO_30MIN || 8)) flags.push("muchas_mesas");
   // Muchas IP son compartidas (las operadoras móviles agrupan a miles de clientes): esto no bloquea ni excluye,
   // solo impide que varios "dispositivos" detrás de una misma red muy activa cuenten como fuentes independientes.
   if (mesasRed.results[0].n >= Number(env.MAX_MESAS_RED_HORA || 8)) flags.push("red_muchas_mesas");
@@ -186,16 +196,22 @@ async function conCache(req, ctx, segundos, producir) {
 }
 // Una foto solo se sirve al público si es "publica" (mesa verificada por fuentes independientes o validada a mano).
 // Caché corta (5 min): si se oculta una foto, deja de verse en minutos en todo el mundo.
+// Antes de que cierren todos los colegios no se sirve ninguna foto (la foto del acta ya muestra los votos).
+// En pruebas, las actas inventadas con «Rellenar datos de demostración» no tienen foto: se muestra un cartel en su lugar.
+const FOTO_DEMO = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 400"><rect width="300" height="400" fill="#f6f2ea"/><rect x="40" y="40" width="220" height="320" rx="8" fill="#fffdf9" stroke="#d9d3c7" stroke-width="3"/><g fill="#d9d3c7"><rect x="70" y="90" width="160" height="10" rx="5"/><rect x="70" y="120" width="120" height="10" rx="5"/><rect x="70" y="150" width="150" height="10" rx="5"/><rect x="70" y="180" width="100" height="10" rx="5"/></g><text x="150" y="260" font-family="Arial,sans-serif" font-size="20" font-weight="700" fill="#23626a" text-anchor="middle">ACTA INVENTADA</text><text x="150" y="290" font-family="Arial,sans-serif" font-size="14" fill="#5e6b73" text-anchor="middle">datos de demostración</text></svg>`;
+const fotoDemo = () => new Response(FOTO_DEMO, { headers: { "content-type": "image/svg+xml", "cache-control": "public, max-age=300" } });
+
 async function servirFoto(req, env, ctx, tipo, hash) {
+  if (!totalesVisibles(env)) return json({ error: "aun_no_publico" }, 404);
   return conCache(req, ctx, 300, async () => {
     const e = await env.DB.prepare("SELECT publica FROM envios WHERE hash = ?").bind(hash).first();
     if (!e || e.publica !== 1) return json({ error: "no_publica" }, 404);
-    const o = await env.FOTOS.get(`${tipo}/${hash}.jpg`); if (!o) return json({ error: "no_encontrada" }, 404);
+    const o = await env.FOTOS.get(`${tipo}/${hash}.jpg`); if (!o) return env.MODO_PRUEBAS === "1" ? fotoDemo() : json({ error: "no_encontrada" }, 404);
     return new Response(o.body, { headers: { "content-type": "image/jpeg" } });
   });
 }
 async function servirFotoAdmin(env, tipo, hash) {
-  const o = await env.FOTOS.get(`${tipo}/${hash}.jpg`); if (!o) return json({ error: "no_encontrada" }, 404);
+  const o = await env.FOTOS.get(`${tipo}/${hash}.jpg`); if (!o) return env.MODO_PRUEBAS === "1" ? fotoDemo() : json({ error: "no_encontrada" }, 404);
   return new Response(o.body, { headers: { "content-type": "image/jpeg", "cache-control": "private, no-store" } });
 }
 
@@ -206,7 +222,7 @@ async function recibirDenuncia(req, env) {
   const b = await req.json().catch(() => ({}));
   if (!/^[a-f0-9]{64}$/.test(b.hash || "")) return json({ error: "parametros" }, 400);
   const ip = req.headers.get("cf-connecting-ip") || "0.0.0.0";
-  const ipHash = await sha256hex(new TextEncoder().encode((env.SAL_IP || "") + ip));
+  const ipHash = await huellaIP(env, ip);
   const t = ahora();
   const rec = await env.DB.prepare("SELECT COUNT(*) AS n FROM denuncias WHERE ip_hash = ? AND ts > ?").bind(ipHash, t - 600000).first();
   if (rec.n >= 20) return json({ error: "demasiadas_denuncias" }, 429);
@@ -225,7 +241,8 @@ async function recibirDenuncia(req, env) {
 async function servirPublico(req, env, ctx, nombre) {
   return conCache(req, ctx, env.MODO_PRUEBAS === "1" ? 1 : 30, async () => {
     const o = await env.FOTOS.get(`public/${nombre}.json`);
-    if (!o) return json(nombre === "resumen" ? { generado: null, provincias: [], nacional: null } : nombre === "decisiones" ? { decisiones: [] } : { mesas: [] }, 200);
+    if (!o) return json(nombre === "resumen" ? { generado: null, provincias: [], nacional: null } : nombre === "decisiones" ? { decisiones: [] }
+      : nombre.startsWith("oficial/") ? { prov: nombre.slice(8), municipios: {}, mesas: {} } : { mesas: [] }, 200);
     return new Response(o.body, { headers: JSONH });
   });
 }
@@ -256,6 +273,47 @@ export function calcularConsenso(envios, umbralDenuncias = 2) {
   return { estado: ver ? "verificada" : "pendiente", cifras: g[0].cifras, n_indep: indep, publicas: ver ? g.filter(sinDenuncia).map(e => e.hash) : [] };
 }
 
+// ---------------------------------------------------------------- datos de demostración (solo pruebas)
+// Elige más o menos `fraccion` de las mesas de la provincia, con más participación en unos distritos que en otros (como
+// pasaría en la realidad), e inventa sus envíos: la mayoría verificadas (dos personas con las mismas cifras), y algunas
+// con una sola foto, en conflicto o en revisión. Los votos se reparten al azar entre las candidaturas, sin ningún patrón
+// real. No se suben fotos ni se piden lecturas automáticas: la web muestra un cartel de «acta inventada».
+async function rellenarDemo(env, prov, fraccion) {
+  const hex = (n) => [...crypto.getRandomValues(new Uint8Array(n))].map(x => x.toString(16).padStart(2, "0")).join("");
+  const mesas = (await env.DB.prepare("SELECT id, muni, distrito, censo FROM mesas WHERE prov = ? AND nueva = 0").bind(prov).all()).results;
+  const cods = (await env.DB.prepare("SELECT codigo FROM candidaturas WHERE prov = ?").bind(prov).all()).results.map(r => r.codigo);
+  if (!mesas.length || !cods.length) return { ok: true, prov, mesas: 0 };
+  const pesos = cods.map(() => Math.random() ** 3);                 // reparto al azar, distinto en cada provincia
+  const actividad = new Map();                                       // ganas de participar en cada distrito (0 a 1)
+  const cifras = (censo) => {
+    const electores = censo || 300 + Math.floor(Math.random() * 500), votantes = Math.floor(electores * (0.55 + Math.random() * 0.25));
+    const nulos = Math.floor(Math.random() * 8), blanco = Math.floor(Math.random() * 12), resto = votantes - nulos - blanco;
+    const w = pesos.map(p => p * (0.6 + Math.random() * 0.8)), tot = w.reduce((a, x) => a + x, 0);
+    const v = w.map(x => Math.floor(resto * x / tot)); v[0] += resto - v.reduce((a, x) => a + x, 0);
+    return { electores, votantes, nulos, blanco, cand: Object.fromEntries(cods.map((c, i) => [c, v[i]])) };
+  };
+  const t = ahora(), filas = [], tocadas = [];
+  const envio = (mesa, c, flags = []) => filas.push([hex(32), mesa.id, prov, JSON.stringify(c), firmaCifras(c, cods), 1, "[]", "demo-" + hex(8), hex(16),
+    null, t - Math.floor(Math.random() * 7200000), t - Math.floor(Math.random() * 7200000), JSON.stringify(flags)]);
+  for (const m of mesas) {
+    const d = m.muni + m.distrito; if (!actividad.has(d)) actividad.set(d, Math.random() ** 1.5);
+    if (Math.random() >= Math.min(0.9, fraccion * 2.5 * actividad.get(d))) continue;   // media ≈ fraccion
+    const u = Math.random(), c = cifras(m.censo); tocadas.push(m.id);
+    if (u < 0.78) { envio(m, c); envio(m, c); }                                        // verificada
+    else if (u < 0.93) envio(m, c);                                                    // una sola foto
+    else if (u < 0.98) { envio(m, c); const c2 = cifras(m.censo); envio(m, c2); }      // conflicto
+    else envio(m, c, ["muchas_mesas"]);                                                // en revisión
+  }
+  // D1 admite hasta 100 valores por consulta: 7 filas de 13 columnas por INSERT, 33 mesas por INSERT de pendientes
+  const st = [];
+  for (let i = 0; i < filas.length; i += 7) { const l = filas.slice(i, i + 7);
+    st.push(env.DB.prepare(`INSERT INTO envios (hash, mesa_id, prov, cifras, firma, cuadra, errores, dispositivo, ip_hash, dhash, ts_foto, ts, flags) VALUES ${l.map(() => "(?,?,?,?,?,?,?,?,?,?,?,?,?)").join(",")}`).bind(...l.flat())); }
+  for (let i = 0; i < tocadas.length; i += 33) { const l = tocadas.slice(i, i + 33);
+    st.push(env.DB.prepare(`INSERT INTO pendientes (mesa_id, prov, ts) VALUES ${l.map(() => "(?,?,?)").join(",")} ON CONFLICT(mesa_id) DO UPDATE SET ts = excluded.ts`).bind(...l.flatMap(id => [id, prov, t]))); }
+  for (let i = 0; i < st.length; i += 50) await env.DB.batch(st.slice(i, i + 50));
+  return { ok: true, prov, mesas: tocadas.length, envios: filas.length };
+}
+
 export async function recalcular(env) {
   const t0 = ahora();
   const pend = (await env.DB.prepare("SELECT mesa_id, prov, ts FROM pendientes ORDER BY ts LIMIT 2000").all()).results;
@@ -277,26 +335,34 @@ export async function recalcular(env) {
     }
     if (stmts.length) await env.DB.batch(stmts);
   }
+  // Al llegar la hora de publicar cifras, se regeneran todas las provincias (no solo las que tienen envíos nuevos),
+  // porque hasta entonces sus JSON se guardaron sin votos ni fotos. El resumen guarda en sus metadatos si ya los mostraba.
+  const resumen = await env.FOTOS.head("public/resumen.json");
+  const visible = totalesVisibles(env);
+  const cambioHora = !!resumen && (resumen.customMetadata?.totales === "1") !== visible;
+  if (cambioHora) for (const r of (await env.DB.prepare("SELECT DISTINCT prov FROM consenso").all()).results) provs.add(r.prov);
   for (const prov of provs) await publicarProvincia(env, prov);
-  if (provs.size || !(await env.FOTOS.head("public/resumen.json"))) { await publicarResumen(env); await publicarDecisiones(env); }
+  if (provs.size || !resumen) { await publicarResumen(env); await publicarDecisiones(env); }
   return { mesas: pend.length, provincias: [...provs], ms: ahora() - t0 };
 }
 
 async function publicarProvincia(env, prov) {
+  const visible = totalesVisibles(env);
   const [cons, envs, cands] = await env.DB.batch([
     env.DB.prepare("SELECT c.mesa_id, c.estado, c.cifras, c.n_envios, c.n_indep, m.municipio, m.censo, m.local, m.nueva FROM consenso c JOIN mesas m ON m.id = c.mesa_id WHERE c.prov = ?").bind(prov),
     env.DB.prepare("SELECT hash, mesa_id, cifras, cuadra, geo_ok, ts, estado, motivo, flags, publica, denuncias FROM envios WHERE prov = ? ORDER BY ts").bind(prov),
     env.DB.prepare("SELECT codigo, siglas, orden FROM candidaturas WHERE prov = ? ORDER BY orden").bind(prov),
   ]);
   const porMesa = new Map(); for (const e of envs.results) { if (!porMesa.has(e.mesa_id)) porMesa.set(e.mesa_id, []);
-    porMesa.get(e.mesa_id).push({ h: e.hash, c: JSON.parse(e.cifras), ok: e.cuadra, geo: e.geo_ok, ts: e.ts, est: e.estado, mot: e.motivo, f: JSON.parse(e.flags || "[]"), pub: e.publica, den: e.denuncias >= Number(env.DENUNCIAS_OCULTAR || 2) && !String(e.flags).includes("foto_aprobada") ? 1 : 0 }); }
-  const mesas = cons.results.map(c => ({ id: c.mesa_id, municipio: c.municipio, local: c.local, censo: c.censo, estado: c.estado, nueva: c.nueva ? 1 : 0, cifras: c.cifras ? JSON.parse(c.cifras) : null,
+    // Antes de la hora de publicar: ni cifras ni foto de cada envío (solo su estado y la hora).
+    porMesa.get(e.mesa_id).push({ h: e.hash, c: visible ? JSON.parse(e.cifras) : null, ok: e.cuadra, geo: e.geo_ok, ts: e.ts, est: e.estado, mot: e.motivo, f: JSON.parse(e.flags || "[]"), pub: visible ? e.publica : 0, den: e.denuncias >= Number(env.DENUNCIAS_OCULTAR || 2) && !String(e.flags).includes("foto_aprobada") ? 1 : 0 }); }
+  const mesas = cons.results.map(c => ({ id: c.mesa_id, municipio: c.municipio, local: c.local, censo: c.censo, estado: c.estado, nueva: c.nueva ? 1 : 0, cifras: visible && c.cifras ? JSON.parse(c.cifras) : null,
     n: c.n_envios, indep: c.n_indep, fotos: porMesa.get(c.mesa_id) || [] }));
-  await env.FOTOS.put(`public/prov/${prov}.json`, JSON.stringify({ prov, generado: ahora(), candidaturas: cands.results, mesas }), { httpMetadata: { contentType: "application/json" } });
+  await env.FOTOS.put(`public/prov/${prov}.json`, JSON.stringify({ prov, generado: ahora(), totales_visibles: visible, candidaturas: cands.results, mesas }), { httpMetadata: { contentType: "application/json" } });
 }
 
 async function publicarResumen(env) {
-  const mostrarTotales = env.MODO_PRUEBAS === "1" || ahora() >= Date.parse(env.TOTALES_DESDE || env.ABRE);
+  const mostrarTotales = totalesVisibles(env);
   const [tot, est, cands, cifras] = await env.DB.batch([
     env.DB.prepare("SELECT m.prov, COALESCE(MAX(p.mesas), SUM(CASE WHEN m.nueva = 0 THEN 1 ELSE 0 END)) AS n FROM mesas m LEFT JOIN provincias p ON p.prov = m.prov GROUP BY m.prov"),
     env.DB.prepare("SELECT prov, estado, COUNT(*) AS n FROM consenso GROUP BY prov, estado"),
@@ -311,11 +377,33 @@ async function publicarResumen(env) {
     for (const [cod, v] of Object.entries(c.cand)) { const s = siglas.get(r.prov + "|" + cod) || cod; p.votos[s] = (p.votos[s] || 0) + v; nac.votos[s] = (nac.votos[s] || 0) + v; }
     for (const k of ["blanco", "nulos", "votantes"]) { p.votos["_" + k] = (p.votos["_" + k] || 0) + c[k]; nac.votos["_" + k] = (nac.votos["_" + k] || 0) + c[k]; } }
   for (const p of P.values()) for (const k of ["mesas", "con_envio", "verificada", "validada", "pendiente", "conflicto", "revision", "invalidada"]) nac[k] += p[k] || 0;
-  await env.FOTOS.put("public/resumen.json", JSON.stringify({ generado: ahora(), totales_visibles: mostrarTotales, nacional: nac, provincias: [...P.values()] }), { httpMetadata: { contentType: "application/json" } });
+  await env.FOTOS.put("public/resumen.json", JSON.stringify({ generado: ahora(), totales_visibles: mostrarTotales, nacional: nac, provincias: [...P.values()] }),
+    { httpMetadata: { contentType: "application/json" }, customMetadata: { totales: mostrarTotales ? "1" : "0" } });
+}
+// Registro público de decisiones, encadenado. Cada decisión lleva una «huella» (SHA-256) calculada a partir de la huella
+// de la decisión anterior y de sus propios datos; la huella de la última resume todo el registro. Si alguien cambiara o
+// borrara una decisión antigua directamente en la base de datos, cambiarían todas las huellas desde ese punto y ya no
+// coincidirían con las publicadas antes (por ejemplo, en un mensaje en redes o en una copia guardada del archivo).
+// Cualquiera puede comprobarlo con scripts/verificar_registro.py.
+// Solo se regenera cuando hay decisiones nuevas, para no repetir trabajo cada minuto.
+const HUELLA_INICIAL = "0".repeat(64);
+export async function encadenar(decisiones) {
+  const enc = new TextEncoder(); let h = HUELLA_INICIAL; const salida = [];
+  for (const d of decisiones) {
+    h = await sha256hex(enc.encode(h + "\n" + JSON.stringify([d.id, d.ts, d.hash, d.mesa_id, d.decision, d.motivo ?? null])));
+    salida.push({ ...d, huella: h });
+  }
+  return { huella: h, decisiones: salida };
 }
 async function publicarDecisiones(env) {
-  const r = await env.DB.prepare("SELECT ts, hash, mesa_id, decision, motivo FROM decisiones ORDER BY id DESC LIMIT 3000").all();
-  await env.FOTOS.put("public/decisiones.json", JSON.stringify({ generado: ahora(), decisiones: r.results }), { httpMetadata: { contentType: "application/json" } });
+  const ultima = String((await env.DB.prepare("SELECT MAX(id) AS m FROM decisiones").first())?.m || 0);
+  const previo = await env.FOTOS.head("public/decisiones.json");
+  if (previo && previo.customMetadata?.ultima === ultima) return;
+  const r = await env.DB.prepare("SELECT id, ts, hash, mesa_id, decision, motivo FROM decisiones ORDER BY id").all();
+  const { huella, decisiones } = await encadenar(r.results);
+  // Se publican todas, de la más reciente a la más antigua; la huella del registro completo va arriba.
+  await env.FOTOS.put("public/decisiones.json", JSON.stringify({ generado: ahora(), total: decisiones.length, huella, decisiones: decisiones.reverse() }),
+    { httpMetadata: { contentType: "application/json" }, customMetadata: { ultima } });
 }
 
 // ---------------------------------------------------------------- panel de validación
@@ -503,6 +591,32 @@ async function admin(req, env, url) {
     const r = await env.AI.run(env.MODELO_IA || MODELO_IA, { prompt: "agree" }).catch(e => ({ error: String(e) }));
     return json({ ok: true, respuesta: r });
   }
+  if (p === "rellenar_demo" && req.method === "POST") {
+    // Inventa actas para una provincia, para ver la web con datos. Solo funciona con MODO_PRUEBAS = "1".
+    if (env.MODO_PRUEBAS !== "1") return json({ error: "solo_en_modo_pruebas" }, 403);
+    const b = await req.json().catch(() => ({})); if (b.confirmar !== "RELLENAR") return json({ error: "falta_confirmacion" }, 400);
+    if (!/^\d\d$/.test(String(b.prov || ""))) return json({ error: "provincia" }, 400);
+    return json(await rellenarDemo(env, String(b.prov), Math.min(0.5, Math.max(0.01, Number(b.fraccion) || 0.1))));
+  }
+  if (p === "oficial" && req.method === "POST") {
+    // Carga el dato oficial de Interior de una provincia (ya convertido con scripts/oficial_desde_interior.py o con el
+    // lector de la noche electoral). Sustituye entero al que hubiera de esa provincia. La web lo compara con las actas.
+    const b = await req.json().catch(() => ({}));
+    if (!/^\d\d$/.test(String(b.prov || ""))) return json({ error: "provincia" }, 400);
+    const limpio = limpiarOficial(String(b.prov), b.datos);
+    if (limpio.error) return json(limpio, 400);
+    await env.FOTOS.put(`public/oficial/${b.prov}.json`, JSON.stringify(limpio), { httpMetadata: { contentType: "application/json" } });
+    return json({ ok: true, municipios: Object.keys(limpio.municipios).length, mesas: Object.keys(limpio.mesas).length });
+  }
+  if (p === "oficial_demo" && req.method === "POST") {
+    // Inventa un «dato oficial» a partir de las actas verificadas, con algunas diferencias, para ver la comparación. Solo en pruebas.
+    if (env.MODO_PRUEBAS !== "1") return json({ error: "solo_en_modo_pruebas" }, 403);
+    const b = await req.json().catch(() => ({}));
+    if (!/^\d\d$/.test(String(b.prov || "")) || !["municipio", "mesa"].includes(b.nivel)) return json({ error: "parametros" }, 400);
+    const datos = await oficialDemo(env, String(b.prov), b.nivel);
+    await env.FOTOS.put(`public/oficial/${b.prov}.json`, JSON.stringify(datos), { httpMetadata: { contentType: "application/json" } });
+    return json({ ok: true, municipios: Object.keys(datos.municipios).length, mesas: Object.keys(datos.mesas).length });
+  }
   if (p === "vaciar_pruebas" && req.method === "POST") {
     // Borra todos los envíos, fotos y JSON públicos de las pruebas. Solo funciona con MODO_PRUEBAS = "1".
     if (env.MODO_PRUEBAS !== "1") return json({ error: "solo_en_modo_pruebas" }, 403);
@@ -525,9 +639,62 @@ async function admin(req, env, url) {
       env.DB.prepare("SELECT SUM(ia_estado IN ('pendiente','forzada')) AS n, SUM(ia_estado = 'en_espera') AS espera FROM envios"),
       env.DB.prepare("SELECT COALESCE(MAX(n), 0) AS n FROM contador WHERE clave = 'lecturas_ia'"),
     ]);
-    return json({ ...a.results[0], estados: b.results, pendientes_recalculo: c.results[0].n, lecturas_pendientes: dd.results[0].n || 0, fotos_en_espera: dd.results[0].espera || 0, lecturas_ia: ee.results[0].n, tope_lecturas_ia: Number(env.MAX_LECTURAS_IA || 100000) });
+    return json({ ...a.results[0], estados: b.results, pendientes_recalculo: c.results[0].n, lecturas_pendientes: dd.results[0].n || 0, fotos_en_espera: dd.results[0].espera || 0, lecturas_ia: ee.results[0].n, tope_lecturas_ia: Number(env.MAX_LECTURAS_IA || 100000),
+      clave_ip_ok: !!env.SAL_IP && env.SAL_IP.length >= 12 });
   }
   return json({ error: "no_encontrado" }, 404);
+}
+// ---------------------------------------------------------------- dato oficial de Interior
+// Formato (uno por provincia, en R2: public/oficial/PP.json):
+//   { prov, tipo: "provisional" | "definitivo", fuente, actualizado,
+//     municipios: { "079": { escrutado, votantes, nulos, blanco, cand: { C02: 123, ... } } },
+//     mesas:      { "28-079-01-001-A": { votantes, nulos, blanco, cand: {...} } } }
+// Los códigos de candidatura son los de la web (C01, C02…). Si una candidatura oficial no se ha podido emparejar,
+// va con su sigla precedida de «?». «escrutado» es el porcentaje de mesas escrutadas del municipio (0 a 100).
+const entero = (v) => v == null ? null : (Number.isInteger(v) && v >= 0 && v < 10_000_000 ? v : undefined);
+function cifrasOficiales(x) {
+  if (!x || typeof x !== "object") return null;
+  const r = { votantes: entero(x.votantes), nulos: entero(x.nulos), blanco: entero(x.blanco), cand: {} };
+  if ([r.votantes, r.nulos, r.blanco].includes(undefined)) return null;
+  if (x.escrutado != null) { const e = Number(x.escrutado); if (!(e >= 0 && e <= 100)) return null; r.escrutado = e; }
+  for (const [k, v] of Object.entries(x.cand || {})) {
+    if (!/^[^<>"&]{1,60}$/.test(k)) return null; const n = entero(v); if (n == null) return null; r.cand[k] = n;
+  }
+  return r;
+}
+function limpiarOficial(prov, d) {
+  if (!d || typeof d !== "object") return { error: "datos" };
+  if (!["provisional", "definitivo"].includes(d.tipo)) return { error: "tipo" };
+  const out = { prov, tipo: d.tipo, fuente: String(d.fuente || "Ministerio del Interior").slice(0, 200), actualizado: String(d.actualizado || new Date().toISOString()).slice(0, 40), municipios: {}, mesas: {} };
+  for (const [k, v] of Object.entries(d.municipios || {})) { if (!/^\d{3}$/.test(k)) return { error: "municipio", clave: k }; const c = cifrasOficiales(v); if (!c) return { error: "cifras", clave: k }; out.municipios[k] = c; }
+  for (const [k, v] of Object.entries(d.mesas || {})) { if (!RE_MESA.test(k) || k.slice(0, 2) !== prov) return { error: "mesa", clave: k }; const c = cifrasOficiales(v); if (!c) return { error: "cifras", clave: k }; out.mesas[k] = c; }
+  return out;
+}
+async function oficialDemo(env, prov, nivel) {
+  // Copia las cifras de las mesas verificadas y cambia unas pocas (unos votos de una candidatura a otra, o votos de más),
+  // para que en pruebas se vean tanto coincidencias como diferencias.
+  const rs = (await env.DB.prepare("SELECT mesa_id, cifras FROM consenso WHERE prov = ? AND estado IN ('verificada','validada') AND cifras IS NOT NULL").bind(prov).all()).results;
+  const total = new Map((await env.DB.prepare("SELECT muni, COUNT(*) AS n FROM mesas WHERE prov = ? AND COALESCE(de_usuario, 0) = 0 GROUP BY muni").bind(prov).all()).results.map(r => [r.muni, r.n]));
+  const mesas = {};
+  for (const r of rs) {
+    const c = JSON.parse(r.cifras); const o = { votantes: c.votantes, nulos: c.nulos, blanco: c.blanco, cand: { ...c.cand } };
+    const ks = Object.keys(o.cand); const azar = Math.random();
+    if (ks.length >= 2 && azar < 0.06) { const [a, b] = [ks[Math.floor(Math.random() * ks.length)], ks[Math.floor(Math.random() * ks.length)]]; const k = Math.min(o.cand[b] || 0, 1 + Math.floor(Math.random() * 12)); if (a !== b && k) { o.cand[a] += k; o.cand[b] -= k; } }
+    else if (ks.length && azar < 0.09) { const a = ks[Math.floor(Math.random() * ks.length)]; const k = 1 + Math.floor(Math.random() * 5); o.cand[a] += k; o.votantes += k; }
+    mesas[r.mesa_id] = o;
+  }
+  const municipios = {};
+  if (nivel === "municipio") {
+    const por = {}; for (const [id, o] of Object.entries(mesas)) (por[id.split("-")[1]] = por[id.split("-")[1]] || []).push(o);
+    for (const [k, lista] of Object.entries(por)) {
+      const s = { escrutado: 100, votantes: 0, nulos: 0, blanco: 0, cand: {} };
+      for (const o of lista) { s.votantes += o.votantes || 0; s.nulos += o.nulos || 0; s.blanco += o.blanco || 0; for (const [c, v] of Object.entries(o.cand)) s.cand[c] = (s.cand[c] || 0) + (v || 0); }
+      // Solo el municipio entero tiene sentido: si faltan mesas por verificar, su «escrutado» oficial seguiría siendo 100, pero aquí no se inventa.
+      if (lista.length === (total.get(k) || 0)) municipios[k] = s;
+    }
+  }
+  return { prov, tipo: nivel === "mesa" ? "definitivo" : "provisional", fuente: "DATOS INVENTADOS para la versión de pruebas", actualizado: new Date().toISOString(),
+    municipios, mesas: nivel === "mesa" ? mesas : {} };
 }
 async function conEnvios(env, mesas) {
   if (!mesas.length) return [];
@@ -657,7 +824,7 @@ async function leerParaFormulario(req, env) {
   if (!iaActiva(env)) return json({ error: "desactivada" }, 404);
   if (!abierto(env)) return json({ error: "cerrado" }, 403);
   const ip = req.headers.get("cf-connecting-ip") || "0.0.0.0";
-  const ipHash = (await sha256hex(new TextEncoder().encode((env.SAL_IP || "sal") + ip))).slice(0, 32);
+  const ipHash = await huellaIP(env, ip);
   let form; try { form = await req.formData(); } catch { return json({ error: "formato" }, 400); }
   const foto = form.get("foto"); const prov = String(form.get("prov") || "");
   // Solo en la versión de pruebas: elegir otro modelo para compararlos (no se usa la caché ni se guarda la lectura)

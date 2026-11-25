@@ -6,7 +6,14 @@
 <meta name="robots" content="noindex">
 <title>Panel de validación · Recuento Ciudadano</title>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* Tipografías servidas desde el propio dominio (igual que en la web pública) */
+@font-face{font-family:"Inter"; font-weight:400; font-display:swap; src:url(/fuentes/inter-latin-400-normal.woff2) format("woff2")}
+@font-face{font-family:"Inter"; font-weight:600; font-display:swap; src:url(/fuentes/inter-latin-600-normal.woff2) format("woff2")}
+@font-face{font-family:"Inter"; font-weight:800; font-display:swap; src:url(/fuentes/inter-latin-800-normal.woff2) format("woff2")}
+@font-face{font-family:"IBM Plex Mono"; font-weight:400; font-display:swap; src:url(/fuentes/ibm-plex-mono-latin-400-normal.woff2) format("woff2")}
+@font-face{font-family:"IBM Plex Mono"; font-weight:500; font-display:swap; src:url(/fuentes/ibm-plex-mono-latin-500-normal.woff2) format("woff2")}
+</style>
 <style>
 :root{ --paper:#f6f2ea; --card:#fffdf9; --ink:#1e2a32; --muted:#5e6b73; --line:#d9d3c7; --accent:#23626a; --ok:#23626a; --ok-soft:#dcebea; --warn:#8a6420; --warn-soft:#f3e6c8; --bad:#a3402e; --bad-soft:#f6e0da;
   --body:"Inter","Segoe UI",Arial,sans-serif; --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace; color-scheme:light; }
@@ -49,11 +56,14 @@ td.ia{color:var(--muted)} td.iadif{background:var(--bad-soft); color:var(--bad);
     <div class="card row">
       <label for="fEstado">Cola</label>
       <select id="fEstado"><option value="conflicto,revision">Mesas por revisar (conflictos y avisos)</option><option value="fotos">Fotos sospechosas</option><option value="espera">Fotos en espera (mesas ya verificadas, sin prioridad)</option><option value="nuevas">Mesas nuevas por confirmar</option><option value="pendiente">Pendientes (1 fuente)</option><option value="verificada,validada">Verificadas</option><option value="acciones">Últimas acciones (registro de decisiones)</option></select>
-      <label for="fProv">Provincia</label><input id="fProv" size="3" placeholder="08">
+      <label for="fProv">Provincia</label><input id="fProv" size="3" placeholder="28">
       <button id="btnCargar">Cargar</button>
-      <label for="fMesa">Mesa</label><input id="fMesa" size="18" placeholder="08-187-01-001-A"><button id="btnMesa">Abrir mesa</button>
+      <label for="fMesa">Mesa</label><input id="fMesa" size="18" placeholder="28-079-01-001-A"><button id="btnMesa">Abrir mesa</button>
       <button id="btnRecalc">Recalcular ahora</button>
       <button id="btnVaciar" class="bad">Vaciar datos de prueba</button>
+      <button id="btnDemo">Rellenar 10 % con datos inventados</button>
+      <button id="btnOficial">Cargar dato oficial…</button><input type="file" id="fOficial" accept=".json,application/json" multiple hidden>
+      <button id="btnOfiDemo">Inventar dato oficial (pruebas)</button>
       <span class="meta" id="stats"></span>
     </div>
     <div id="cola"></div>
@@ -69,7 +79,7 @@ async function api(path,opts={}){ const r=await fetch("/admin/api/"+path,{...opt
   if(r.status===401){ $("app").style.display="none"; $("login").style.display="flex"; $("loginInfo").textContent="Contraseña incorrecta."; throw new Error("401"); } return r.json(); }
 async function entrar(){ TOK=$("tok").value||TOK; try{ await stats(); sessionStorage.setItem("rc-admin",TOK); $("login").style.display="none"; $("app").style.display="block"; cargar(); }catch(e){} }
 $("btnLogin").onclick=entrar; $("tok").addEventListener("keydown",e=>{ if(e.key==="Enter") entrar(); });
-async function stats(){ const s=await api("estadisticas"); $("stats").textContent=`${s.envios} envíos · ${s.mesas} mesas · `+s.estados.map(e=>`${e.estado}: ${e.n}`).join(" · ")+` · pendientes de recalcular: ${s.pendientes_recalculo}${s.lecturas_pendientes?` · fotos por leer: ${s.lecturas_pendientes}`:""}${s.fotos_en_espera?` · fotos en espera: ${s.fotos_en_espera}`:""}${s.lecturas_ia?` · lecturas IA: ${s.lecturas_ia} de ${s.tope_lecturas_ia}`:""}`; }
+async function stats(){ const s=await api("estadisticas"); $("stats").textContent=`${s.envios} envíos · ${s.mesas} mesas · `+s.estados.map(e=>`${e.estado}: ${e.n}`).join(" · ")+` · pendientes de recalcular: ${s.pendientes_recalculo}${s.lecturas_pendientes?` · fotos por leer: ${s.lecturas_pendientes}`:""}${s.fotos_en_espera?` · fotos en espera: ${s.fotos_en_espera}`:""}${s.lecturas_ia?` · lecturas IA: ${s.lecturas_ia} de ${s.tope_lecturas_ia}`:""}`+(s.clave_ip_ok===false?" · ⚠ FALTA LA CLAVE SAL_IP (o es demasiado corta): las IP no quedan bien protegidas":""); }
 // VISTA recuerda si se está viendo una cola o una mesa concreta, para volver a ella después de cada acción
 let VISTA={modo:"cola"};
 async function cargar(){ VISTA={modo:"cola"}; const modo=$("fEstado").value;
@@ -216,6 +226,26 @@ async function abrirTapar(hash){
 
 $("btnVaciar").onclick=async()=>{ if(prompt("Esto borra TODOS los envíos, fotos y resultados. Solo funciona en modo pruebas. Escribe VACIAR para confirmar:")!=="VACIAR") return;
   const r=await api("vaciar_pruebas",{method:"POST",body:JSON.stringify({confirmar:"VACIAR"})}); alertar(r.ok?`Vaciado: ${r.objetos_borrados} ficheros borrados.`:(r.error==="solo_en_modo_pruebas"?"Solo se puede vaciar con MODO_PRUEBAS activado.":r.error)); if(r.ok) cargar(); };
+// Solo en pruebas: inventa actas para el 10 % de las mesas de toda España, provincia a provincia, y recalcula.
+$("btnDemo").onclick=async()=>{ if(prompt("Esto añade actas INVENTADAS en unas 6.000 mesas (solo funciona en modo pruebas). Conviene vaciar antes los datos de prueba. Escribe RELLENAR para confirmar:")!=="RELLENAR") return;
+  const provs=Array.from({length:52},(_,i)=>String(i+1).padStart(2,"0")); let n=0;
+  for(const p of provs){ alertar(`Rellenando provincia ${p}… (${n} mesas hasta ahora)`);
+    const r=await api("rellenar_demo",{method:"POST",body:JSON.stringify({confirmar:"RELLENAR",prov:p,fraccion:0.1})});
+    if(!r.ok){ alertar(r.error==="solo_en_modo_pruebas"?"Solo se puede rellenar con MODO_PRUEBAS activado.":"Error en la provincia "+p+": "+(r.error||"")); return; } n+=r.mesas; }
+  for(let i=0;i<10;i++){ alertar(`Recalculando ${n} mesas… (paso ${i+1})`); const e=await api("recalcular",{method:"POST"}); if(!e.mesas) break; }
+  alertar(`Listo: ${n} mesas con actas inventadas.`); cargar(); };
+// Dato oficial: uno o varios archivos PP.json generados con scripts/oficial_desde_interior.py (o por el lector de la noche)
+$("btnOficial").onclick=()=>$("fOficial").click();
+$("fOficial").onchange=async e=>{ const fs=[...e.target.files]; e.target.value=""; if(!fs.length) return; let ok=0;
+  for(const f of fs){ alertar(`Cargando ${f.name}…`); let datos; try{ datos=JSON.parse(await f.text()); }catch(err){ alertar(`${f.name} no es un JSON válido.`); return; }
+    const prov=String(datos.prov||f.name.slice(0,2)); const r=await api("oficial",{method:"POST",body:JSON.stringify({prov,datos})});
+    if(!r.ok){ alertar(`Error en ${f.name}: ${r.error}${r.clave?" ("+r.clave+")":""}`); return; } ok++; }
+  alertar(`Dato oficial cargado: ${ok} provincia${ok===1?"":"s"}.`); };
+$("btnOfiDemo").onclick=async()=>{ const n=(prompt("Inventa un «dato oficial» a partir de las actas verificadas (solo en modo pruebas), con algunas diferencias. Escribe MUNICIPIO para simular la noche electoral o MESA para simular el escrutinio definitivo:")||"").trim().toLowerCase();
+  if(!["municipio","mesa"].includes(n)) return;
+  for(let i=1;i<=52;i++){ const p=String(i).padStart(2,"0"); alertar(`Provincia ${p}…`); const r=await api("oficial_demo",{method:"POST",body:JSON.stringify({prov:p,nivel:n})});
+    if(!r.ok){ alertar(r.error==="solo_en_modo_pruebas"?"Solo en modo pruebas.":"Error: "+r.error); return; } }
+  alertar("Dato oficial inventado en las 52 provincias."); };
 function alertar(t){ $("stats").textContent="⚠ "+t; }
 if(TOK){ entrar(); }
 </script>

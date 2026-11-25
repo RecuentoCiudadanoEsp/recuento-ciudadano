@@ -15,28 +15,35 @@
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/icono-180.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="preload" href="/fuentes/inter-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
 <style>
+/* Tipografías servidas desde el propio dominio (licencia SIL OFL, en /fuentes): así ningún servicio externo
+   recibe la visita y la página no depende de otro servidor para verse bien con mala cobertura. */
+@font-face{font-family:"Inter"; font-weight:400; font-display:swap; src:url(/fuentes/inter-latin-400-normal.woff2) format("woff2")}
+@font-face{font-family:"Inter"; font-weight:500; font-display:swap; src:url(/fuentes/inter-latin-500-normal.woff2) format("woff2")}
+@font-face{font-family:"Inter"; font-weight:600; font-display:swap; src:url(/fuentes/inter-latin-600-normal.woff2) format("woff2")}
+@font-face{font-family:"Inter"; font-weight:800; font-display:swap; src:url(/fuentes/inter-latin-800-normal.woff2) format("woff2")}
+@font-face{font-family:"IBM Plex Mono"; font-weight:400; font-display:swap; src:url(/fuentes/ibm-plex-mono-latin-400-normal.woff2) format("woff2")}
+@font-face{font-family:"IBM Plex Mono"; font-weight:500; font-display:swap; src:url(/fuentes/ibm-plex-mono-latin-500-normal.woff2) format("woff2")}
 :root{
   /* Paleta: papel y tinta (el acta), petróleo como color principal y ocre como acento.
      Colores elegidos para no recordar a ningún partido. */
   --paper:#f6f2ea; --card:#fffdf9; --ink:#1e2a32; --muted:#5e6b73; --line:#d9d3c7; --accent:#23626a; --accent-soft:#dcebea;
-  --ocre:#c8963e; --ok:#23626a; --ok-soft:#dcebea; --warn:#8a6420; --warn-soft:#f3e6c8; --bad:#a3402e; --bad-soft:#f6e0da; --info:#23626a; --info-soft:#dcebea;
+  --ocre:#c8963e; --ok:#23626a; --ok-soft:#dcebea; --warn:#8a6420; --warn-soft:#f3e6c8; --bad:#a3402e; --bad-soft:#f6e0da; --info:#23626a; --info-soft:#dcebea; --sin:#dbd7cf; --foto:#e7d3a8;
   --display:"Inter","Helvetica Neue",Arial,sans-serif; --body:"Inter","Segoe UI",Arial,sans-serif; --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark){ :root{
   --paper:#111a1f; --card:#18242b; --ink:#eceee9; --muted:#9aa7ae; --line:#2b3a42; --accent:#7cc0c4; --accent-soft:#1c3639;
-  --ocre:#d9ab58; --ok:#7cc0c4; --ok-soft:#1c3639; --warn:#e2b866; --warn-soft:#3a2f17; --bad:#f08f7c; --bad-soft:#3d211c; --info:#7cc0c4; --info-soft:#1c3639; color-scheme: dark; } }
+  --ocre:#d9ab58; --ok:#7cc0c4; --ok-soft:#1c3639; --warn:#e2b866; --warn-soft:#3a2f17; --bad:#f08f7c; --bad-soft:#3d211c; --info:#7cc0c4; --info-soft:#1c3639; --sin:#26343c; --foto:#5a4a26; color-scheme: dark; } }
 *{box-sizing:border-box} html,body{margin:0}
 body{background:var(--paper); color:var(--ink); font-family:var(--body); font-size:16px; line-height:1.5}
 .wrap{max-width:860px; margin:0 auto; padding:16px 16px 64px}
 header.top{display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:8px}
 .brand{font-family:var(--display); font-weight:800; font-size:20px; letter-spacing:-.01em; text-decoration:none; color:var(--ink); display:inline-flex; align-items:center; gap:10px}
 .brand img{width:36px; height:36px; display:block}
-nav.tabs{display:flex; gap:2px; overflow-x:auto; border-bottom:1px solid var(--line); margin-bottom:18px}
+nav.tabs{display:flex; gap:2px; overflow-x:auto; scrollbar-width:none; border-bottom:1px solid var(--line); margin-bottom:12px}
+nav.tabs::-webkit-scrollbar{display:none}
 nav.tabs a{padding:10px 12px; text-decoration:none; color:var(--muted); font-weight:600; white-space:nowrap; border-bottom:3px solid transparent}
 nav.tabs a[aria-current="page"]{color:var(--ink); border-color:var(--accent)}
 h1{font-family:var(--display); font-weight:800; font-size:30px; line-height:1.15; margin:6px 0 10px; text-wrap:balance}
@@ -51,10 +58,10 @@ a{color:var(--accent)}
 .mono{font-family:var(--mono); font-size:13px; word-break:break-all}
 label{display:block; font-size:14px; font-weight:600; color:var(--muted); margin-bottom:4px}
 select,input[type=number],input[type=text]{width:100%; font:inherit; color:var(--ink); background:var(--paper); border:1px solid var(--line); border-radius:9px; padding:11px 12px}
-input[type=number]{font-family:var(--mono); font-variant-numeric:tabular-nums; font-size:18px}
+input.cifra{font-family:var(--mono); font-variant-numeric:tabular-nums; font-size:18px}
 button,.btn{font:inherit; font-weight:600; border-radius:10px; border:1px solid var(--line); background:var(--card); color:var(--ink); padding:11px 16px; cursor:pointer; text-decoration:none; display:inline-block}
 button.primary,.btn.primary{background:var(--accent); border-color:var(--accent); color:#fff}
-@media (prefers-color-scheme: dark){ button.primary,.btn.primary{color:#111a1f} }
+@media (prefers-color-scheme: dark){ button.primary,.btn.primary,.seg button.on{color:#111a1f} }
 button:disabled{opacity:.5; cursor:not-allowed}
 button.big{width:100%; padding:15px; font-size:18px}
 button.small,.btn.small{padding:7px 11px; font-size:14px}
@@ -74,7 +81,7 @@ button.small,.btn.small{padding:7px 11px; font-size:14px}
 .checks li{display:flex; gap:8px; padding:8px 10px; border-radius:8px; font-size:15px}
 .checks .ic{font-family:var(--mono); font-weight:600; width:16px; flex:none; text-align:center}
 input.dudoso{background:var(--warn-soft); border-color:var(--warn)} .pista{font-size:12px; color:var(--muted); min-height:0; margin-top:2px} .pista.f-alta{color:var(--ok)} .pista.f-baja{color:var(--bad); font-weight:600} input.dudoso+.pista{color:var(--warn); font-weight:600}
-.mapa{width:100%; height:auto; max-height:62vh; display:block; margin:0 auto; touch-action:manipulation} .mapa path{stroke:var(--card); stroke-width:.6; cursor:pointer; transition:opacity .15s} .mapa path:hover{opacity:.75; stroke:var(--ink); stroke-width:1.2}
+.mapa{width:100%; height:auto; max-height:62vh; display:block; margin:0 auto; touch-action:manipulation} .mapa path{stroke:var(--card); stroke-width:.7; cursor:pointer; transition:opacity .15s} .mapa path:hover{opacity:.75; stroke:var(--ink); stroke-width:1.2}
 .mapa .marco{fill:none; stroke:var(--line); stroke-width:1; pointer-events:none}
 .leyenda{display:flex; flex-wrap:wrap; gap:10px; font-size:12.5px; color:var(--muted); margin-top:8px} .leyenda i{display:inline-block; width:14px; height:14px; border-radius:3px; vertical-align:-3px; margin-right:4px}
 .seg{display:inline-flex; border:1px solid var(--line); border-radius:9px; overflow:hidden} .seg button{border:0; border-radius:0; padding:7px 12px; font-size:14px} .seg button.on{background:var(--accent); color:#fff}
@@ -84,8 +91,10 @@ input.dudoso{background:var(--warn-soft); border-color:var(--warn)} .pista{font-
 .pill{display:inline-block; font-size:12.5px; font-weight:600; padding:3px 9px; border-radius:999px; white-space:nowrap}
 .p-verificada,.p-validada{background:var(--ok-soft); color:var(--ok)} .p-pendiente{background:var(--paper); color:var(--muted); border:1px solid var(--line)}
 .p-conflicto{background:var(--warn-soft); color:var(--warn)} .p-revision,.p-invalidada,.p-invalida{background:var(--bad-soft); color:var(--bad)} .p-valida{background:var(--ok-soft); color:var(--ok)}
-.editor{position:relative; touch-action:none; border:1px solid var(--line); border-radius:8px; overflow:hidden; background:#222}
-.editor canvas{display:block; width:100%; height:auto}
+.editor{position:relative; border:1px solid var(--line); border-radius:8px; overflow:hidden; background:rgba(127,127,127,.15); text-align:center}
+.editor canvas{display:block; margin:0 auto; max-width:100%; max-height:62vh; width:auto; height:auto}
+.editor.tapando{touch-action:none; outline:3px solid var(--ocre); outline-offset:-3px} .editor.tapando canvas{cursor:crosshair}
+.avisoTapar{font-size:14px; font-weight:600; color:var(--warn); margin-top:8px}
 .tiles{display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:14px}
 @media (max-width:620px){ .tiles{grid-template-columns:repeat(2,1fr)} .grid2{grid-template-columns:1fr} h1{font-size:26px} }
 .tile{background:var(--card); border:1px solid var(--line); border-radius:10px; padding:12px}
@@ -94,7 +103,7 @@ input.dudoso{background:var(--warn-soft); border-color:var(--warn)} .pista{font-
 .tablewrap{overflow-x:auto}
 table{border-collapse:collapse; width:100%; font-size:14.5px}
 th,td{text-align:right; padding:8px; border-bottom:1px solid var(--line); font-variant-numeric:tabular-nums; white-space:nowrap}
-th:first-child,td:first-child{text-align:left; white-space:normal; overflow-wrap:anywhere}
+th:first-child,td:first-child{text-align:left; white-space:normal; overflow-wrap:break-word}
 @media (max-width:520px){ th,td{padding:7px 5px; font-size:13.5px} }
 th{font-size:13px; color:var(--muted); font-weight:600}
 tr.link{cursor:pointer} tr.link:hover td{background:var(--accent-soft)}
@@ -102,7 +111,7 @@ tr.link{cursor:pointer} tr.link:hover td{background:var(--accent-soft)}
 .linkish{margin-top:6px; background:none; border:none; padding:0; text-decoration:underline; color:var(--muted,#666); font-size:12px; cursor:pointer}
 .fotos{display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px}
 .foto{border:1px solid var(--line); border-radius:10px; overflow:hidden; background:var(--card); font-size:13px}
-.foto img{width:100%; aspect-ratio:3/4; object-fit:cover; display:block; background:#ddd}
+.foto img{width:100%; aspect-ratio:3/4; object-fit:contain; display:block; background:rgba(127,127,127,.12)}
 .foto div{padding:8px}
 .foto.invalida img{opacity:.35}
 .hide{display:none !important}
@@ -111,22 +120,63 @@ tr.link{cursor:pointer} tr.link:hover td{background:var(--accent-soft)}
 @media (prefers-reduced-motion: reduce){ .spinner{animation:none} }
 footer{margin-top:30px; font-size:13px; color:var(--muted)}
 /* Enlace a la cuenta oficial en X: arriba a la derecha de la cabecera y en el pie */
-header.top{position:relative}
-.top-der{display:flex; align-items:center; gap:14px; margin-left:auto}
 .xlink{display:inline-flex; align-items:center; justify-content:center; width:36px; height:36px; border-radius:50%; color:var(--ink); border:1px solid var(--line); background:var(--card)}
 .xlink:hover{color:var(--accent); border-color:var(--accent)}
-@media (max-width:620px){ .top-der{margin-left:0} .xlink{position:absolute; top:0; right:0} }
 footer .xpie{display:inline-flex; align-items:center; gap:5px; vertical-align:-2px}
+/* Franja de estado bajo las pestañas: envíos abiertos o cerrados */
+.estado{display:flex; align-items:center; gap:8px; font-size:14px; color:var(--muted); margin:0 0 16px}
+.estado i{width:9px; height:9px; border-radius:50%; background:var(--line); flex:none}
+.estado.abierto{color:var(--ok); font-weight:600} .estado.abierto i{background:var(--ok); animation:late 1.6s ease-in-out infinite}
+@keyframes late{50%{opacity:.25}}
+@media (prefers-reduced-motion: reduce){ .estado.abierto i{animation:none} }
+/* Buscadores de provincia y municipio: se escribe y la lista se filtra en el propio móvil */
+.busca{position:relative}
+.busca input{width:100%}
+.busca ul{position:absolute; z-index:20; left:0; right:0; top:100%; margin:4px 0 0; padding:4px; list-style:none; max-height:260px; overflow-y:auto;
+  background:var(--card); border:1px solid var(--line); border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,.14)}
+.busca li{padding:10px 10px; border-radius:7px; cursor:pointer}
+.busca li[aria-selected="true"],.busca li:hover{background:var(--accent-soft)}
+.busca li small{color:var(--muted)}
+.busca .vacio{color:var(--muted); cursor:default; background:none !important}
+/* Nombre completo de cada candidatura bajo sus siglas */
+.den{display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; font-size:11.5px; font-weight:400; line-height:1.3; color:var(--muted); min-height:2.6em}
+/* Paso completado: el círculo se rellena */
+.step .n.hecho{background:var(--accent); color:var(--card); font-weight:600}
+/* Ficha de mesa: cifras principales en casillas y votos en lista */
+.basicas{display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:12px}
+/* Comparación acta / dato oficial: números alineados a la derecha y las filas que no coinciden, resaltadas */
+table.comp td:not(:first-child), table.comp th:not(:first-child){text-align:right; white-space:nowrap}
+table.comp td .meta{font-size:12px}
+table.comp tr.difiere td{background:var(--warn-soft)}
+.basicas div{background:var(--paper); border-radius:8px; padding:8px 10px}
+.basicas b{display:block; font-family:var(--mono); font-size:20px; font-variant-numeric:tabular-nums}
+.basicas span{font-size:12.5px; color:var(--muted)}
+@media (max-width:420px){ .basicas{grid-template-columns:repeat(2,1fr)} }
+.cuad{display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:6px}
+/* Barra inferior del formulario en el móvil: qué falta y acceso directo */
+.barra{position:fixed; left:0; right:0; bottom:0; z-index:30; display:flex; gap:10px; align-items:center; justify-content:space-between;
+  padding:10px 14px calc(10px + env(safe-area-inset-bottom)); background:var(--card); border-top:1px solid var(--line); box-shadow:0 -6px 18px rgba(0,0,0,.08); font-size:14.5px}
+.barra span{flex:1}
+.barra.listo span{color:var(--ok); font-weight:600}
+@media (min-width:621px){ .barra{display:none !important} }
+@media (max-width:620px){ #v-enviar{padding-bottom:60px} }
+/* Panal de mesas de un municipio: un hexágono por mesa, y lista por distrito y sección */
+.panal{width:100%; height:auto; max-height:56vh; display:block; margin:6px auto 0}
+.panal path{cursor:pointer; stroke:var(--card); stroke-width:1.2} .panal path:hover{stroke:var(--ink); stroke-width:2}
+.e-ver{fill:var(--accent); background:var(--accent)} .e-foto{fill:var(--foto); background:var(--foto)} .e-sin{fill:var(--sin); background:var(--sin)}
+.dist{border-top:1px solid var(--line); padding:8px 0} .dist summary{cursor:pointer; font-weight:600; padding:4px 0}
+.secc{display:flex; align-items:center; gap:10px; padding:5px 0; font-size:14px}
+.secc .n{width:74px; flex:none; color:var(--muted)} .secc .c{flex:1; display:flex; flex-wrap:wrap; gap:4px}
+.secc .c a{width:16px; height:18px; clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%); display:block}
+.secc .t{flex:none; font-size:12.5px; color:var(--muted); text-align:right}
+
 </style>
 </head>
 <body>
 <div class="wrap">
   <header class="top">
     <a class="brand" href="#inicio"><img src="/logo.svg" alt="" width="36" height="36"><span id="brand">Recuento Ciudadano</span></a>
-    <span class="top-der">
-      <span class="meta" id="estadoGlobal"></span>
-      <a class="xlink" href="https://x.com/RecuentoCiud_es" target="_blank" rel="noopener" title="Recuento Ciudadano en X (@RecuentoCiud_es)" aria-label="Recuento Ciudadano en X"><svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a>
-    </span>
+    <a class="xlink" href="https://x.com/RecuentoCiud_es" target="_blank" rel="noopener" title="Recuento Ciudadano en X (@RecuentoCiud_es)" aria-label="Recuento Ciudadano en X"><svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a>
   </header>
   <nav class="tabs" aria-label="Secciones">
     <a href="#inicio" data-v="inicio">Inicio</a>
@@ -135,27 +185,38 @@ footer .xpie{display:inline-flex; align-items:center; gap:5px; vertical-align:-2
     <a href="#porque" data-v="porque">Por qué</a>
     <a href="#como" data-v="como">Cómo funciona</a>
   </nav>
+  <div class="estado" id="estadoGlobal" role="status"><i></i><span></span></div>
 
   <!-- INICIO -->
   <section class="view" id="v-inicio">
-    <h1>Cuando cierre tu colegio, fotografía el acta de tu mesa y súbela aquí.</h1>
-    <p>Al terminar el recuento, cada mesa pega en la puerta una copia del acta de escrutinio. Si muchas personas las fotografían, cualquiera podrá comprobar los resultados mesa por mesa, con la foto delante.</p>
-    <p class="meta">Verificación independiente y descentralizada del recuento oficial: cada foto del acta permite comprobar que el resultado publicado de esa mesa coincide con lo que se firmó en ella.</p>
-    <p><a href="#porque">Por qué existe esta web →</a></p>
-    <div id="inicioCerrado">
+    <!-- La portada cambia según el momento (ver «fases» en el código): antes del domingo, el domingo hasta las 20:00,
+         de 20:00 a 21:00, en directo (21:00 a 01:00) y después, cuando lo que interesa son los resultados. -->
+    <h1 id="inicioTit">Cuando cierre tu colegio, fotografía el acta de tu mesa y súbela aquí.</h1>
+    <p id="inicioTxt">Al terminar el recuento, cada mesa pega en la puerta una copia del acta de escrutinio. Si muchas personas las fotografían, cualquiera podrá comprobar los resultados mesa por mesa, con la foto delante.</p>
+    <p class="meta" id="inicioLema">Verificación independiente y descentralizada del recuento oficial: cada foto del acta permite comprobar que el resultado publicado de esa mesa coincide con lo que se firmó en ella.</p>
+    <p id="inicioPorque"><a href="#porque">Por qué existe esta web →</a></p>
+    <div id="inicioCuenta">
       <div class="meta">Los envíos se abren el <b id="abreTxt"></b>:</div>
       <div class="count" id="countdown"><div><b>–</b><span>días</span></div><div><b>–</b><span>horas</span></div><div><b>–</b><span>min</span></div><div><b>–</b><span>seg</span></div></div>
-      <div class="row">
-        <a class="btn primary" href="#enviar">Practicar el envío ahora</a>
-        <button id="btnIcs">Añadir aviso al calendario</button>
-        <button id="btnShareHome">Compartir</button>
-      </div>
     </div>
-    <div id="inicioAbierto" class="hide">
-      <div class="row" style="margin:14px 0"><a class="btn primary" href="#enviar" style="font-size:18px; padding:15px 22px">Enviar el acta de mi mesa</a><a class="btn" href="#resultados">Ver resultados</a></div>
+    <div class="tiles hide" id="inicioCifras" style="margin-top:14px"></div>
+    <div class="row" style="margin:14px 0 4px">
+      <a class="btn primary" href="#enviar" id="bEnviar">Practicar el envío ahora</a>
+      <a class="btn" href="#resultados" id="bMapa">Ver el mapa</a>
+      <button id="btnIcs">Añadir aviso al calendario</button>
+      <button id="btnShareHome">Compartir</button>
     </div>
-    <div class="card" style="margin-top:18px">
-      <h2>Tres pasos, un minuto</h2>
+    <p class="meta" id="inicioNota"></p>
+    <div class="card hide" id="colegioCard" style="margin-top:18px">
+      <h2>En el colegio</h2>
+      <ul class="meta" style="font-size:15px; padding-left:20px; margin:0">
+        <li>Haz la foto <b>cuando el acta ya esté colgada</b> en la puerta o la entrada. No hace falta entrar mientras se cuenta.</li>
+        <li>Fotografía <b>solo el acta</b>: entera, de frente y con luz. Ni votantes, ni miembros de la mesa, ni papeletas.</li>
+        <li>Si la presidencia de la mesa o la policía te piden algo, hazles caso.</li>
+      </ul>
+    </div>
+    <div class="card" id="pasosCard" style="margin-top:18px">
+      <h2>En tres pasos</h2>
       <ol class="meta" style="font-size:15px; padding-left:20px; margin:0">
         <li>Espera a que peguen el acta en la puerta del colegio, normalmente entre las 21:00 y las 22:30.</li>
         <li>Elige tu mesa (sale en el propio acta), haz la foto y copia las cifras.</li>
@@ -166,18 +227,18 @@ footer .xpie{display:inline-flex; align-items:center; gap:5px; vertical-align:-2
 
   <!-- ENVIAR -->
   <section class="view" id="v-enviar">
+    <div class="banner b-info hide" id="recuperado" style="margin-bottom:14px"></div>
     <div class="banner b-warn" id="practicaBanner" style="margin-bottom:14px"><b>Modo práctica.</b> Puedes probar todo el proceso; no se envía nada hasta que se abran los envíos.</div>
     <div class="stack">
       <div class="card">
-        <div class="step"><span class="n">1</span><h2>Tu mesa</h2></div>
+        <div class="step"><span class="n" id="paso1">1</span><h2>Tu mesa</h2></div>
         <p class="meta">En la cabecera del acta pone provincia, municipio, distrito, sección y mesa.</p>
         <div class="grid2">
-          <div><label for="sProv">Provincia</label><select id="sProv"><option value="">Elige…</option></select></div>
-          <div><label for="sMuni">Municipio</label><select id="sMuni" disabled></select></div>
+          <div><label for="qProv">Provincia</label><div class="busca"><input type="text" id="qProv" placeholder="Escribe o elige…" autocomplete="off" spellcheck="false"></div><select id="sProv" class="hide" tabindex="-1" aria-hidden="true"><option value="">Elige…</option></select></div>
+          <div><label for="qMuni">Municipio</label><div class="busca"><input type="text" id="qMuni" placeholder="Elige primero la provincia" autocomplete="off" spellcheck="false" disabled></div><select id="sMuni" class="hide" tabindex="-1" aria-hidden="true" disabled></select></div>
           <div><label for="sDist">Distrito</label><select id="sDist" disabled></select></div>
           <div><label for="sSecc">Sección</label><select id="sSecc" disabled></select></div>
           <div><label for="sMesa">Mesa</label><select id="sMesa" disabled></select></div>
-          <div><label>&nbsp;</label><button id="btnGeo" style="width:100%">Confirmar que estoy en el colegio</button></div>
         </div>
         <div class="meta" id="mesaInfo" style="margin-top:8px"></div>
         <button class="small" id="btnNoAparece" style="margin-top:10px">Mi mesa no aparece</button>
@@ -193,23 +254,25 @@ footer .xpie{display:inline-flex; align-items:center; gap:5px; vertical-align:-2
       </div>
 
       <div class="card">
-        <div class="step"><span class="n">2</span><h2>Foto del acta</h2></div>
-        <p class="meta">Encuadra el acta entera, de frente y con luz, sin margen alrededor. Para proteger la privacidad de quienes han trabajado en la mesa, tapamos automáticamente la columna de la izquierda, donde van sus nombres y firmas. Si queda algún nombre o firma a la vista en otra parte, tápalo arrastrando el dedo. Una foto con nombres a la vista no cuenta ni se publica hasta que la revisemos.</p>
-        <label class="btn primary" for="foto" style="color:#fff">Hacer o elegir foto</label>
+        <div class="step"><span class="n" id="paso2">2</span><h2>Foto del acta</h2></div>
+        <p class="meta">Encuadra el acta entera, de frente y con luz, sin margen alrededor. Para proteger la privacidad de quienes han trabajado en la mesa, tapamos automáticamente la columna de la izquierda, donde van sus nombres y firmas. Si queda algún nombre o firma a la vista en otra parte, pulsa «Tapar un nombre o firma». Una foto con nombres a la vista no cuenta ni se publica hasta que la revisemos.</p>
+        <label class="btn primary" for="foto" id="lblFoto">Hacer o elegir foto</label>
         <input type="file" id="foto" accept="image/*" capture="environment" class="hide">
         <div id="editorBox" class="hide" style="margin-top:12px">
           <div class="editor" id="editor"><canvas id="cv"></canvas></div>
           <div class="banner b-warn hide" id="avisoEncuadre" style="margin-top:8px"></div>
+          <div class="avisoTapar hide" id="avisoTapar">Arrastra el dedo sobre lo que quieras tapar. Cuando acabes, pulsa «Listo».</div>
           <div class="row" style="margin-top:8px">
-            <span class="meta">La zona gris de la izquierda se tapa siempre. Arrastra sobre la foto para tapar más.</span>
-            <button class="small" id="btnUndo">Deshacer</button>
+            <button class="small" id="btnTapar">Tapar un nombre o firma</button>
+            <button class="small hide" id="btnUndo">Deshacer</button>
             <button class="small" id="btnRot">Girar</button>
           </div>
+          <div class="meta" style="margin-top:6px">La zona oscura de la izquierda se tapa siempre.</div>
         </div>
       </div>
 
       <div class="card">
-        <div class="step"><span class="n">3</span><h2>Cifras del acta</h2></div>
+        <div class="step"><span class="n" id="paso3">3</span><h2>Cifras del acta</h2></div>
         <p class="meta">Cópialas de la columna «En número». Si una casilla está vacía o pone «N», escribe 0.</p>
         <div class="meta" id="iaInfo" style="margin-bottom:8px"></div>
         <div class="grid-c" id="fBasicos"></div>
@@ -218,14 +281,15 @@ footer .xpie{display:inline-flex; align-items:center; gap:5px; vertical-align:-2
         <div class="meta" id="candFuente" style="margin-top:6px"></div>
       </div>
 
-      <div class="card">
+      <div class="card" id="cardEnvio">
         <div class="step"><span class="n">4</span><h2>Comprobación y envío</h2></div>
         <ul class="checks" id="checks"></ul>
         <div id="turnstile" style="margin-top:12px"></div>
         <button class="primary big" id="btnEnviar" style="margin-top:12px" disabled>Enviar</button>
-        <div id="resultado" style="margin-top:12px"></div>
+        <div id="resultado" style="margin-top:12px" aria-live="polite"></div>
       </div>
     </div>
+    <div class="barra hide" id="barra"><span id="barraTxt"></span><button class="small" id="barraBtn">Ir</button></div>
   </section>
 
   <!-- RESULTADOS -->
@@ -256,12 +320,23 @@ footer .xpie{display:inline-flex; align-items:center; gap:5px; vertical-align:-2
     <div class="card" style="margin-bottom:14px">
       <div class="row" style="justify-content:space-between; gap:8px"><h2>Municipios</h2>
         <div class="seg" id="segProv"><button data-modo="cobertura" class="on">Cobertura</button><button data-modo="votos">Más votado</button></div></div>
-      <div class="mapaInfo meta" id="infoProv">Toca un municipio para ver sus mesas.</div>
+      <div class="busca" style="margin:10px 0 4px"><input type="text" id="qFMuni" placeholder="Busca un municipio…" autocomplete="off" spellcheck="false" aria-label="Buscar municipio"></div>
+      <div class="mapaInfo meta" id="infoProv">Escribe su nombre o tócalo en el mapa para ver sus mesas una a una.</div>
       <div id="mapaProv"></div><div class="leyenda" id="leyProv"></div>
     </div>
+    <div class="card hide" id="panalCard" style="margin-bottom:14px">
+      <div class="row" style="justify-content:space-between; gap:8px"><h2 id="panalTit"></h2>
+        <div class="seg" id="segPanal"><button data-modo="zonas" class="on">Por zonas</button><button data-modo="agrupadas">Agrupadas</button></div></div>
+      <div class="meta" id="panalResumen"></div>
+      <div id="panal"></div>
+      <div class="leyenda"><span><i class="e-ver"></i>Verificada</span><span><i class="e-foto"></i>Con foto, sin verificar</span><span><i class="e-sin"></i>Sin foto aún</span><span>Toca una mesa para ver su ficha</span></div>
+      <h3 style="margin-top:16px">Por distrito y sección</h3>
+      <div id="secciones"></div>
+    </div>
     <div class="card hide" id="votosProvCard" style="margin-bottom:14px"><h2>Votos provisionales en la provincia</h2><div class="meta" id="votosProvNota" style="margin:6px 0"></div><div class="tablewrap"><table id="tVotosProv"></table></div></div>
+    <div class="card hide" id="ofiProvCard" style="margin-bottom:14px"><h2>Comparación con el dato oficial</h2><div id="ofiProv"></div></div>
     <div class="grid2" style="margin-bottom:12px" id="filtrosProv">
-      <div><label for="fMuni">Municipio</label><select id="fMuni"><option value="">Todos</option></select></div>
+      <div class="hide"><select id="fMuni" tabindex="-1" aria-hidden="true"><option value="">Todos</option></select></div>
       <div><label for="fEst">Estado</label><select id="fEst"><option value="">Todos</option><option value="verificada">Verificadas</option><option value="validada">Validadas por revisión</option><option value="pendiente">Pendientes (1 envío)</option><option value="conflicto">En conflicto</option><option value="revision">En revisión</option></select></div>
     </div>
     <div class="card"><div class="tablewrap"><table id="tMesas"></table></div></div>
@@ -283,7 +358,8 @@ footer .xpie{display:inline-flex; align-items:center; gap:5px; vertical-align:-2
         <p>El domingo 29 de noviembre por la noche, cuando cada mesa electoral termine de contar, sus miembros firmarán el acta de escrutinio y colgarán una copia en la puerta del colegio. Lo marca la ley (artículo 98 de la Ley Orgánica del Régimen Electoral General). En esa hoja están los votos de esa mesa, firmados y a la vista de cualquiera.</p>
         <p>Si esa noche nos acercamos a nuestros colegios, la fotografiamos y la juntamos aquí, cualquier persona podrá verificar el recuento oficial mesa a mesa, con el acta firmada delante.</p></div>
       <div class="card"><h2>Verificar sin tener que fiarse</h2>
-        <p>Con cada foto, cualquiera puede comparar lo que se firmó en una mesa con el dato oficial de esa misma mesa. Si coincide, queda verificada y con la foto como prueba. Si alguna no coincidiera, ahí está el acta firmada para aclararlo; muchas veces será un número mal copiado o una corrección del escrutinio general.</p>
+        <p>Con cada foto, cualquiera puede comparar lo que se firmó en una mesa con el dato oficial de esa misma mesa. Si coincide, queda comprobado con la foto como prueba. Si alguna no coincidiera, ahí está el acta firmada para aclararlo; muchas veces será un número mal copiado, una reclamación resuelta por la Junta Electoral o una corrección del escrutinio general.</p>
+        <p>El Ministerio del Interior no publica el dato de cada mesa la misma noche: esa noche da los resultados provisionales por municipio, y el de cada mesa llega días o semanas después. Por eso, la noche electoral la comparación solo es posible en los municipios que tienen una sola mesa (unos 5.000) y en los que tengan todas sus mesas verificadas. El resto se compara en cuanto Interior publique el dato de cada mesa. El voto desde el extranjero (CERA) no se suma a ninguna mesa: se cuenta aparte en cada provincia.</p>
         <p>Es una verificación independiente y descentralizada: no depende de ningún organismo ni de ningún partido. La hacemos entre todos, cada uno en su colegio. No hace falta fiarse de nadie, porque se puede comprobar.</p>
         <p>Y tampoco hace falta fiarse de esta web. Una mesa solo se verifica cuando dos personas distintas envían las mismas cifras, las fotos de las mesas verificadas son públicas, cada decisión de revisión queda en el <a href="/api/public/decisiones.json">registro público</a> y el <a href="https://github.com/RecuentoCiudadanoEsp/recuento-ciudadano" target="_blank" rel="noopener">código está abierto</a>.</p></div>
       <div class="card"><h2>De todos, votes a quien votes</h2>
@@ -310,16 +386,56 @@ footer .xpie{display:inline-flex; align-items:center; gap:5px; vertical-align:-2
           <li><b>Pendiente:</b> solo hay una foto. Se muestra, pero no cuenta en los totales.</li>
           <li><b>En conflicto:</b> hay fotos con cifras distintas. Se revisan a mano comparando las fotos.</li>
           <li><b>En revisión:</b> las cuentas no cuadran o el envío tiene alguna señal de alerta.</li>
-          <li><b>Validada:</b> resuelta por revisión humana. Cada decisión queda en el <a href="/api/public/decisiones.json">registro público de decisiones</a>.</li>
+          <li><b>Validada:</b> resuelta por revisión humana. Cada decisión queda en el <a href="/api/public/decisiones.json">registro público de decisiones</a>, encadenada con una huella digital: si se cambiara o borrara una decisión antigua, se notaría.</li>
         </ul></div>
+      <div class="card"><h2>En el colegio</h2>
+        <ul style="padding-left:20px; margin:0">
+          <li>Haz la foto <b>cuando el acta ya esté colgada</b> en la puerta o la entrada del local. No hace falta entrar mientras se cuentan los votos.</li>
+          <li>Fotografía <b>solo el acta</b>: ni a votantes, ni a los miembros de la mesa, ni papeletas.</li>
+          <li>Si el presidente de la mesa o la policía te piden algo, hazles caso. Dentro del local, quien manda es la presidencia de la mesa.</li>
+        </ul></div>
+      <div class="card"><h2>Cuándo se publican las cifras</h2><p>Los envíos se abren a las 20:00, cuando cierran los colegios de la península y Baleares. Las cifras y las fotos de las actas se publican a partir de las <b>21:00 (hora peninsular)</b>, cuando también han cerrado los de Canarias, para no difundir resultados mientras todavía se vota en algún lugar. Hasta entonces solo se ve cuántas mesas tienen foto y cuántas están verificadas.</p></div>
       <div class="card"><h2>Ninguna foto se borra</h2><p>Si una foto se invalida (no corresponde a la mesa, no se lee, parece manipulada o está repetida), sigue visible, marcada y con el motivo.</p></div>
-      <div class="card"><h2>Privacidad</h2><p>No pedimos nombre, correo ni teléfono. Guardamos una huella anónima de tu navegador y de tu conexión solo para frenar abusos.</p>
+      <div class="card"><h2>Privacidad</h2><p>No pedimos nombre, correo, teléfono ni ubicación. Guardamos una huella anónima de tu navegador y de tu conexión solo para frenar abusos. Todos los detalles, en la <a href="#privacidad">política de privacidad</a>.</p>
         <p><b>Por qué tapamos los nombres del acta.</b> En el acta firman las personas que han formado la mesa: presidencia, vocales e interventores. Son ciudadanos que han cumplido con su deber, y sus nombres y firmas no hacen falta para comprobar los resultados. Por eso la web tapa automáticamente, antes de subir nada, la columna de la izquierda donde suelen ir; la foto con nombres nunca sale de tu móvil. Para que se tape bien, fotografía el acta entera y de frente. Si alguna foto llegara con nombres a la vista, no cuenta ni se publica hasta que el equipo de revisión los tapa.</p></div>
-      <div class="card"><h2>Una diferencia no es una prueba</h2><p>Si unas cifras no coinciden con las oficiales, puede ser un error al copiarlas, al leer la foto o una corrección hecha después en el escrutinio general. Es un indicio para revisar, siempre con la foto delante.</p></div>
+      <div class="card"><h2>Comparación con el dato oficial</h2>
+        <p>Cuando hay dato oficial de una mesa, su ficha muestra al lado las cifras del acta, las oficiales y la diferencia, en votos y en puntos porcentuales. La página de cada provincia lista las mesas comparadas, de mayor a menor diferencia, sin valorar a quién afecta.</p>
+        <ul style="padding-left:20px; margin:0">
+          <li><b>La noche electoral:</b> el Ministerio del Interior publica los resultados provisionales por municipio, no por mesa. Se comparan los municipios que tienen una sola mesa y los que tienen todas sus mesas verificadas, cuando su escrutinio provisional está al 100 %.</li>
+          <li><b>Días o semanas después:</b> Interior publica el resultado definitivo de cada mesa. Entonces se compara cada mesa con foto.</li>
+          <li><b>El voto desde el extranjero (CERA)</b> no se suma a ninguna mesa: se cuenta aparte en cada provincia. Por eso no explica ninguna diferencia en una mesa.</li>
+        </ul></div>
+      <div class="card"><h2>Una diferencia no es una prueba</h2><p>Si unas cifras no coinciden con las oficiales, puede ser un error al copiarlas o al leer la foto, una reclamación resuelta por la Junta Electoral o una corrección hecha después en el escrutinio general. Es un indicio para revisar, siempre con la foto delante. Cada uno puede sacar sus conclusiones según el tamaño de la diferencia.</p></div>
     </div>
   </section>
 
-  <footer>Iniciativa ciudadana sin afiliación política. <a href="https://github.com/RecuentoCiudadanoEsp/recuento-ciudadano" target="_blank" rel="noopener">Código abierto</a>. <a href="#porque">Por qué</a> · <a href="#como">Cómo funciona</a>. <a class="xpie" href="https://x.com/RecuentoCiud_es" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>@RecuentoCiud_es</a></footer>
+  <!-- PRIVACIDAD -->
+  <section class="view" id="v-privacidad">
+    <h1>Política de privacidad</h1>
+    <div class="stack">
+      <div class="card"><h2>En resumen</h2><p>Para enviar un acta no hace falta registrarse ni dar el nombre, el correo o el teléfono. Solo se guarda lo imprescindible para comprobar las actas y frenar abusos, y nada de ello permite saber quién ha enviado una foto.</p></div>
+      <div class="card"><h2>Quién es responsable</h2><p>Recuento Ciudadano, iniciativa ciudadana sin ánimo de lucro ni afiliación política. Para cualquier consulta sobre privacidad: <a href="mailto:privacidad@recuentociudadano.es">privacidad@recuentociudadano.es</a>.</p></div>
+      <div class="card"><h2>Qué se guarda al enviar un acta</h2>
+        <ul style="padding-left:20px; margin:0">
+          <li><b>La foto del acta</b>, con la columna de nombres y firmas tapada en el propio dispositivo antes del envío. La imagen se genera de nuevo en el navegador, por lo que no incluye los metadatos de la cámara (ubicación, modelo del dispositivo, etc.).</li>
+          <li><b>Las cifras del acta</b> y la mesa a la que corresponde.</li>
+          <li><b>La fecha y hora</b> del envío y la que indica el propio archivo de la foto (para detectar fotos anteriores al cierre de los colegios).</li>
+          <li><b>Un identificador seudonimizado de la conexión.</b> La dirección IP no se almacena: solo se guarda un código obtenido a partir de ella mediante un algoritmo criptográfico con clave secreta, que no permite recuperarla.</li>
+          <li><b>Un identificador aleatorio del navegador</b>, generado en el propio dispositivo, que no contiene información sobre la persona usuaria.</li>
+        </ul>
+        <p style="margin-top:10px">Al denunciar una foto se guarda también el identificador seudonimizado de la conexión, de modo que cada conexión solo cuenta una vez.</p></div>
+      <div class="card"><h2>Para qué</h2><p>Las cifras y las fotos sirven para mostrar el acta de cada mesa y comprobar que coincide entre personas distintas. El identificador seudonimizado de la conexión y el identificador del navegador sirven solo para frenar abusos: limitar los envíos masivos, detectar si una misma persona intenta hacerse pasar por varias y evitar los bots. No se usan para nada más, no se cruzan con otros datos y no se ceden a nadie.</p>
+        <p>La base legal es el interés legítimo en que la verificación funcione y no se pueda manipular (artículo 6.1.f del Reglamento General de Protección de Datos).</p></div>
+      <div class="card"><h2>Qué se publica</h2><p>Las fotos de las actas (con los nombres y firmas tapados), sus cifras, el estado de cada mesa y la hora de cada envío. Nunca se publican el identificador seudonimizado de la conexión ni el identificador del navegador. Las decisiones de revisión quedan en un registro público, sin ningún dato de quien envió la foto.</p></div>
+      <div class="card"><h2>Durante cuánto tiempo</h2><p>Las fotos, las cifras y el registro de decisiones se conservan de forma indefinida, porque son la prueba pública de cada acta. El identificador seudonimizado de la conexión y el identificador del navegador se borrarán como tarde el <b>28 de febrero de 2027</b>, una vez cerradas las posibles reclamaciones sobre el recuento.</p></div>
+      <div class="card"><h2>Proveedor del servicio</h2><p>La web está alojada en Cloudflare, que actúa como encargado del tratamiento conforme al Reglamento General de Protección de Datos. No hay publicidad, ni herramientas de analítica, ni botones de redes sociales que rastreen la visita.</p></div>
+      <div class="card"><h2>Almacenamiento en el navegador</h2><p>No se usan cookies de publicidad ni de analítica. El navegador guarda el identificador aleatorio descrito arriba, necesario para la seguridad del servicio. Mientras se rellena el formulario, también guarda la mesa elegida y las cifras escritas, para no perderlas si la página se recarga (por ejemplo, al abrir la cámara); no salen del dispositivo y se borran al enviar o al cerrar la pestaña. El formulario de envío incluye una verificación antibots de Cloudflare, que analiza datos técnicos de la conexión y del navegador con el único fin de distinguir a las personas de los programas automáticos (<a href="https://www.cloudflare.com/turnstile-privacy-policy/" target="_blank" rel="noopener">aviso de privacidad de Cloudflare</a>).</p></div>
+      <div class="card"><h2>Derechos</h2><p>Se pueden ejercer los derechos de acceso, rectificación, supresión, oposición y limitación escribiendo a <a href="mailto:privacidad@recuentociudadano.es">privacidad@recuentociudadano.es</a>. Como no se guarda ningún dato que identifique a nadie, es posible que no se pueda saber qué envíos corresponden a quien lo pide; en ese caso, indicar la mesa y la hora aproximada ayuda a localizarlos. Si alguien aparece en una foto publicada, puede pedir que se tape o se retire. También es posible reclamar ante la Agencia Española de Protección de Datos (<a href="https://www.aepd.es" target="_blank" rel="noopener">aepd.es</a>).</p></div>
+      <p class="meta">Última actualización: 25 de noviembre de 2026.</p>
+    </div>
+  </section>
+
+  <footer>Iniciativa ciudadana sin afiliación política. <a href="https://github.com/RecuentoCiudadanoEsp/recuento-ciudadano" target="_blank" rel="noopener">Código abierto</a>. <a href="#porque">Por qué</a> · <a href="#como">Cómo funciona</a> · <a href="#privacidad">Privacidad</a>. <a class="xpie" href="https://x.com/RecuentoCiud_es" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>@RecuentoCiud_es</a></footer>
 </div>
 
 <script>
@@ -328,6 +444,8 @@ const $=id=>document.getElementById(id);
 const fmt=n=>(n==null||isNaN(n))?"—":Number(n).toLocaleString("es-ES");
 const ESTADOS={verificada:"Verificada",validada:"Validada por revisión",pendiente:"Pendiente de contraste",conflicto:"En conflicto",revision:"En revisión",invalidada:"Invalidada",valida:"Válida",invalida:"Invalidada"};
 const MOTIVOS_F={red_muchas_mesas:"red con muchos envíos",mesa_nueva:"mesa pendiente de confirmar",foto_reutilizada:"foto repetida en otra mesa",foto_antes_apertura:"foto anterior al cierre",muchas_mesas:"muchas mesas desde el mismo dispositivo",lejos:"enviada lejos del colegio",censo_distinto:"electores distintos al censo",nombres_sin_tapar:"nombres sin tapar (pendiente de revisión)",no_parece_acta:"pendiente de revisar la imagen",ia_no_acta:"pendiente de revisar la imagen",ia_inapropiada:"imagen retirada de la vista"};
+// Antes de que cierren todos los colegios (21:00 peninsular) no se publican cifras ni fotos. En pruebas se ven siempre.
+const antesDeTotales=()=>!CFG.modo_pruebas&&!!CFG.totales_desde&&Date.now()<Date.parse(CFG.totales_desde);
 const huellaFoto=f=>{ const r=(f.f||[]).find(x=>x.startsWith("retapada:")); return r?r.slice(9):f.h; };
 let CFG={abre:null,turnstile_sitekey:"",zonas_difuminado:[]}; let PROVS=[]; const cacheJSON={};
 async function getJSON(u,{fresh}={}){ if(!fresh&&cacheJSON[u]) return cacheJSON[u]; const r=await fetch(u); if(!r.ok) throw new Error(u+" "+r.status); const d=await r.json(); cacheJSON[u]=d; return d; }
@@ -335,25 +453,83 @@ const abierto=()=>CFG.modo_pruebas || (CFG.abre && Date.now()>=Date.parse(CFG.ab
 const disp=(()=>{ try{ let d=localStorage.getItem("rc-disp"); if(!d){ d=crypto.randomUUID(); localStorage.setItem("rc-disp",d); } return d; }catch(e){ return "sin-almacenamiento"; } })();
 const nombreProv=p=>(PROVS.find(x=>x.prov===p)||{}).nombre||p;
 const seccTxt=s=>String(Number(s)).padStart(3,"0");
+// Nombres oficiales con el artículo al final («Hospitalet de Llobregat, L'») escritos como se dicen («L'Hospitalet de Llobregat»)
+const natural=n=>{ const m=/^(.+), ([^,]{1,6})$/.exec(n||""); return m?m[2]+(m[2].endsWith("'")?"":" ")+m[1]:(n||""); };
+// Para buscar: minúsculas, sin tildes ni apóstrofos
+const norm=t=>(t||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/['’·.-]/g," ").replace(/\s+/g," ").toLowerCase().trim();
+const hhmm=d=>new Date(d).toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit",timeZone:"Europe/Madrid"});
 
 // ---------- rutas ----------
+let VISTA=null, ARG=null;
 function route(){
-  const h=location.hash.slice(1)||"inicio"; const [v,arg]=h.split("=");
-  const vista=["inicio","enviar","resultados","prov","mesa","porque","como"].includes(v)?v:"inicio";
+  const h=location.hash.slice(1)||"inicio"; const [v,arg]=h.split("="); VISTA=v; ARG=arg;
+  const vista=["inicio","enviar","resultados","prov","mesa","porque","como","privacidad"].includes(v)?v:"inicio";
   document.querySelectorAll(".view").forEach(s=>s.classList.toggle("on",s.id==="v-"+vista));
   const tab=vista==="prov"||vista==="mesa"?"resultados":vista;
   document.querySelectorAll("nav.tabs a").forEach(a=>{ if(a.dataset.v===tab) a.setAttribute("aria-current","page"); else a.removeAttribute("aria-current"); });
   if(vista==="resultados") verResultados(); if(vista==="prov") verProvincia(arg); if(vista==="mesa") verMesa(arg);
-  window.scrollTo(0,0);
+  if(vista==="enviar"&&arg) ponerMesa(decodeURIComponent(arg));   // «Enviar otra foto de esta mesa» llega con la mesa puesta
+  const act=document.querySelector('nav.tabs a[aria-current="page"]'); if(act) act.scrollIntoView({block:"nearest",inline:"nearest"});
+  window.scrollTo(0,0); barra();
 }
 window.addEventListener("hashchange",route);
+// Resultados, provincia y ficha de mesa se vuelven a pedir cada minuto mientras están a la vista
+// (y al volver a la pestaña). Los datos salen de la caché de Cloudflare, así que no cuesta nada.
+function refrescar(){ if(document.visibilityState!=="visible") return;
+  if(VISTA==="resultados") verResultados(); else if(VISTA==="prov") verProvincia(ARG,true); else if(VISTA==="mesa") verMesa(ARG,true); }
+setInterval(refrescar,60000);
+document.addEventListener("visibilitychange",refrescar);
 
 // ---------- inicio y cuenta atrás ----------
 let abPrev=null;
+// ---------- fases del domingo: la portada se adapta a lo que busca la gente en cada momento ----------
+// previa: antes del domingo · votacion: domingo hasta las 20:00 · envio: de 20:00 a 21:00 (cifras aún ocultas)
+// directo: de 21:00 a 01:00 · resultados: después. En la versión de pruebas se puede ver cada una con ?fase=nombre.
+const FASES={
+  previa:{tit:"Cuando cierre tu colegio, fotografía el acta de tu mesa y súbela aquí.",
+    txt:"Al terminar el recuento, cada mesa pega en la puerta una copia del acta de escrutinio. Si muchas personas las fotografían, cualquiera podrá comprobar los resultados mesa por mesa, con la foto delante.",
+    estado:"Envíos cerrados hasta el cierre de los colegios", enviar:"Practicar el envío ahora", ver:["lema","porque","cuenta","ics","pasos"]},
+  votacion:{tit:"Hoy se vota. Esta noche, fotografía el acta de tu mesa.",
+    txt:"Cuando cierre tu colegio y cuelguen el acta en la puerta (normalmente entre las 21:00 y las 22:30), hazle una foto y súbela aquí. Así cualquiera podrá comprobar el recuento de tu mesa con la foto delante.",
+    estado:"Hoy se vota · los envíos se abren a las 20:00 (hora peninsular)", enviar:"Prepárate: practica el envío", ver:["lema","porque","cuenta","ics","colegio","pasos"]},
+  envio:{tit:"Ya han cerrado los colegios. Fotografía el acta de tu mesa.",
+    txt:"En cuanto cuelguen el acta en la puerta, hazle una foto entera y de frente y súbela. Suele estar entre las 21:00 y las 22:30.",
+    nota:"Las cifras y las fotos se publican a partir de las 21:00 (hora peninsular), cuando cierran los colegios de Canarias. Hasta entonces, el mapa solo muestra cuántas mesas hay verificadas.",
+    estado:"Envíos abiertos · las cifras se publican a las 21:00", enviar:"Enviar el acta de mi mesa", grande:true, ver:["cifras","mapa","colegio","pasos"]},
+  directo:{tit:"En directo: el recuento, comprobado mesa a mesa.",
+    txt:"¿Tienes delante el acta de tu mesa? Súbela. ¿Quieres ver cómo va? Entra en el mapa y busca tu municipio: si tu barrio sale en gris, sus colegios aún esperan a alguien.",
+    estado:"En directo · envíos abiertos", enviar:"Enviar el acta de mi mesa", grande:true, ver:["cifras","mapa","colegio"]},
+  resultados:{tit:"Así va la verificación del recuento, mesa a mesa.",
+    txt:"Busca tu municipio en el mapa: cada mesa verificada tiene su acta firmada a la vista. Donde ya hay dato oficial comparable, la web enseña si coincide.",
+    estado:"Envíos abiertos · resultados actualizados cada minuto", enviar:"¿Aún tienes la foto de un acta? Súbela", mapaPrimero:true, ver:["cifras","mapa"]},
+};
+function faseActual(){
+  if(CFG.modo_pruebas){ const f=new URLSearchParams(location.search).get("fase"); if(FASES[f]) return f; if(!f) return "directo"; }
+  if(!CFG.abre) return "previa";
+  const t=Date.now(), abre=Date.parse(CFG.abre), H=3600000, totales=CFG.totales_desde?Date.parse(CFG.totales_desde):abre+H;
+  return t<abre-11*H?"previa":t<abre?"votacion":t<totales?"envio":t<abre+5*H?"directo":"resultados";
+}
+let fasePrev=null;
+function pintarFase(f){ const F=FASES[f], v=k=>F.ver.includes(k);
+  $("inicioTit").textContent=F.tit; $("inicioTxt").textContent=F.txt; $("inicioNota").textContent=F.nota||"";
+  [["inicioLema","lema"],["inicioPorque","porque"],["inicioCuenta","cuenta"],["inicioCifras","cifras"],["bMapa","mapa"],["btnIcs","ics"],["colegioCard","colegio"],["pasosCard","pasos"]].forEach(([id,k])=>$(id).classList.toggle("hide",!v(k)));
+  const be=$("bEnviar"), bm=$("bMapa"); be.textContent=F.enviar; be.style.cssText=F.grande?"font-size:18px; padding:15px 22px":"";
+  be.classList.toggle("primary",!F.mapaPrimero); bm.classList.toggle("primary",!!F.mapaPrimero);
+  if(F.mapaPrimero) bm.after(be); else be.after(bm);          // el botón principal, siempre primero
+  bm.textContent=F.mapaPrimero?"Ver el mapa y las mesas":"Ver el mapa";
+  if(v("cifras")) cifrasInicio(); }
+// cifras de la portada en las fases con envíos: salen del mismo resumen que Resultados (caché de Cloudflare)
+async function cifrasInicio(){ try{ const r=await getJSON("/api/public/resumen.json",{fresh:true}); const n=r.nacional||{}; const verif=(n.verificada||0)+(n.validada||0);
+  $("inicioCifras").innerHTML=[["Mesas con foto",fmt(n.con_envio||0)],["Verificadas",fmt(verif)],["De todas las mesas",n.mesas?pct(verif/n.mesas).replace("menos del ","< "):"—"],["Actualizado",r.generado?hhmm(r.generado):"—"]]
+    .map(([k,x])=>`<div class="tile"><div class="v">${x}</div><div class="k">${k}</div></div>`).join(""); }catch(e){} }
+setInterval(()=>{ if(VISTA==="inicio"||VISTA===null||VISTA==="") if(FASES[fasePrev]&&FASES[fasePrev].ver.includes("cifras")&&document.visibilityState==="visible") cifrasInicio(); },60000);
+
 function tick(){
-  const ab=abierto(); $("inicioCerrado").classList.toggle("hide",ab); $("inicioAbierto").classList.toggle("hide",!ab); $("practicaBanner").classList.toggle("hide",ab);
-  $("estadoGlobal").textContent=ab?"Envíos abiertos":"Envíos cerrados hasta el cierre de los colegios";
-  if(!ab&&CFG.abre){ let s=Math.max(0,Math.floor((Date.parse(CFG.abre)-Date.now())/1000)); const v=[Math.floor(s/86400),Math.floor(s%86400/3600),Math.floor(s%3600/60),s%60];
+  const ab=abierto(), f=faseActual(); $("practicaBanner").classList.toggle("hide",ab);
+  if(f!==fasePrev){ fasePrev=f; pintarFase(f); }
+  const eg=$("estadoGlobal"); eg.classList.toggle("abierto",ab);
+  const et=FASES[f].estado; if(eg.lastChild.textContent!==et) eg.lastChild.textContent=et;
+  if(FASES[f].ver.includes("cuenta")&&CFG.abre){ let s=Math.max(0,Math.floor((Date.parse(CFG.abre)-Date.now())/1000)); const v=[Math.floor(s/86400),Math.floor(s%86400/3600),Math.floor(s%3600/60),s%60];
     $("countdown").querySelectorAll("b").forEach((b,i)=>b.textContent=v[i]); }
   if(ab!==abPrev){ abPrev=ab; validar(); }   // solo redibuja si cambia el estado (evita mover el botón cada segundo)
 }
@@ -369,65 +545,146 @@ function compartir(texto,url){ if(navigator.share){ navigator.share({text:texto,
 $("btnShareHome").addEventListener("click",()=>compartir("El día de las elecciones, cuando cierre tu colegio, fotografía el acta de tu mesa y súbela. Así cualquiera puede comprobar los resultados con la foto delante:",location.origin));
 
 // ---------- formulario: mesa ----------
-let MESAS=null, CANDS=[], GEO=null;
-function opts(sel,items,ph){ sel.innerHTML=`<option value="">${ph}</option>`+items.map(([v,t])=>`<option value="${v}">${t}</option>`).join(""); sel.disabled=!items.length; }
-$("sProv").addEventListener("change",async()=>{
-  const p=$("sProv").value; MESAS=null; CANDS=[]; ["sMuni","sDist","sSecc","sMesa"].forEach(id=>opts($(id),[],"—")); pintarCands(); mesaInfo();
+let MESAS=null, CANDS=[];
+// Los desplegables ocultos guardan el valor elegido; los buscadores (BUSC) solo son la forma de elegirlo
+const BUSC={};
+function opts(sel,items,ph){ sel.innerHTML=`<option value="">${ph}</option>`+items.map(([v,t])=>`<option value="${v}">${t}</option>`).join(""); sel.disabled=!items.length; if(BUSC[sel.id]) BUSC[sel.id].sync(); }
+
+// Buscador: se escribe y se filtra la lista ya descargada, sin pedir nada al servidor.
+// minimo = letras necesarias antes de mostrar resultados (0 = la lista entera al tocar la caja).
+function buscador(input,sel,{minimo=0,vacio="Elige…",vaciable=false}={}){
+  const ul=document.createElement("ul"); ul.setAttribute("role","listbox"); ul.id=input.id+"-lista"; ul.hidden=true; input.parentNode.append(ul);
+  input.setAttribute("role","combobox"); input.setAttribute("aria-autocomplete","list"); input.setAttribute("aria-controls",ul.id); input.setAttribute("aria-expanded","false");
+  let items=[], vis=[], act=-1;
+  const elegido=()=>{ const o=sel.options[sel.selectedIndex]; return o&&o.value?o:null; };
+  const cerrar=()=>{ ul.hidden=true; input.setAttribute("aria-expanded","false"); act=-1; };
+  const pintar=()=>{ const q=norm(input.value), o=elegido();
+    if(o&&input.value===natural(o.text)){ vis=items.slice(0,60); }   // ya hay uno elegido: al tocar, enseña la lista
+    else if(q.length<minimo){ ul.innerHTML=`<li class="vacio">Escribe al menos ${minimo} letras</li>`; ul.hidden=false; input.setAttribute("aria-expanded","true"); vis=[]; return; }
+    else vis=items.filter(x=>x.k.includes(q)).sort((x,y)=>(y.k.startsWith(q)||y.k.includes(" "+q))-(x.k.startsWith(q)||x.k.includes(" "+q))).slice(0,60);
+    act=vis.length?0:-1;
+    ul.innerHTML=vis.length?vis.map((x,i)=>`<li role="option" id="${ul.id}-${i}" data-i="${i}" aria-selected="${i===act}">${x.t}</li>`).join(""):`<li class="vacio">Sin coincidencias</li>`;
+    ul.hidden=false; input.setAttribute("aria-expanded","true"); };
+  const marcar=i=>{ act=i; ul.querySelectorAll("li[role=option]").forEach((li,j)=>li.setAttribute("aria-selected",j===i)); const li=ul.querySelector(`[data-i="${i}"]`); if(li) li.scrollIntoView({block:"nearest"}); input.setAttribute("aria-activedescendant",li?li.id:""); };
+  const elegir=x=>{ sel.value=x.v; input.value=x.t; cerrar(); sel.dispatchEvent(new Event("change")); };
+  input.addEventListener("focus",()=>{ if(!input.disabled){ input.select(); pintar(); } });
+  input.addEventListener("input",pintar);
+  input.addEventListener("keydown",e=>{ if(ul.hidden) return;
+    if(e.key==="ArrowDown"){ e.preventDefault(); if(vis.length) marcar(Math.min(vis.length-1,act+1)); }
+    else if(e.key==="ArrowUp"){ e.preventDefault(); if(vis.length) marcar(Math.max(0,act-1)); }
+    else if(e.key==="Enter"){ e.preventDefault(); if(vis[act]) elegir(vis[act]); }
+    else if(e.key==="Escape") cerrar(); });
+  ul.addEventListener("mousedown",e=>e.preventDefault());   // que el toque no quite el foco antes de elegir
+  ul.addEventListener("click",e=>{ const li=e.target.closest("li[data-i]"); if(li) elegir(vis[+li.dataset.i]); });
+  input.addEventListener("blur",()=>{ cerrar();
+    if(vaciable&&!input.value.trim()&&sel.value){ sel.value=""; sel.dispatchEvent(new Event("change")); return; }   // caja vacía: volver a «todos»
+    const o=elegido(); input.value=o?natural(o.text):""; });
+  const minOrig=minimo;
+  const api={ sync(){ items=[...sel.options].filter(o=>o.value).map(o=>({v:o.value,t:natural(o.text),k:norm(o.text)+" "+norm(natural(o.text))}));
+      input.disabled=sel.disabled; const o=elegido(); input.value=o?natural(o.text):""; input.placeholder=sel.disabled?vacio:"Escribe o elige…";
+      minimo=items.length<=25?0:minOrig; } };   // con pocos municipios se enseña la lista entera
+  BUSC[sel.id]=api; api.sync(); return api;
+}
+buscador($("qProv"),$("sProv"));
+buscador($("qMuni"),$("sMuni"),{minimo:2,vacio:"Elige primero la provincia"});
+// En Resultados, el municipio de la provincia también se busca escribiendo (en el mapa los pueblos pequeños cuestan de tocar)
+buscador($("qFMuni"),$("fMuni"),{minimo:2,vaciable:true});
+$("fMuni").addEventListener("change",()=>{ if($("fMuni").value) setTimeout(()=>$("panalCard").scrollIntoView({behavior:"smooth",block:"start"}),50); });
+
+async function cargarProvincia(p){
+  MESAS=null; CANDS=[]; ["sMuni","sDist","sSecc","sMesa"].forEach(id=>opts($(id),[],"—")); pintarCands(); mesaInfo();
   if(!p) return;
-  try{ const [m,c]=await Promise.all([getJSON(`/data/mesas/${p}.json`),getJSON(`/data/candidaturas/${p}.json`)]); MESAS=m; CANDS=c.candidaturas;
+  try{ const [m,c]=await Promise.all([getJSON(`/data/mesas/${p}.json`),getJSON(`/data/candidaturas/${p}.json`)]); if($("sProv").value!==p) return; MESAS=m; CANDS=c.candidaturas;
     $("candFuente").textContent= /provisional/.test(c.fuente||"")?"Lista provisional de candidaturas.":"";
-    const munis=Object.entries(m.municipios).sort((a,b)=>a[1].localeCompare(b[1],"es")); opts($("sMuni"),munis,"Elige municipio…"); pintarCands(); if(IMG) pedirLectura(); }
+    const munis=Object.entries(m.municipios).sort((a,b)=>natural(a[1]).localeCompare(natural(b[1]),"es")); opts($("sMuni"),munis,"Elige municipio…"); pintarCands(); if(IMG) pedirLectura(); }
   catch(e){ $("mesaInfo").textContent="No se han podido cargar las mesas de esta provincia. Recarga la página."; }
-});
+}
+$("sProv").addEventListener("change",()=>{ cargarProvincia($("sProv").value).then(guardarBorrador); });
 const partes=id=>id.split("-");
-$("sMuni").addEventListener("change",()=>{ const mu=$("sMuni").value; const ds=[...new Set(MESAS.mesas.filter(([id])=>partes(id)[1]===mu).map(([id])=>partes(id)[2]))].sort();
+$("sMuni").addEventListener("change",()=>{ const mu=$("sMuni").value; const ds=MESAS?[...new Set(MESAS.mesas.filter(([id])=>partes(id)[1]===mu).map(([id])=>partes(id)[2]))].sort():[];
   opts($("sDist"),ds.map(d=>[d,"Distrito "+Number(d)]),"Elige distrito…"); opts($("sSecc"),[],"—"); opts($("sMesa"),[],"—"); if(ds.length===1){ $("sDist").value=ds[0]; $("sDist").dispatchEvent(new Event("change")); } mesaInfo(); });
 $("sDist").addEventListener("change",()=>{ const mu=$("sMuni").value, d=$("sDist").value; const ss=[...new Set(MESAS.mesas.filter(([id])=>{const p=partes(id); return p[1]===mu&&p[2]===d;}).map(([id])=>partes(id)[3]))].sort();
-  opts($("sSecc"),ss.map(s=>[s,"Sección "+seccTxt(s)]),"Elige sección…"); opts($("sMesa"),[],"—"); mesaInfo(); });
+  opts($("sSecc"),ss.map(s=>[s,"Sección "+seccTxt(s)]),"Elige sección…"); opts($("sMesa"),[],"—"); if(ss.length===1){ $("sSecc").value=ss[0]; $("sSecc").dispatchEvent(new Event("change")); } mesaInfo(); });
 $("sSecc").addEventListener("change",()=>{ const mu=$("sMuni").value, d=$("sDist").value, s=$("sSecc").value; const ms=MESAS.mesas.filter(([id])=>{const p=partes(id); return p[1]===mu&&p[2]===d&&p[3]===s;});
   opts($("sMesa"),ms.map(([id,,local])=>[id,"Mesa "+partes(id)[4]+(local?" · "+local:"")]),"Elige mesa…"); if(ms.length===1){ $("sMesa").value=ms[0][0]; } mesaInfo(); });
 $("sMesa").addEventListener("change",mesaInfo);
 $("sMuni").addEventListener("change",()=>{ if(MODO_NUEVA){ ["sDist","sSecc","sMesa"].forEach(id=>$(id).disabled=true); mesaInfo(); } });
 let MODO_NUEVA=false;
-$("btnNoAparece").addEventListener("click",()=>{ MODO_NUEVA=true; $("nuevaBox").classList.remove("hide"); $("btnNoAparece").classList.add("hide"); ["sDist","sSecc","sMesa"].forEach(id=>$(id).disabled=true); mesaInfo(); });
-$("btnVolverLista").addEventListener("click",()=>{ MODO_NUEVA=false; $("nuevaBox").classList.add("hide"); $("btnNoAparece").classList.remove("hide"); $("sMuni").dispatchEvent(new Event("change")); });
+function modoNueva(on){ MODO_NUEVA=on; $("nuevaBox").classList.toggle("hide",!on); $("btnNoAparece").classList.toggle("hide",on); }
+$("btnNoAparece").addEventListener("click",()=>{ modoNueva(true); ["sDist","sSecc","sMesa"].forEach(id=>$(id).disabled=true); mesaInfo(); });
+$("btnVolverLista").addEventListener("click",()=>{ modoNueva(false); $("sMuni").dispatchEvent(new Event("change")); });
 ["nDist","nSecc","nMesa"].forEach(id=>$(id).addEventListener("input",mesaInfo));
 function mesaNueva(){ const p=$("sProv").value, mu=$("sMuni").value, d=$("nDist").value.trim(), sc=$("nSecc").value.trim(), m=$("nMesa").value;
-  if(!p||!mu||!/^\d{1,2}$/.test(d)||!/^\d{1,3}$/.test(sc)||!m) return null;
-  const id=`${p}-${mu}-${d.padStart(2,"0")}-${sc.padStart(3,"0")}-${m}`; const ex=MESAS&&MESAS.mesas.find(x=>x[0]===id);
+  if(!p||!mu||!MESAS||!/^\d{1,2}$/.test(d)||!/^\d{1,3}$/.test(sc)||!m) return null;
+  const id=`${p}-${mu}-${d.padStart(2,"0")}-${sc.padStart(3,"0")}-${m}`; const ex=MESAS.mesas.find(x=>x[0]===id);
   return {id,censo:ex?ex[1]:null,local:ex?ex[2]||null:null,prov:p,municipio:MESAS.municipios[mu],nueva:!ex}; }
 function mesaSel(){ if(MODO_NUEVA) return mesaNueva(); const id=$("sMesa").value; if(!id||!MESAS) return null; const m=MESAS.mesas.find(x=>x[0]===id); return m?{id,censo:m[1],local:m[2]||null,prov:$("sProv").value,municipio:MESAS.municipios[partes(id)[1]]}:null; }
-function mesaInfo(){ const m=mesaSel(); $("mesaInfo").innerHTML=m?`Mesa <b class="mono">${m.id}</b> · ${m.municipio}${m.local?` · <b>${m.local}</b>`:""}${m.censo?` · electores aprox. ${fmt(m.censo)}`:""}${m.nueva?" · <b>mesa nueva, se revisará a mano</b>":""}${GEO?" · ubicación confirmada":""}`:""; validar(); }
-$("btnGeo").addEventListener("click",()=>{ if(!navigator.geolocation){ $("btnGeo").textContent="Ubicación no disponible"; return; }
-  $("btnGeo").textContent="Obteniendo ubicación…";
-  navigator.geolocation.getCurrentPosition(p=>{ GEO={lat:+p.coords.latitude.toFixed(5),lon:+p.coords.longitude.toFixed(5),acc:Math.round(p.coords.accuracy)}; $("btnGeo").textContent="Ubicación confirmada ✓"; mesaInfo(); },
-    ()=>{ GEO=null; $("btnGeo").textContent="Sin ubicación (puedes enviar igual)"; mesaInfo(); },{enableHighAccuracy:true,timeout:15000}); });
+function mesaInfo(){ const m=mesaSel(); $("mesaInfo").innerHTML=m?`${m.local?`<b style="color:var(--ink); font-size:16px">${m.local}</b><br>`:""}${natural(m.municipio)} · Mesa ${partes(m.id)[4]} · código <span class="mono">${m.id}</span>${m.censo?` · electores aprox. ${fmt(m.censo)}`:""}${m.nueva?" · <b>mesa nueva, se revisará a mano</b>":""}`:""; validar(); guardarBorrador(); }
+// Pone una mesa concreta en el formulario (desde la ficha de una mesa o al recuperar el borrador)
+async function ponerMesa(id){ const pt=partes(id); if(pt.length!==5) return false;
+  if($("sMesa").value===id&&!MODO_NUEVA) return true;
+  modoNueva(false); $("sProv").value=pt[0]; BUSC.sProv.sync(); await cargarProvincia(pt[0]); if(!MESAS) return false;
+  for(const [sid,v] of [["sMuni",pt[1]],["sDist",pt[2]],["sSecc",pt[3]],["sMesa",id]]){ const sel=$(sid); if(sel.value===v) continue;
+    if(![...sel.options].some(o=>o.value===v)) return false; sel.value=v; sel.dispatchEvent(new Event("change")); }
+  BUSC.sMuni.sync(); return true; }
+
+// ---------- borrador: si la página se recarga (pasa en algunos móviles al abrir la cámara), no se pierde nada ----------
+// Se guarda solo en este navegador y en esta pestaña (sessionStorage), y se borra al enviar.
+const BORRADOR="rc-borrador"; let RESTAURANDO=false;
+function guardarBorrador(){ if(RESTAURANDO) return; try{
+  const cif={}; document.querySelectorAll("#fBasicos input,#fCands input").forEach(i=>{ if(i.value!=="") cif[i.id]=i.value; });
+  const b={prov:$("sProv").value,muni:$("sMuni").value,mesa:$("sMesa").value,nueva:MODO_NUEVA?{d:$("nDist").value,s:$("nSecc").value,m:$("nMesa").value}:null,cif};
+  if(!b.prov&&!Object.keys(cif).length) sessionStorage.removeItem(BORRADOR); else sessionStorage.setItem(BORRADOR,JSON.stringify(b)); }catch(e){} }
+function borrarBorrador(){ try{ sessionStorage.removeItem(BORRADOR); }catch(e){} }
+async function recuperarBorrador(){ let b=null; try{ b=JSON.parse(sessionStorage.getItem(BORRADOR)||"null"); }catch(e){} if(!b||!b.prov) return;
+  RESTAURANDO=true;
+  try{ if(b.mesa) await ponerMesa(b.mesa);
+    else { $("sProv").value=b.prov; BUSC.sProv.sync(); await cargarProvincia(b.prov);
+      if(b.muni&&[...$("sMuni").options].some(o=>o.value===b.muni)){ $("sMuni").value=b.muni; $("sMuni").dispatchEvent(new Event("change")); BUSC.sMuni.sync(); } }
+    if(b.nueva){ modoNueva(true); ["sDist","sSecc","sMesa"].forEach(id=>$(id).disabled=true); $("nDist").value=b.nueva.d||""; $("nSecc").value=b.nueva.s||""; $("nMesa").value=b.nueva.m||""; }
+    for(const [id,v] of Object.entries(b.cif||{})) if($(id)) $(id).value=v;
+    if(b.mesa||b.nueva||Object.keys(b.cif||{}).length){ const r=$("recuperado"); r.innerHTML="<b>Hemos recuperado lo que habías rellenado.</b> La foto no se puede recuperar: vuelve a hacerla en el paso 2."; r.classList.remove("hide"); }
+  }finally{ RESTAURANDO=false; mesaInfo(); } }
 
 // ---------- formulario: cifras ----------
 const BASICOS=[["electores","Total electores (1+2)"],["votantes","Total votantes (A+B)"],["nulos","Votos nulos"],["blanco","Votos en blanco"]];
-$("fBasicos").innerHTML=BASICOS.map(([k,l])=>`<div><label for="n-${k}">${l}</label><input type="number" inputmode="numeric" min="0" step="1" id="n-${k}"><div class="pista" id="p-${k}"></div></div>`).join("");
-BASICOS.forEach(([k])=>$("n-"+k).addEventListener("input",validar));
-function pintarCands(){ $("fCands").innerHTML=CANDS.length?CANDS.map(c=>`<div><label for="c-${c.codigo}" title="${(c.denominacion||"").replace(/"/g,"&quot;")}">${c.siglas}</label><input type="number" inputmode="numeric" min="0" step="1" id="c-${c.codigo}" data-cod="${c.codigo}"><div class="pista" id="p-${c.codigo}"></div></div>`).join(""):'<span class="meta">Elige primero la provincia.</span>';
-  $("fCands").querySelectorAll("input").forEach(i=>i.addEventListener("input",validar)); validar(); }
+const casilla=(id,extra="")=>`<input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="5" enterkeyhint="next" autocomplete="off" class="cifra" id="${id}" ${extra}>`;
+$("fBasicos").innerHTML=BASICOS.map(([k,l])=>`<div><label for="n-${k}">${l}</label>${casilla("n-"+k)}<div class="pista" id="p-${k}"></div></div>`).join("");
+const esc=t=>(t||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;");
+function pintarCands(){ $("fCands").innerHTML=CANDS.length?CANDS.map(c=>{ const den=c.denominacion&&norm(c.denominacion)!==norm(c.siglas)?c.denominacion:"";
+      return `<div><label for="c-${c.codigo}">${esc(c.siglas)}<span class="den">${esc(den)}</span></label>${casilla("c-"+c.codigo,`data-cod="${c.codigo}"`)}<div class="pista" id="p-${c.codigo}"></div></div>`; }).join(""):'<span class="meta">Elige primero la provincia.</span>';
+  validar(); }
+// Solo cifras; «Siguiente» en el teclado del móvil salta a la casilla siguiente
+document.addEventListener("input",e=>{ if(!e.target.classList||!e.target.classList.contains("cifra")) return; const t=e.target, v=t.value.replace(/\D/g,"");
+  if(v!==t.value) t.value=v; validar(); guardarBorrador(); });
+document.addEventListener("keydown",e=>{ if(e.key!=="Enter"||!e.target.classList||!e.target.classList.contains("cifra")) return; e.preventDefault();
+  const todas=[...document.querySelectorAll("input.cifra")]; const sig=todas[todas.indexOf(e.target)+1]; if(sig) sig.focus(); else e.target.blur(); });
 function leerCifras(){ const v=id=>{ const x=$(id).value; return x===""?null:Number(x); }; const c={cand:{}}; BASICOS.forEach(([k])=>c[k]=v("n-"+k)); CANDS.forEach(k=>c.cand[k.codigo]=v("c-"+k.codigo)); return c; }
 
 // ---------- formulario: foto y tapado ----------
 let IMG=null, RECTS=[], ROT=0, FOTO_TS=null; const AUTO=()=>(CFG.zonas_difuminado||[]).map(z=>({fx:z[0],fy:z[1],fw:z[2],fh:z[3]})); const cv=$("cv"), g=cv.getContext("2d");
 $("foto").addEventListener("change",async e=>{ const f=e.target.files[0]; if(!f) return; FOTO_TS=f.lastModified||Date.now();
   try{ IMG=await createImageBitmap(f,{imageOrientation:"from-image"}); }catch(err){ IMG=await createImageBitmap(f); }
-  ROT=0; RECTS=[]; LECTURA=null; $("editorBox").classList.remove("hide"); dibujar(); revisarEncuadre(); pedirLectura(); validar(); });
+  ROT=0; RECTS=[]; LECTURA=null; tapar(false); $("editorBox").classList.remove("hide"); $("lblFoto").textContent="Hacer otra foto"; $("recuperado").classList.add("hide");
+  dibujar(); revisarEncuadre(); pedirLectura(); validar(); });
 function lienzo(maxW){ const rot=ROT%180!==0; const w0=rot?IMG.height:IMG.width, h0=rot?IMG.width:IMG.height; const s=Math.min(1,maxW/w0);
   const c=document.createElement("canvas"); c.width=Math.round(w0*s); c.height=Math.round(h0*s); const x=c.getContext("2d");
   x.translate(c.width/2,c.height/2); x.rotate(ROT*Math.PI/180); const dw=(rot?c.height:c.width), dh=(rot?c.width:c.height); x.drawImage(IMG,-dw/2,-dh/2,dw,dh); x.setTransform(1,0,0,1,0,0);
   x.fillStyle="#2b2b2b"; for(const r of [...AUTO(),...RECTS]) x.fillRect(r.fx*c.width,r.fy*c.height,r.fw*c.width,r.fh*c.height); return c; }
-function dibujar(tmp){ const c=lienzo(1000); cv.width=c.width; cv.height=c.height; g.drawImage(c,0,0); if(tmp){ g.fillStyle="rgba(29,79,216,.35)"; g.fillRect(tmp.fx*cv.width,tmp.fy*cv.height,tmp.fw*cv.width,tmp.fh*cv.height); } }
-let drag=null; const pos=e=>{ const r=cv.getBoundingClientRect(); return [(e.clientX-r.left)/r.width,(e.clientY-r.top)/r.height]; };
-cv.addEventListener("pointerdown",e=>{ if(!IMG) return; cv.setPointerCapture(e.pointerId); drag=pos(e); });
+function dibujar(tmp){ const c=lienzo(1000); cv.width=c.width; cv.height=c.height; g.drawImage(c,0,0); if(tmp){ g.fillStyle="rgba(200,150,62,.55)"; g.fillRect(tmp.fx*cv.width,tmp.fy*cv.height,tmp.fw*cv.width,tmp.fh*cv.height); } }
+// Fuera del modo «tapar» la foto se comporta como una imagen normal y el dedo desplaza la página;
+// así nadie tapa cifras sin querer al intentar bajar.
+let TAPANDO=false;
+function tapar(on){ TAPANDO=on; $("editor").classList.toggle("tapando",on); $("avisoTapar").classList.toggle("hide",!on);
+  $("btnTapar").textContent=on?"Listo":"Tapar un nombre o firma"; $("btnTapar").classList.toggle("primary",on); $("btnUndo").classList.toggle("hide",!RECTS.length); }
+$("btnTapar").addEventListener("click",()=>tapar(!TAPANDO));
+let drag=null; const pos=e=>{ const r=cv.getBoundingClientRect(); return [Math.min(1,Math.max(0,(e.clientX-r.left)/r.width)),Math.min(1,Math.max(0,(e.clientY-r.top)/r.height))]; };
+cv.addEventListener("pointerdown",e=>{ if(!IMG||!TAPANDO) return; e.preventDefault(); cv.setPointerCapture(e.pointerId); drag=pos(e); });
 cv.addEventListener("pointermove",e=>{ if(!drag) return; const p=pos(e); dibujar(rect(drag,p)); });
-cv.addEventListener("pointerup",e=>{ if(!drag) return; const r=rect(drag,pos(e)); drag=null; if(r.fw>0.01&&r.fh>0.005) RECTS.push(r); dibujar(); });
+cv.addEventListener("pointerup",e=>{ if(!drag) return; const r=rect(drag,pos(e)); drag=null; if(r.fw>0.01&&r.fh>0.005) RECTS.push(r); dibujar(); tapar(true); validar(); });
 const rect=(a,b)=>({fx:Math.min(a[0],b[0]),fy:Math.min(a[1],b[1]),fw:Math.abs(a[0]-b[0]),fh:Math.abs(a[1]-b[1])});
-$("btnUndo").addEventListener("click",()=>{ RECTS.pop(); dibujar(); });
-$("btnRot").addEventListener("click",()=>{ ROT=(ROT+90)%360; RECTS=[]; LECTURA=null; dibujar(); revisarEncuadre(); pedirLectura(); });
+$("btnUndo").addEventListener("click",()=>{ RECTS.pop(); dibujar(); tapar(TAPANDO); validar(); });
+$("btnRot").addEventListener("click",()=>{ ROT=(ROT+90)%360; RECTS=[]; LECTURA=null; tapar(TAPANDO); dibujar(); revisarEncuadre(); pedirLectura(); });
 const aBlob=(c,q)=>new Promise(r=>c.toBlob(r,"image/jpeg",q));
 async function sha256(b){ const d=await crypto.subtle.digest("SHA-256",await b.arrayBuffer()); return [...new Uint8Array(d)].map(x=>x.toString(16).padStart(2,"0")).join(""); }
 function dhash(c){ const t=document.createElement("canvas"); t.width=9; t.height=8; const x=t.getContext("2d"); x.drawImage(c,0,0,9,8); const d=x.getImageData(0,0,9,8).data; let bits="";
@@ -474,14 +731,32 @@ function comprobar(){
     if(c.votantes!==suma) add("bad",`No cuadra: candidaturas + blanco + nulos = ${fmt(suma)}, pero votantes = ${fmt(c.votantes)}. Revisa lo copiado${LECTURA?" (empieza por las casillas en amarillo)":""}. Un acta que no cuadra no se puede enviar.`);
     else add("ok","Las cuentas cuadran.");
     if(m&&m.censo&&!m.nueva&&Math.abs(c.electores-m.censo)>Math.max(15,m.censo*0.08)) add("warn",`Electores (${fmt(c.electores)}) muy distinto al censo de referencia (${fmt(m.censo)}). ¿Es la mesa correcta?`); }
-  if(!GEO) add("warn","Sin ubicación confirmada: se acepta, pero tu envío pesará menos.");
-  const listo=!!(m&&IMG&&CANDS.length&&!faltan.length&&!it.some(i=>i.l==="bad")); return {it,listo,m,c};
+  const listo=!!(m&&IMG&&CANDS.length&&!faltan.length&&!it.some(i=>i.l==="bad"));
+  const cuadra=!!(CANDS.length&&!faltan.length&&!it.some(i=>i.l==="bad"));
+  return {it,listo,m,c,faltan,cuadra};
 }
 let checksPrev="";
 function validar(){ const {it,listo}=comprobar(); const ic={ok:"✓",warn:"!",bad:"✕",idle:"·"};
   const html=it.map(i=>`<li class="c-${i.l}"><span class="ic">${ic[i.l]}</span><span class="t">${i.t}</span></li>`).join("");
   if(html!==checksPrev){ checksPrev=html; $("checks").innerHTML=html; }
-  marcarDudosos(); const b=$("btnEnviar"); b.disabled=!listo||ENVIANDO; const txt=abierto()?"Enviar":"Probar el envío (no se envía nada)"; if(b.textContent!==txt) b.textContent=txt; }
+  marcarDudosos(); const b=$("btnEnviar"); b.disabled=!listo||ENVIANDO; const txt=abierto()?"Enviar":"Probar el envío (no se envía nada)"; if(b.textContent!==txt) b.textContent=txt;
+  barra(); }
+// Pasos completados (el círculo se rellena) y barra inferior en el móvil con lo que falta
+function barra(){ if(typeof comprobar!=="function"||!$("barra")) return; const {listo,m,faltan,cuadra}=comprobar();
+  [["paso1",!!m],["paso2",!!IMG],["paso3",cuadra]].forEach(([id,ok],i)=>{ const e=$(id); e.classList.toggle("hecho",ok); e.textContent=ok?"✓":String(i+1); });
+  const bar=$("barra"), enVista=BARRA_OCULTA||VISTA!=="enviar"; bar.classList.toggle("hide",enVista); if(enVista) return;
+  const txt=listo?"Todo listo para enviar":!m?"Falta elegir la mesa":!IMG?"Falta la foto del acta":faltan&&faltan.length?`Faltan ${faltan.length} cifra${faltan.length>1?"s":""}`:"Las cuentas no cuadran";
+  bar.classList.toggle("listo",listo); $("barraTxt").textContent=txt; $("barraBtn").textContent=listo?"Ir a enviar":"Ir"; }
+let BARRA_OCULTA=false;
+// La barra se esconde cuando ya se ve la tarjeta de envío
+if("IntersectionObserver" in window) new IntersectionObserver(es=>{ BARRA_OCULTA=es[0].isIntersecting; barra(); }).observe($("cardEnvio"));
+$("barraBtn").addEventListener("click",()=>{ const {listo,m,faltan}=comprobar();
+  if(listo) return $("cardEnvio").scrollIntoView({behavior:"smooth",block:"start"});
+  if(!m) return (MODO_NUEVA?$("nDist"):$("qMuni").disabled?$("qProv"):$("qMuni")).scrollIntoView({behavior:"smooth",block:"center"});
+  if(!IMG) return $("lblFoto").scrollIntoView({behavior:"smooth",block:"center"});
+  const vacia=[...document.querySelectorAll("input.cifra")].find(i=>i.value==="");
+  if(vacia){ vacia.scrollIntoView({behavior:"smooth",block:"center"}); vacia.focus({preventScroll:true}); return; }
+  $("checks").scrollIntoView({behavior:"smooth",block:"center"}); });
 
 // ---------- Turnstile ----------
 let TS_TOKEN=null, tsCargado=false;
@@ -496,18 +771,20 @@ $("btnEnviar").addEventListener("click",async()=>{
   const {listo,m,c}=comprobar(); if(!listo) return; ENVIANDO=true; validar(); $("resultado").innerHTML='<span class="spinner"></span> Preparando la foto…';
   try{
     const grande=lienzo(1600), peq=lienzo(480); const foto=await aBlob(grande,0.8), mini=await aBlob(peq,0.65); const hash=await sha256(foto);
-    if(!abierto()){ $("resultado").innerHTML=`<div class="banner b-ok"><b>Práctica completada.</b> Tu envío estaría listo: foto de ${Math.round(foto.size/1024)} KB, huella <span class="mono">${hash.slice(0,16)}…</span>. El día de las elecciones será igual.</div>`; return; }
+    if(!abierto()){ borrarBorrador(); $("resultado").innerHTML=`<div class="banner b-ok"><b>Práctica completada.</b> Tu envío estaría listo: foto de ${Math.round(foto.size/1024)} KB, huella <span class="mono">${hash.slice(0,16)}…</span>. El día de las elecciones será igual.</div>`; return; }
     if(CFG.turnstile_sitekey&&!TS_TOKEN){ $("resultado").innerHTML='<div class="banner b-warn">Completa la verificación antirrobots de arriba y vuelve a pulsar Enviar.</div>'; return; }
     $("resultado").innerHTML='<span class="spinner"></span> Enviando…';
     const fd=new FormData(); fd.append("foto",foto,"acta.jpg"); fd.append("mini",mini,"mini.jpg"); if(TS_TOKEN) fd.append("turnstile",TS_TOKEN);
-    fd.append("datos",JSON.stringify({mesa_id:m.id,mesa_nueva:!!m.nueva,cifras:c,hash,dhash:dhash(grande),dispositivo:disp,geo:GEO,ts_foto:FOTO_TS}));
+    fd.append("datos",JSON.stringify({mesa_id:m.id,mesa_nueva:!!m.nueva,cifras:c,hash,dhash:dhash(grande),dispositivo:disp,ts_foto:FOTO_TS}));
     let r, d; for(let intento=0; intento<3; intento++){ try{ r=await fetch("/api/envio",{method:"POST",body:fd}); d=await r.json(); break; }catch(err){ if(intento===2) throw err; await new Promise(z=>setTimeout(z,1500*(intento+1))); } }
     if(!r.ok){ $("resultado").innerHTML=`<div class="banner b-bad">${ERRORES[d.error]||d.mensaje||"No se ha podido enviar. Inténtalo de nuevo."}</div>`; if(window.turnstile&&CFG.turnstile_sitekey){ turnstile.reset("#turnstile"); TS_TOKEN=null; } return; }
-    const url=`${location.origin}/#mesa=${d.mesa_id}`;
-    $("resultado").innerHTML=`<div class="banner b-ok"><b>¡Enviada, gracias!</b> Tus cifras aparecerán en la ficha de la mesa en un minuto. La foto se hará pública cuando otra persona envíe la misma acta (o la revisemos).${d.foto_en_revision?" Hemos detectado algo raro en la foto (mucho fondo o algún nombre sin tapar), así que la revisaremos antes de publicarla.":""}
+    const url=`${location.origin}/#mesa=${d.mesa_id}`; borrarBorrador();
+    $("resultado").innerHTML=`<div class="banner b-ok"><b>¡Enviada, gracias!</b> ${antesDeTotales()?"Las cifras y las fotos se publicarán a partir de las 21:00 (hora peninsular), cuando cierren todos los colegios, también en Canarias. Hasta entonces la ficha de la mesa solo muestra si está verificada.":"Tus cifras aparecerán en la ficha de la mesa en un minuto. La foto se hará pública cuando otra persona envíe la misma acta (o la revisemos)."}${d.foto_en_revision?" Hemos detectado algo raro en la foto (mucho fondo o algún nombre sin tapar), así que la revisaremos antes de publicarla.":""}
       <div class="row" style="margin-top:10px"><a class="btn small" href="#mesa=${d.mesa_id}">Ver mi mesa</a><button class="small" id="btnShareMesa">Compartir</button><button class="small" id="btnOtra">Enviar otra mesa</button></div></div>`;
     $("btnShareMesa").onclick=()=>compartir(`He fotografiado el acta de mi mesa electoral. Cuando cierre tu colegio, haz lo mismo:`,url);
-    $("btnOtra").onclick=()=>{ IMG=null; RECTS=[]; $("foto").value=""; $("editorBox").classList.add("hide"); document.querySelectorAll("#fBasicos input,#fCands input").forEach(i=>i.value=""); $("resultado").innerHTML=""; validar(); window.scrollTo(0,0); };
+    $("btnOtra").onclick=()=>{ IMG=null; RECTS=[]; LECTURA=null; $("foto").value=""; $("editorBox").classList.add("hide"); $("lblFoto").textContent="Hacer o elegir foto";
+      document.querySelectorAll("#fBasicos input,#fCands input").forEach(i=>i.value=""); $("resultado").innerHTML=""; $("iaInfo").textContent="";
+      if(MODO_NUEVA) modoNueva(false); $("sMuni").dispatchEvent(new Event("change")); validar(); window.scrollTo(0,0); };   // se quedan provincia y municipio
     if(window.turnstile&&CFG.turnstile_sitekey){ turnstile.reset("#turnstile"); TS_TOKEN=null; }
   }catch(e){ $("resultado").innerHTML='<div class="banner b-bad">Sin conexión o error de red. Tus datos siguen aquí: vuelve a pulsar Enviar cuando tengas cobertura.</div>'; }
   finally{ ENVIANDO=false; validar(); }
@@ -515,9 +792,10 @@ $("btnEnviar").addEventListener("click",async()=>{
 
 // ---------- resultados ----------
 async function verResultados(){
+  if(!$("tiles").innerHTML) $("tiles").innerHTML='<div class="meta"><span class="spinner"></span> Cargando…</div>';
   try{ const r=await getJSON("/api/public/resumen.json",{fresh:true}); const n=r.nacional||{};
     const verif=(n.verificada||0)+(n.validada||0);
-    $("tiles").innerHTML=[["Mesas con foto",n.con_envio||0],["Verificadas",verif],["% de todas las mesas",n.mesas?((verif/n.mesas)*100).toLocaleString("es-ES",{maximumFractionDigits:1})+" %":"—"],["En conflicto o revisión",(n.conflicto||0)+(n.revision||0)]]
+    $("tiles").innerHTML=[["Mesas con foto",n.con_envio||0],["Verificadas",verif],["De todas las mesas",n.mesas?pct(verif/n.mesas).replace("menos del ","< "):"—"],["En conflicto o revisión",(n.conflicto||0)+(n.revision||0)]]
       .map(([k,v])=>`<div class="tile"><div class="v">${typeof v==="number"?fmt(v):v}</div><div class="k">${k}</div></div>`).join("");
     if(r.totales_visibles&&n.votos&&Object.keys(n.votos).length){ $("totalesCard").classList.remove("hide");
       const partidos=Object.entries(n.votos).filter(([k])=>!k.startsWith("_")).sort((a,b)=>b[1]-a[1]); const tot=partidos.reduce((a,[,v])=>a+v,0)+(n.votos._blanco||0);
@@ -526,10 +804,10 @@ async function verResultados(){
         `<tr><td colspan="3" class="meta" style="text-align:left; white-space:normal">Solo ${fmt(verif)} mesas verificadas: no es representativo del total.</td></tr>`; }
     else { $("totalesCard").classList.add("hide"); }
     $("tProv").innerHTML=`<tr><th>Provincia</th><th>Mesas</th><th>Con foto</th><th>Verificadas</th><th>Conflicto</th></tr>`+(r.provincias||[]).sort((a,b)=>(b.con_envio||0)-(a.con_envio||0))
-      .map(p=>`<tr class="link" data-p="${p.prov}"><td>${nombreProv(p.prov)}</td><td>${fmt(p.mesas)}</td><td>${fmt(p.con_envio)}</td><td>${fmt((p.verificada||0)+(p.validada||0))}</td><td>${fmt((p.conflicto||0)+(p.revision||0))}</td></tr>`).join("");
+      .map(p=>`<tr class="link" data-p="${p.prov}"><td>${natural(nombreProv(p.prov))} ›</td><td>${fmt(p.mesas)}</td><td>${fmt(p.con_envio)}</td><td>${fmt((p.verificada||0)+(p.validada||0))}</td><td>${fmt((p.conflicto||0)+(p.revision||0))}</td></tr>`).join("");
     $("tProv").querySelectorAll("tr.link").forEach(tr=>tr.onclick=()=>location.hash="prov="+tr.dataset.p);
     mapaEspana(r).catch(()=>{});
-    $("genTxt").textContent=r.generado?`Actualizado: ${new Date(r.generado).toLocaleTimeString("es-ES")}. Se actualiza cada minuto.`:"Todavía no hay envíos.";
+    $("genTxt").textContent=r.generado?`Actualizado a las ${new Date(r.generado).toLocaleTimeString("es-ES",{timeZone:"Europe/Madrid"})} (hora peninsular). Se actualiza solo cada minuto.`:"Todavía no hay envíos.";
   }catch(e){ $("tiles").innerHTML='<div class="meta">No se han podido cargar los resultados.</div>'; }
 }
 // ---------- mapas ----------
@@ -537,10 +815,13 @@ const COLORES=[[/PSOE|^PSC|PSdeG|PSE-EE|PSIB/,"#d81e26"],[/^PP$|PARTIDO POPULAR/
   [/PODEMOS/,"#6b2e68"],[/SALF/,"#8a6a3c"],[/^ERC/,"#f0a020"],[/JxCat|JUNTS/,"#1fb5a8"],[/BILDU/,"#94b800"],[/PNV/,"#2e7d32"],[/B\.?N\.?G/,"#5fa8d8"],[/COMPROMIS/,"#e8710a"],
   [/^CC\b|COALICI.N CANARIA/,"#e6c200"],[/UPN/,"#0a3b7c"],[/ADELANTE/,"#00958f"],[/TERUEL/,"#037252"]];
 const colorPartido=s=>{ for(const [re,c] of COLORES) if(re.test(s)) return c; return "#8d96a6"; };
-const ESCALA=[[0,"var(--paper)"],[0.0001,"#e3eeed"],[0.1,"#b9d6d6"],[0.25,"#86b6b8"],[0.5,"#4f8c90"],[0.75,"#23626a"]];
-const colorCob=f=>{ let c=ESCALA[0][1]; for(const [u,col] of ESCALA) if(f>=u) c=col; return c; };
-const leyCob=()=>`<span><i style="background:var(--paper); border:1px solid var(--line)"></i>Sin verificadas</span>`+[["0–10 %",1],["10–25 %",2],["25–50 %",3],["50–75 %",4],["75–100 %",5]].map(([t,i])=>`<span><i style="background:${ESCALA[i][1]}"></i>${t}</span>`).join("")+`<span>de mesas verificadas</span>`;
-const pct=f=>(f*100).toLocaleString("es-ES",{maximumFractionDigits:1})+" %";
+// Colores del mapa, los mismos del panal de mesas: gris = sin fotos, arena = con fotos pero ninguna mesa verificada,
+// petróleo = al menos una mesa verificada (más oscuro cuanta más parte de sus mesas lo está).
+// Así una sola mesa verificada ya se ve, aunque la participación sea baja.
+const ESCALA=[[0,"#7fb3b5"],[0.1,"#5c9a9d"],[0.25,"#3c7f84"],[0.5,"#23626a"],[0.75,"#164850"]];
+const colorCob=(ver,con,total)=>{ if(!ver) return con?"var(--foto)":"var(--sin)"; const f=total?ver/total:0; let c=ESCALA[0][1]; for(const [u,col] of ESCALA) if(f>=u) c=col; return c; };
+const leyCob=()=>`<span><i style="background:var(--sin)"></i>Sin fotos</span><span><i style="background:var(--foto)"></i>Con fotos, aún sin verificar</span>`+[["Alguna mesa verificada",0],["la mitad o más",3]].map(([t,i])=>`<span><i style="background:${ESCALA[i][1]}"></i>${t}</span>`).join("")+`<span>(más oscuro = más mesas verificadas)</span>`;
+const pct=f=>f>0&&f<0.001?"menos del 0,1 %":(f*100).toLocaleString("es-ES",{maximumFractionDigits:1})+" %";
 function svgMapa(cont, datos, items, {color, info, click, marco}){
   cont.innerHTML=`<svg class="mapa" viewBox="0 0 ${datos.ancho} ${datos.alto}" role="img">${items.map(x=>`<path d="${x.d}" data-id="${x.id}" fill="${color(x.id)}"><title>${info(x.id)}</title></path>`).join("")}${marco?`<path class="marco" d="${marco}"/>`:""}</svg>`;
   cont.querySelectorAll("path[data-id]").forEach(el=>{ el.onclick=()=>click(el.dataset.id); el.onmouseenter=()=>{ cont.dataset.info=info(el.dataset.id); cont.dispatchEvent(new Event("info")); }; });
@@ -553,9 +834,9 @@ async function mapaEspana(r){ RESUMEN=r; const m=await getJSON("/data/mapa/espan
   const votosOk=r.totales_visibles;
   $("segEsp").querySelector('[data-modo="votos"]').disabled=!votosOk; if(!votosOk) MODO_ESP="cobertura";
   $("segEsp").querySelectorAll("button").forEach(b=>{ b.classList.toggle("on",b.dataset.modo===MODO_ESP); b.onclick=()=>{ if(b.disabled) return; MODO_ESP=b.dataset.modo; mapaEspana(RESUMEN); }; });
-  const color=id=>{ if(MODO_ESP==="votos"){ const g=ganador((P.get(id)||{}).votos); return g?colorPartido(g.siglas):"var(--paper)"; } return colorCob(cob(id)); };
+  const color=id=>{ if(MODO_ESP==="votos"){ const g=ganador((P.get(id)||{}).votos); return g?colorPartido(g.siglas):"var(--sin)"; } const p=P.get(id)||{}; return colorCob((p.verificada||0)+(p.validada||0),p.con_envio||0,p.mesas||0); };
   const info=id=>{ const p=P.get(id)||{}; const v=(p.verificada||0)+(p.validada||0); const g=votosOk?ganador(p.votos):null;
-    return `${nombreProv(id)}: ${fmt(v)} de ${fmt(p.mesas||0)} mesas verificadas (${pct(cob(id))})${g?` · más votado en ellas: ${g.siglas}`:""}`; };
+    return `${natural(nombreProv(id))}: ${fmt(v)} de ${fmt(p.mesas||0)} mesas verificadas (${pct(cob(id))})${(p.con_envio||0)>v?`, ${fmt((p.con_envio||0)-v)} más con foto`:""}${g?` · más votado en ellas: ${g.siglas}`:""}`; };
   svgMapa($("mapaEsp"), m, m.provincias.map(x=>({id:x.prov,d:x.d})), {color, info, click:id=>location.hash="prov="+id, marco:m.marcoCanarias});
   $("mapaEsp").addEventListener("info",()=>$("infoEsp").textContent=$("mapaEsp").dataset.info);
   if(MODO_ESP==="votos"){ const vistos=new Map(); for(const p of P.values()){ const g=ganador(p.votos); if(g) vistos.set(colorPartido(g.siglas), g.siglas); }
@@ -565,10 +846,40 @@ async function mapaEspana(r){ RESUMEN=r; const m=await getJSON("/data/mapa/espan
 
 let PROV_DATA=null;
 async function cargarProv(p,fresh){ const d=await getJSON(`/api/public/prov/${p}.json`,{fresh}); PROV_DATA=d; return d; }
-let MODO_PROV="cobertura";
-async function verProvincia(p){
-  $("provTit").textContent=nombreProv(p); $("tMesas").innerHTML='<tr><td><span class="spinner"></span></td></tr>';
-  try{ const [d,ref,mapa,r]=await Promise.all([cargarProv(p,true),getJSON(`/data/mesas/${p}.json`),getJSON(`/data/mapa/municipios/${p}.json`).catch(()=>null),getJSON("/api/public/resumen.json",{fresh:true}).catch(()=>({}))]);
+let MODO_PROV="cobertura", MODO_PANAL="zonas";
+// ---------- comparación con el dato oficial de Interior (public/oficial/PP.json, lo carga el panel)
+const cargarOficial=p=>getJSON(`/api/public/oficial/${p}.json`,{fresh:true}).catch(()=>null);
+// Dato oficial con el que se puede comparar una mesa: el suyo propio o, si su municipio solo tiene esa mesa,
+// el del municipio cuando está escrutado al 100 %.
+function oficialMesa(ofi,id,ref){ if(!ofi) return null; if(ofi.mesas&&ofi.mesas[id]) return {o:ofi.mesas[id],nivel:"mesa"};
+  const k=id.split("-")[1], o=(ofi.municipios||{})[k]; if(!o||o.escrutado<100||!ref) return null;
+  const n=ref.mesas.filter(([x])=>x.split("-")[1]===k).length; return n===1?{o,nivel:"muni1"}:null; }
+// Suma las cifras de varias actas (para comparar un municipio entero)
+function sumarActas(lista){ const s={votantes:0,nulos:0,blanco:0,cand:{}}; for(const c of lista){ for(const k of ["votantes","nulos","blanco"]) s[k]+=c[k]||0; for(const [k,v] of Object.entries(c.cand||{})) s.cand[k]=(s.cand[k]||0)+(v||0); } return s; }
+// Filas de la comparación: votos del acta y oficiales, diferencia y, en las candidaturas, el porcentaje sobre votos válidos
+function comparar(a,o,cands){ const sig=Object.fromEntries(cands.map(k=>[k.codigo,k.siglas]));
+  const codigos=[...new Set([...cands.map(k=>k.codigo),...Object.keys(o.cand||{})])];
+  const validos=x=>codigos.reduce((t,c)=>t+((x.cand||{})[c]||0),0)+(x.blanco||0); const va=validos(a), vo=validos(o);
+  const filas=[["Votantes","votantes"],["Nulos","nulos"],["En blanco","blanco"]].map(([t,k])=>({t,a:a[k],o:o[k]}));
+  const cf=codigos.map(c=>({t:c.startsWith("?")?c.slice(1):(sig[c]||c),cand:true,a:(a.cand||{})[c]??(c.startsWith("?")?null:0),o:(o.cand||{})[c]??0}))
+    .map(f=>({...f,pa:va&&f.a!=null?f.a/va*100:null,po:vo?f.o/vo*100:null})).sort((x,y)=>(y.o||0)-(x.o||0));
+  const todas=[...filas,...cf].map(f=>({...f,d:f.a==null||f.o==null?null:f.o-f.a}));
+  const total=todas.reduce((t,f)=>t+Math.abs(f.d||0),0); const mayor=todas.filter(f=>f.d).sort((x,y)=>Math.abs(y.d)-Math.abs(x.d))[0]||null;
+  return {filas:todas,total,mayor}; }
+const conSigno=(n,dec)=>n==null?"":(n>0?"+":n<0?"−":"±")+Math.abs(n).toLocaleString("es-ES",dec!=null?{minimumFractionDigits:dec,maximumFractionDigits:dec}:{});
+const pc=v=>v==null?"":v.toLocaleString("es-ES",{minimumFractionDigits:1,maximumFractionDigits:1})+" %";
+const AVISO_OFI=`<p class="meta" style="margin-top:8px">Una diferencia no es una prueba: puede ser un error al copiar o leer el acta, una reclamación resuelta por la Junta Electoral o una corrección del escrutinio general. El voto desde el extranjero (CERA) no se suma a ninguna mesa.</p>`;
+function tablaComparacion(cmp){ return `<div class="tablewrap"><table class="comp"><tr><th></th><th>Acta</th><th>Oficial</th><th>Dif.</th></tr>`+
+  cmp.filas.map(f=>`<tr${f.d?' class="difiere"':""}><td>${f.cand?`<i class="cuad" style="background:${colorPartido(f.t)}"></i>`:""}${esc(f.t)}</td><td>${fmt(f.a)}${f.cand?`<div class="meta">${pc(f.pa)}</div>`:""}</td><td>${fmt(f.o)}${f.cand?`<div class="meta">${pc(f.po)}</div>`:""}</td>`+
+    `<td>${f.d==null?"—":f.d?conSigno(f.d):"="}${f.cand&&f.pa!=null&&f.po!=null&&Math.abs(f.po-f.pa)>=0.05?`<div class="meta">${conSigno(Math.round((f.po-f.pa)*10)/10,1)} p.</div>`:""}</td></tr>`).join("")+`</table></div>`; }
+function resumenComparacion(cmp){ return cmp.total?`<div class="banner b-warn" style="margin:8px 0">Hay diferencias: <b>${fmt(cmp.total)} voto${cmp.total===1?"":"s"}</b> en total, en ${cmp.filas.filter(f=>f.d).length} de las ${cmp.filas.length} cifras (resaltadas abajo).</div>`
+  :`<div class="banner b-ok" style="margin:8px 0">✓ Todas las cifras coinciden con el dato oficial.</div>`; }
+const fuenteOfi=(ofi,nivel)=>`${nivel==="muni1"?"Este municipio tiene una sola mesa, así que su resultado oficial es el de esta mesa. ":""}${ofi.tipo==="provisional"?"Dato provisional de la noche electoral":"Escrutinio definitivo"} · ${esc(ofi.fuente||"Ministerio del Interior")}${ofi.actualizado?` · ${new Date(ofi.actualizado).toLocaleString("es-ES",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit",timeZone:"Europe/Madrid"})}`:""}`;
+async function verProvincia(p,refresco){
+  const filtroPrev=refresco?$("fMuni").value:"";
+  $("provTit").textContent=natural(nombreProv(p)); if(!refresco) $("tMesas").innerHTML='<tr><td><span class="spinner"></span> Cargando…</td></tr>';
+  try{ const [d,ref,mapa,zonas,r]=await Promise.all([cargarProv(p,true),getJSON(`/data/mesas/${p}.json`),getJSON(`/data/mapa/municipios/${p}.json`).catch(()=>null),getJSON(`/data/zonas/${p}.json`).catch(()=>null),getJSON("/api/public/resumen.json",{fresh:true}).catch(()=>({}))]);
+    const ofi=r.totales_visibles?await cargarOficial(p):null;
     const votosOk=!!r.totales_visibles; const cods=Object.fromEntries((d.candidaturas||[]).map(c=>[c.codigo,c.siglas]));
     // por municipio: total de mesas (lista oficial), verificadas y votos de las verificadas
     const M={}; for(const [id] of ref.mesas){ const k=id.split("-")[1]; (M[k]=M[k]||{total:0,ver:0,con:0,votos:{}}).total++; }
@@ -578,9 +889,9 @@ async function verProvincia(p){
     const cob=k=>{ const x=M[k]; return x&&x.total?x.ver/x.total:0; };
     if(mapa){ $("segProv").querySelector('[data-modo="votos"]').disabled=!votosOk; if(!votosOk) MODO_PROV="cobertura";
       const pintarMapa=()=>{ $("segProv").querySelectorAll("button").forEach(b=>{ b.classList.toggle("on",b.dataset.modo===MODO_PROV); b.onclick=()=>{ if(b.disabled) return; MODO_PROV=b.dataset.modo; pintarMapa(); }; });
-        const color=k=>{ if(MODO_PROV==="votos"){ const g=ganador((M[k]||{}).votos); return g?colorPartido(g.siglas):"var(--paper)"; } return colorCob(cob(k)); };
+        const color=k=>{ if(MODO_PROV==="votos"){ const g=ganador((M[k]||{}).votos); return g?colorPartido(g.siglas):"var(--sin)"; } const x=M[k]||{}; return colorCob(x.ver||0,x.con||0,x.total||0); };
         const info=k=>{ const x=M[k]||{total:0,ver:0,con:0}; const g=votosOk?ganador(x.votos):null; return `${nombreMuni(k)}: ${fmt(x.ver)} de ${fmt(x.total)} mesas verificadas${x.con>x.ver?`, ${fmt(x.con-x.ver)} más con foto`:""}${g?` · más votado en ellas: ${g.siglas}`:""}`; };
-        svgMapa($("mapaProv"), mapa, mapa.municipios.map(x=>({id:x.muni,d:x.d})), {color, info, click:k=>{ $("fMuni").value=k; pintar(); $("infoProv").textContent=info(k); $("filtrosProv").scrollIntoView({behavior:"smooth"}); }});
+        svgMapa($("mapaProv"), mapa, mapa.municipios.map(x=>({id:x.muni,d:x.d})), {color, info, click:k=>{ $("fMuni").value=k; BUSC.fMuni.sync(); pintar(); $("infoProv").textContent=info(k); $("panalCard").scrollIntoView({behavior:"smooth"}); }});
         if(MODO_PROV==="votos"){ const vistos=new Map(); for(const x of Object.values(M)){ const g=ganador(x.votos); if(g) vistos.set(colorPartido(g.siglas),g.siglas); }
           $("leyProv").innerHTML=[...vistos].map(([c,s])=>`<span><i style="background:${c}"></i>${s}</span>`).join("")+"<span>Más votado en las mesas verificadas de cada municipio</span>"; }
         else $("leyProv").innerHTML=leyCob(); };
@@ -594,56 +905,129 @@ async function verProvincia(p){
       $("tVotosProv").innerHTML=`<tr><th>Candidatura</th><th>Votos</th><th>% s/ válidos</th></tr>`+partidos.map(([s,v])=>`<tr><td><i style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${colorPartido(s)};margin-right:6px"></i>${s}</td><td>${fmt(v)}</td><td>${tot?(v/tot*100).toFixed(2):"—"}</td></tr>`).join("")+`<tr><td>En blanco</td><td>${fmt(pr.votos._blanco)}</td><td></td></tr><tr><td>Nulos</td><td>${fmt(pr.votos._nulos)}</td><td></td></tr>`;
       $("votosProvCard").classList.remove("hide"); }
     else $("votosProvCard").classList.add("hide");
+    // comparación con el dato oficial: mesas verificadas con dato oficial y municipios enteros verificados
+    const cmpItems=[];
+    if(ofi&&(Object.keys(ofi.mesas||{}).length||Object.keys(ofi.municipios||{}).length)){ const cands=d.candidaturas||[]; const verif={};
+      for(const m of d.mesas) if((m.estado==="verificada"||m.estado==="validada")&&m.cifras){ (verif[m.id.split("-")[1]]=verif[m.id.split("-")[1]]||[]).push(m);
+        const om=oficialMesa(ofi,m.id,ref); if(om) cmpItems.push({id:m.id,k:m.id.split("-")[1],cmp:comparar(m.cifras,om.o,cands)}); }
+      for(const [k,lista] of Object.entries(verif)){ const o=(ofi.municipios||{})[k], tot=(M[k]||{}).total||0;
+        if(o&&o.escrutado>=100&&tot>1&&lista.length===tot&&!lista.some(m=>ofi.mesas&&ofi.mesas[m.id])) cmpItems.push({k,n:tot,cmp:comparar(sumarActas(lista.map(m=>m.cifras)),o,cands)}); } }
+    if(cmpItems.length){ const dif=cmpItems.filter(x=>x.cmp.total).sort((a,b)=>b.cmp.total-a.cmp.total);
+      $("ofiProv").innerHTML=`<p class="meta" style="margin:6px 0">${ofi.tipo==="provisional"?"Con los resultados provisionales de la noche electoral, por municipio: se comparan los municipios con una sola mesa y los que tienen todas sus mesas verificadas.":"Con el escrutinio definitivo de cada mesa."} ${esc(ofi.fuente||"")}</p>
+        <div class="basicas"><div><b>${fmt(cmpItems.length)}</b><span>comparadas</span></div><div><b>${fmt(cmpItems.length-dif.length)}</b><span>coinciden</span></div><div><b>${fmt(dif.length)}</b><span>con diferencias</span></div></div>`+
+        (dif.length?`<p class="meta" style="margin:10px 0 4px">De mayor a menor diferencia (votos que cambian en total):</p><div class="tablewrap"><table>`+dif.slice(0,100).map(x=>{ const q=x.id?partes(x.id):null;
+          return `<tr class="link" ${x.id?`data-id="${x.id}"`:`data-muni="${x.k}"`}><td><b>${esc(natural(nombreMuni(x.k)))}</b><div class="meta" style="font-size:12.5px">${q?`Mesa ${q[4]} · Dto. ${Number(q[2])} · Secc. ${seccTxt(q[3])}`:`Municipio entero · ${fmt(x.n)} mesas`}</div></td><td style="white-space:nowrap">${fmt(x.cmp.total)} voto${x.cmp.total===1?"":"s"} ›</td></tr>`; }).join("")+`</table></div>`+(dif.length>100?`<p class="meta">Se muestran 100 de ${fmt(dif.length)}.</p>`:""):"")+AVISO_OFI;
+      $("ofiProv").querySelectorAll("tr[data-id]").forEach(tr=>tr.onclick=()=>location.hash="mesa="+tr.dataset.id);
+      $("ofiProv").querySelectorAll("tr[data-muni]").forEach(tr=>tr.onclick=()=>{ $("fMuni").value=tr.dataset.muni; BUSC.fMuni.sync(); $("fMuni").onchange(); $("panalCard").scrollIntoView({behavior:"smooth"}); });
+      $("ofiProvCard").classList.remove("hide"); }
+    else $("ofiProvCard").classList.add("hide");
     // lista de mesas: todos los municipios con mesas (aunque aún no tengan foto)
     const codsMuni=Object.keys(ref.municipios).sort((a,b)=>nombreMuni(a).localeCompare(nombreMuni(b),"es"));
-    $("fMuni").innerHTML='<option value="">Todos los que tienen foto</option>'+codsMuni.map(k=>`<option value="${k}">${nombreMuni(k)}${M[k]&&M[k].con?` (${M[k].con})`:""}</option>`).join("");
+    $("fMuni").innerHTML='<option value="">Todos los que tienen foto</option>'+codsMuni.map(k=>`<option value="${k}">${nombreMuni(k)}</option>`).join("");
+    if(filtroPrev) $("fMuni").value=filtroPrev; BUSC.fMuni.sync();
     const porId=new Map(d.mesas.map(m=>[m.id,m]));
     function pintar(){ const fm=$("fMuni").value, fe=$("fEst").value;
       let ms = fm ? ref.mesas.filter(([id])=>id.split("-")[1]===fm).map(([id])=>porId.get(id)||{id,municipio:nombreMuni(fm),n:0,estado:null}) : d.mesas.slice();
       if(fm) for(const m of d.mesas) if(m.id.split("-")[1]===fm&&!ms.some(x=>x.id===m.id)) ms.push(m); // mesas nuevas
       ms=ms.filter(m=>!fe||m.estado===fe).sort((a,b)=>a.id.localeCompare(b.id)); const totalMs=ms.length; ms=ms.slice(0,150);
-      $("tMesas").innerHTML=ms.length?`<tr><th>Mesa</th><th>Municipio</th><th>Fotos</th><th>Estado</th></tr>`+ms.map(m=>`<tr class="link" data-id="${m.id}"><td class="mono">${m.id}</td><td>${m.municipio||""}</td><td>${m.n||0}</td><td>${m.estado?`<span class="pill p-${m.estado}">${ESTADOS[m.estado]||m.estado}</span>`:'<span class="meta">Sin foto</span>'}</td></tr>`).join("")
+      $("tMesas").innerHTML=ms.length?`<tr><th>Mesa</th><th>Estado</th></tr>`+ms.map(m=>{ const q=partes(m.id); return `<tr class="link" data-id="${m.id}"><td style="white-space:nowrap"><b>Mesa ${q[4]}</b><div class="meta" style="font-size:12.5px">Dto. ${Number(q[2])} · Secc. ${seccTxt(q[3])}${m.n?` · ${m.n} foto${m.n>1?"s":""}`:""}</div></td><td>${m.estado?`<span class="pill p-${m.estado}">${ESTADOS[m.estado]||m.estado}</span>`:'<span class="meta">Sin foto</span>'} ›<div class="meta" style="font-size:12.5px; white-space:normal">${natural(m.municipio||"")}</div></td></tr>`; }).join("")
         :`<tr><td class="meta">${fm||fe?"No hay mesas con ese filtro.":"Aún no hay mesas con foto en esta provincia."}</td></tr>`;
-      if(totalMs>ms.length) $("tMesas").innerHTML+=`<tr><td colspan="4" class="meta" style="text-align:left">Se muestran 150 de ${fmt(totalMs)} mesas. Elige un municipio en el mapa o en la lista para ver el resto.</td></tr>`;
-      $("tMesas").querySelectorAll("tr.link").forEach(tr=>tr.onclick=()=>location.hash="mesa="+tr.dataset.id); }
+      if(totalMs>ms.length) $("tMesas").innerHTML+=`<tr><td colspan="2" class="meta" style="text-align:left">Se muestran 150 de ${fmt(totalMs)} mesas. Elige un municipio en el mapa o en la lista para ver el resto.</td></tr>`;
+      $("tMesas").querySelectorAll("tr.link").forEach(tr=>tr.onclick=()=>location.hash="mesa="+tr.dataset.id);
+      panal(fm); }
+    // Panal del municipio elegido: un hexágono por mesa (en el orden de distrito, sección y mesa) y lista por sección
+    function panal(k){ const card=$("panalCard"); if(!k){ card.classList.add("hide"); return; } card.classList.remove("hide");
+      const ids=[...new Set([...ref.mesas.filter(([id])=>id.split("-")[1]===k).map(([id])=>id),...d.mesas.filter(m=>m.id.split("-")[1]===k).map(m=>m.id)])].sort();
+      const est=id=>{ const m=porId.get(id); return !m?"sin":(m.estado==="verificada"||m.estado==="validada")?"ver":"foto"; };
+      const txt={ver:"verificada",foto:"con foto, sin verificar",sin:"sin foto aún"};
+      const nom=id=>{ const q=partes(id); return `Distrito ${Number(q[2])} · Sección ${seccTxt(q[3])} · Mesa ${q[4]}`; };
+      const nv=ids.filter(id=>est(id)==="ver").length, nf=ids.filter(id=>est(id)==="foto").length;
+      $("panalTit").textContent=`Mesas de ${nombreMuni(k)}`;
+            // Dos vistas: «Por zonas» (cada mesa en el sitio de su sección censal, con la silueta del municipio; posiciones
+      // calculadas de antemano con scripts/zonas.py) y «Agrupadas» (espiral con las verificadas en el centro, para ver
+      // cuánto se ha llenado aunque haya pocas). La lista de debajo mantiene el orden real.
+      const z=zonas&&zonas[k]; const refIds=ref.mesas.filter(([id])=>id.split("-")[1]===k).map(([id])=>id).sort();
+      const conZonas=!!(z&&z.length===refIds.length*2);
+      $("segPanal").classList.toggle("hide",!conZonas); const modo=conZonas?MODO_PANAL:"agrupadas";
+      $("segPanal").querySelectorAll("button").forEach(b=>{ b.classList.toggle("on",b.dataset.modo===modo); b.onclick=()=>{ MODO_PANAL=b.dataset.modo; panal(k); }; });
+      $("panalResumen").innerHTML=`${fmt(ids.length)} mesas · <b style="color:var(--ok)">${fmt(nv)} verificada${nv===1?"":"s"}</b> · ${fmt(nf)} con foto sin verificar. `+
+        (modo==="zonas"?"Cada mesa, en la zona de su sección.":"Las verificadas se agrupan en el centro.");
+      const R=10, W=Math.sqrt(3)*R; let orden, pts;
+      if(modo==="zonas"){ orden=refIds; pts=refIds.map((id,i)=>{ const c=z[2*i], f=z[2*i+1]; return [W*(c+(f%2)/2),1.5*R*f]; }); }
+      else { const rango={ver:0,foto:1,sin:2}; orden=[...ids].sort((a,b)=>rango[est(a)]-rango[est(b)]||a.localeCompare(b));
+        const pos=[[0,0]], dirs=[[1,0],[1,-1],[0,-1],[-1,0],[-1,1],[0,1]];
+        for(let ring=1; pos.length<orden.length; ring++){ let q=-ring, r=ring; for(const [dq,dr] of dirs) for(let i=0;i<ring&&pos.length<orden.length;i++){ pos.push([q,r]); q+=dq; r+=dr; } }
+        pts=pos.map(([q,r])=>[W*(q+r/2),1.5*R*r]); }
+      const xs=pts.map(p=>p[0]), ys=pts.map(p=>p[1]); const x0=Math.min(...xs)-W, y0=Math.min(...ys)-R*1.2, w=Math.max(...xs)-x0+W, h=Math.max(...ys)-y0+R*1.2;
+      const hex=(x,y)=>"M"+[0,1,2,3,4,5].map(i=>{ const a=Math.PI/180*(60*i-90); return `${(x+R*.94*Math.cos(a)).toFixed(1)},${(y+R*.94*Math.sin(a)).toFixed(1)}`; }).join("L")+"Z";
+      $("panal").innerHTML=`<svg class="panal" viewBox="${x0.toFixed(1)} ${y0.toFixed(1)} ${w.toFixed(1)} ${h.toFixed(1)}" style="max-width:${Math.max(220,Math.min(640,w*(modo==="zonas"?4:2.2)))}px" role="img" aria-label="Mesas de ${esc(nombreMuni(k))}">`+
+        orden.map((id,i)=>`<path d="${hex(...pts[i])}" class="e-${est(id)}" data-id="${id}"><title>${nom(id)}: ${txt[est(id)]}</title></path>`).join("")+`</svg>`;
+      $("panal").querySelectorAll("path").forEach(el=>el.onclick=()=>location.hash="mesa="+el.dataset.id);
+      // lista por distrito y sección
+      const D=new Map(); for(const id of ids){ const q=partes(id); if(!D.has(q[2])) D.set(q[2],new Map()); const S=D.get(q[2]); if(!S.has(q[3])) S.set(q[3],[]); S.get(q[3]).push(id); }
+      const abrir=ids.length<=200||D.size===1;
+      $("secciones").innerHTML=[...D].map(([dd,S])=>{ const todas=[...S.values()].flat(), v=todas.filter(id=>est(id)==="ver").length;
+        return `<details class="dist" ${abrir?"open":""}><summary>Distrito ${Number(dd)} · ${fmt(todas.length)} mesas · <span style="color:${v?"var(--ok)":"var(--muted)"}">${fmt(v)} verificada${v===1?"":"s"}</span></summary>`+
+          [...S].map(([ss,ms])=>{ const vs=ms.filter(id=>est(id)==="ver").length;
+            return `<div class="secc"><span class="n">Secc. ${seccTxt(ss)}</span><span class="c">${ms.map(id=>`<a href="#mesa=${id}" class="e-${est(id)}" title="Mesa ${partes(id)[4]}: ${txt[est(id)]}" aria-label="Mesa ${partes(id)[4]}: ${txt[est(id)]}"></a>`).join("")}</span><span class="t">${vs} de ${ms.length}</span></div>`; }).join("")+`</details>`; }).join(""); }
     $("fMuni").onchange=pintar; $("fEst").onchange=pintar; pintar();
   }catch(e){ console.error(e); $("tMesas").innerHTML='<tr><td class="meta">No se han podido cargar las mesas.</td></tr>'; }
 }
-async function verMesa(id){
-  const p=(id||"").slice(0,2); $("mesaTit").textContent="Mesa "+id; $("mesaBack").href="#prov="+p; $("mesaCuerpo").innerHTML='<span class="spinner"></span>';
-  try{ const [d,ms]=await Promise.all([cargarProv(p,true),getJSON(`/data/mesas/${p}.json`).catch(()=>null)]); const m=d.mesas.find(x=>x.id===id);
-    const pt=id.split("-"); const ref=ms&&ms.mesas.find(x=>x[0]===id);
-    $("mesaSub").textContent=`${nombreProv(p)} · ${ms?ms.municipios[pt[1]]:pt[1]} · Distrito ${Number(pt[2])} · Sección ${seccTxt(pt[3])} · Mesa ${pt[4]}${ref&&ref[2]?" · "+ref[2]:""}`;
-    if(!m){ $("mesaCuerpo").innerHTML=`<div class="card"><p>Aún no hay fotos de esta mesa.</p>${abierto()?'<a class="btn primary" href="#enviar">¿Estás allí? Envía la tuya</a>':""}</div>`; return; }
-    const cands=d.candidaturas||[]; const fila=c=>c?[c.electores,c.votantes,c.nulos,c.blanco,...cands.map(k=>c.cand[k.codigo])]:[];
-    const cab=["Electores","Votantes","Nulos","Blanco",...cands.map(k=>k.siglas)];
-    let h=(m.nueva?`<div class="banner b-warn" style="margin-bottom:12px">Esta mesa no figura en nuestra lista de referencia. Está pendiente de que revisemos las fotos para confirmarla.</div>`:"")+`<div class="row" style="margin-bottom:12px"><span class="pill p-${m.estado}" style="font-size:15px">${ESTADOS[m.estado]||m.estado}</span><span class="meta">${m.n} foto(s) · ${m.indep} fuente(s) independiente(s) coincidente(s)</span></div>`;
-    if(m.cifras) h+=`<div class="card" style="margin-bottom:14px"><h2>Cifras ${m.estado==="conflicto"?"de la versión mayoritaria":""}</h2><div class="tablewrap"><table><tr>${cab.map(x=>`<th>${x}</th>`).join("")}</tr><tr>${fila(m.cifras).map(v=>`<td>${fmt(v)}</td>`).join("")}</tr></table></div></div>`;
+async function verMesa(id,refresco){
+  const p=(id||"").slice(0,2), pt=(id||"").split("-"); $("mesaBack").href="#prov="+p;
+  if(!refresco){ $("mesaTit").textContent="Mesa "+(pt[4]||id); $("mesaSub").textContent=""; $("mesaCuerpo").innerHTML='<span class="spinner"></span> Cargando…'; }
+  try{ const [d,ms,ofi]=await Promise.all([cargarProv(p,true),getJSON(`/data/mesas/${p}.json`).catch(()=>null),cargarOficial(p)]); const m=d.mesas.find(x=>x.id===id);
+    const ref=ms&&ms.mesas.find(x=>x[0]===id); const muni=natural(ms?ms.municipios[pt[1]]:pt[1]);
+    // Título como lo pone el acta: municipio y letra de la mesa. El código completo, debajo.
+    $("mesaTit").textContent=`${muni} · Mesa ${pt[4]}`;
+    $("mesaSub").innerHTML=`${ref&&ref[2]?`<b>${esc(ref[2])}</b> · `:""}Distrito ${Number(pt[2])} · Sección ${seccTxt(pt[3])} · ${esc(natural(nombreProv(p)))}<br><span class="mono">${esc(id)}</span>`;
+    const otra=abierto()?`<a class="btn primary" href="#enviar=${encodeURIComponent(id)}">${m?"Enviar otra foto de esta mesa":"¿Estás allí? Envía la tuya"}</a>`:"";
+    if(!m){ $("mesaCuerpo").innerHTML=`<div class="card"><p>Aún no hay fotos de esta mesa.</p>${otra}</div>`; return; }
+    const cands=d.candidaturas||[]; const BAS=[["electores","Electores"],["votantes","Votantes"],["nulos","Nulos"],["blanco","En blanco"]];
+    const oculto=d.totales_visibles===false;
+    const fuentes=m.indep>=2?` · ${m.indep} personas distintas con las mismas cifras`:"";
+    let h=(oculto?`<div class="banner b-warn" style="margin-bottom:12px">Las cifras y las fotos de las actas se publican a partir de las 21:00 (hora peninsular), cuando cierran todos los colegios, también en Canarias. Hasta entonces solo se muestra el estado de la mesa.</div>`:"")+(m.nueva?`<div class="banner b-warn" style="margin-bottom:12px">Esta mesa no figura en nuestra lista de referencia. Está pendiente de que revisemos las fotos para confirmarla.</div>`:"")+`<div class="row" style="margin-bottom:12px"><span class="pill p-${m.estado}" style="font-size:15px">${ESTADOS[m.estado]||m.estado}</span><span class="meta">${m.n} foto${m.n===1?"":"s"}${fuentes}</span></div>`;
+    // Cifras: las cuatro generales en casillas y los votos en una lista vertical, que se lee bien en el móvil
+    if(m.cifras){ const c=m.cifras; const lista=cands.map(k=>[k,c.cand[k.codigo]]).sort((x,y)=>(y[1]||0)-(x[1]||0));
+      h+=`<div class="card" style="margin-bottom:14px"><h2>Cifras${m.estado==="conflicto"?" de la versión mayoritaria":""}</h2>
+        <div class="basicas">${BAS.map(([k,t])=>`<div><b>${fmt(c[k])}</b><span>${t}</span></div>`).join("")}</div>
+        <table><tr><th>Candidatura</th><th>Votos</th></tr>${lista.map(([k,v])=>`<tr><td><i class="cuad" style="background:${colorPartido(k.siglas)}"></i>${esc(k.siglas)}</td><td>${fmt(v)}</td></tr>`).join("")}</table></div>`; }
+    // Comparación con el dato oficial, si ya lo hay para esta mesa
+    const om=!oculto&&m.cifras?oficialMesa(ofi,id,ms):null;
+    if(om){ const cmp=comparar(m.cifras,om.o,cands);
+      h+=`<div class="card" style="margin-bottom:14px"><h2>Comparación con el dato oficial</h2><p class="meta" style="margin:4px 0">${fuenteOfi(ofi,om.nivel)}${m.estado==="verificada"||m.estado==="validada"?"":". <b>El acta de esta mesa aún no está verificada.</b>"}</p>${resumenComparacion(cmp)}${tablaComparacion(cmp)}${AVISO_OFI}</div>`; }
+    // En cada foto, solo lo que difiere de las cifras de arriba
+    const difs=fc=>{ if(!fc) return ""; if(!m.cifras) return cands.map(k=>`${esc(k.siglas)} ${fmt(fc.cand[k.codigo])}`).join(" · ");
+      const d2=[...BAS.filter(([k])=>fc[k]!==m.cifras[k]).map(([k,t])=>`${t} ${fmt(fc[k])}`),...cands.filter(k=>fc.cand[k.codigo]!==m.cifras.cand[k.codigo]).map(k=>`${esc(k.siglas)} ${fmt(fc.cand[k.codigo])}`)];
+      return d2.length?`Distinto: ${d2.join(" · ")}`:"✓ Mismas cifras que las de arriba"; };
     h+=`<h2>Fotos enviadas</h2><div class="fotos">`+m.fotos.map(f=>{ const mot=[...(f.mot?[f.mot]:[]),...(f.f||[]).filter(x=>MOTIVOS_F[x]).map(x=>MOTIVOS_F[x]),...((f.f||[]).some(x=>x.startsWith("retapada:"))?["nombres tapados en la revisión"]:[])];
-      const img=f.pub?`<a href="/api/foto/${f.h}.jpg" target="_blank" rel="noopener"><img loading="lazy" src="/api/mini/${f.h}.jpg" alt="Foto del acta enviada"></a>`
-        :`<div class="fotoOculta">${f.est==="invalida"?"Foto retirada":f.den?"Foto oculta por denuncias, pendiente de revisión":"La foto se publicará cuando otra persona envíe la misma acta o la revisemos"}</div>`;
+      const img=f.pub?`<a href="/api/foto/${f.h}.jpg" target="_blank" rel="noopener"><img loading="lazy" src="/api/mini/${f.h}.jpg" alt="Foto del acta enviada (toca para verla grande)"></a>`
+        :`<div class="fotoOculta">${f.est==="invalida"?"Foto retirada":oculto?"Visible a partir de las 21:00":f.den?"Foto oculta por denuncias, pendiente de revisión":"La foto se publicará cuando otra persona envíe la misma acta o la revisemos"}</div>`;
       return `<div class="foto ${f.est==="invalida"?"invalida":""}">${img}
       <div><span class="pill p-${f.est==="pendiente"?(f.ok?"pendiente":"revision"):f.est}">${f.est==="pendiente"?(f.ok?"Recibida":"No cuadra"):ESTADOS[f.est]}</span>
-      <div class="meta" style="margin-top:4px">${new Date(f.ts).toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit"})}${f.geo===1?" · en el colegio":""}</div>
+      <div class="meta" style="margin-top:4px">${hhmm(f.ts)}</div>
       ${mot.length?`<div class="meta">${mot.join(" · ")}</div>`:""}
-      <div class="meta">${fila(f.c).slice(4).map((v,i)=>`${cands[i]?cands[i].siglas:"?"} ${fmt(v)}`).join(" · ")}</div>
+      <div class="meta">${difs(f.c)}</div>
       <div class="mono" style="font-size:11px; margin-top:4px" title="Huella SHA-256 de la foto publicada">${huellaFoto(f).slice(0,16)}…</div>
       ${f.pub?`<button class="small linkish" data-denunciar="${f.h}">Denunciar foto</button>`:""}</div></div>`; }).join("")+`</div>`;
-    h+=`<div class="row" style="margin-top:14px"><button id="btnShareM">Compartir esta mesa</button>${abierto()?'<a class="btn" href="#enviar">Enviar otra foto de esta mesa</a>':""}</div>`;
+    h+=`<div class="row" style="margin-top:14px"><button id="btnShareM">Compartir esta mesa</button>${otra}</div>`;
     $("mesaCuerpo").innerHTML=h;
     document.querySelectorAll("[data-denunciar]").forEach(b=>b.onclick=async()=>{ if(!confirm("¿Denunciar esta foto? Úsalo si no es un acta o tiene contenido inapropiado. Si varias personas la denuncian, se oculta hasta que la revisemos.")) return;
       b.disabled=true; try{ const r=await fetch("/api/denuncia",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({hash:b.dataset.denunciar})}); b.textContent=r.ok?"Denuncia enviada, gracias":"No se pudo enviar"; }catch(e){ b.textContent="No se pudo enviar"; } });
-    $("btnShareM").onclick=()=>compartir(`Acta de la mesa ${id}, con sus fotos:`,`${location.origin}/#mesa=${id}`);
-  }catch(e){ $("mesaCuerpo").innerHTML='<div class="meta">No se ha podido cargar la mesa.</div>'; }
+    $("btnShareM").onclick=()=>compartir(`Acta de la mesa ${pt[4]} de ${muni} (sección ${seccTxt(pt[3])}), con sus fotos:`,`${location.origin}/#mesa=${id}`);
+  }catch(e){ if(!refresco) $("mesaCuerpo").innerHTML='<div class="meta">No se ha podido cargar la mesa.</div>'; }
 }
 
 // ---------- arranque ----------
 (async()=>{
   try{ CFG=await getJSON("/api/config"); }catch(e){}
   $("brand").textContent=CFG.nombre||"Recuento Ciudadano";
-  if(CFG.abre) $("abreTxt").textContent=new Date(CFG.abre).toLocaleString("es-ES",{weekday:"long",day:"numeric",month:"long",hour:"2-digit",minute:"2-digit"});
-  try{ PROVS=await getJSON("/data/provincias.json"); $("sProv").innerHTML='<option value="">Elige…</option>'+[...PROVS].sort((a,b)=>a.nombre.localeCompare(b.nombre,"es")).map(p=>`<option value="${p.prov}">${p.nombre}</option>`).join(""); }catch(e){}
-  cargarTurnstile(); tick(); setInterval(tick,1000); route();
+  // La hora se muestra siempre en hora peninsular, sea cual sea la zona horaria del móvil
+  if(CFG.abre) $("abreTxt").textContent=new Date(CFG.abre).toLocaleString("es-ES",{weekday:"long",day:"numeric",month:"long",timeZone:"Europe/Madrid"})+", a las "+hhmm(CFG.abre)+" (hora peninsular)";
+  try{ PROVS=await getJSON("/data/provincias.json"); opts($("sProv"),[...PROVS].sort((a,b)=>natural(a.nombre).localeCompare(natural(b.nombre),"es")).map(p=>[p.prov,p.nombre]),"Elige…"); }catch(e){}
+  cargarTurnstile(); tick(); setInterval(tick,1000);
+  if(!/^#enviar=/.test(location.hash)) await recuperarBorrador();
+  route();
 })();
 </script>
 </body>

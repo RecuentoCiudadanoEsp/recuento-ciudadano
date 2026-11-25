@@ -272,4 +272,37 @@ if __name__ == "__main__":
     s3, q = get("/admin/api/mesa?id=" + m4, admin=True)
     check("«Volver a revisar esta mesa» deshace la validación", s == 200 and mm["estado"] == "conflicto" and all(e["estado"] == "pendiente" for e in q["mesas"][0]["envios"]), (mm["estado"], r))
     s, r = get("/admin/api/acciones?mesa=" + m4, admin=True); check("y queda anotado en el registro", r["acciones"][0]["decision"] == "reabierta", r["acciones"][:1])
+    # ---- Registro de decisiones encadenado: se comprueba con el mismo programa que puede usar cualquiera
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("verificar_registro", "scripts/verificar_registro.py"); vr = importlib.util.module_from_spec(spec); spec.loader.exec_module(vr)
+    s, d = get("/api/public/decisiones.json")
+    check("registro de decisiones completo y con huella", s == 200 and d["total"] == len(d["decisiones"]) > 5 and d["huella"] == d["decisiones"][0]["huella"], {k: d.get(k) for k in ("total", "huella")})
+    check("el registro cuadra al recalcular las huellas", vr.comprobar(d) == [], vr.comprobar(d)[:3])
+    alterado = json.loads(json.dumps(d)); alterado["decisiones"][-2]["motivo"] = "cambiado a escondidas"
+    check("si se cambia una decisión antigua, se detecta", any("no cuadra" in x for x in vr.comprobar(alterado)))
+    borrado = json.loads(json.dumps(d)); del borrado["decisiones"][-3]
+    check("si se borra una decisión, se detecta", len(vr.comprobar(borrado)) > 0)
+    h_antes = d["huella"]; s, r = get("/admin/api/reabrir_mesa", admin=True, method="POST", body={"mesa_id": m4}); cron()
+    s, d2 = get("/api/public/decisiones.json")
+    check("una decisión nueva se añade sin cambiar las anteriores", d2["total"] == d["total"] + 1 and d2["decisiones"][1]["huella"] == h_antes and vr.comprobar(d2) == [], (d2["total"], d["total"]))
+
+    # ---- Muchas mesas desde el mismo navegador: hasta 8 en media hora es normal (colegio grande); la 9.ª va a revisión
+    mesas_d = [m[0] for m in json.load(open("public/data/mesas/12.json"))["mesas"] if not m[0].startswith("12-002-")][40:49]
+    disp_m = uuid.uuid4().hex
+    res = [post_envio(cifras_ain(), variante=500 + i, ip=f"10.40.0.{i}", disp=disp_m, mesa=mesas_d[i])[1] for i in range(9)]
+    check("8 mesas distintas desde un navegador: sin aviso", all("muchas_mesas" not in r.get("avisos", []) for r in res[:8]), [r.get("avisos") for r in res[:8]])
+    check("la 9.ª mesa desde el mismo navegador va a revisión", "muchas_mesas" in res[8].get("avisos", []), res[8])
+    s, r = get("/admin/api/estadisticas", admin=True); check("el panel confirma que la clave SAL_IP está puesta", s == 200 and r.get("clave_ip_ok") is True, r.get("clave_ip_ok"))
+    # ---- Dato oficial de Interior: se carga desde el panel, se valida y se publica para compararlo con las actas
+    s, r = get("/api/public/oficial/46.json"); check("sin dato oficial cargado, el archivo sale vacío", s == 200 and r["mesas"] == {} and r["municipios"] == {}, r)
+    malo = {"tipo": "definitivo", "mesas": {"28-079-01-001-A": {"votantes": 1, "nulos": 0, "blanco": 0, "cand": {}}}}
+    s, r = get("/admin/api/oficial", admin=True, method="POST", body={"prov": "12", "datos": malo}); check("no admite mesas de otra provincia", s == 400 and r.get("error") == "mesa", r)
+    malo = {"tipo": "definitivo", "mesas": {"12-002-01-001-U": {"votantes": -3, "nulos": 0, "blanco": 0, "cand": {}}}}
+    s, r = get("/admin/api/oficial", admin=True, method="POST", body={"prov": "12", "datos": malo}); check("no admite cifras negativas", s == 400 and r.get("error") == "cifras", r)
+    bueno = {"tipo": "provisional", "fuente": "prueba", "municipios": {"002": {"escrutado": 100, "votantes": 100, "nulos": 1, "blanco": 2, "cand": {"C01": 50, "?OTRA": 3}}},
+             "mesas": {"12-002-01-001-U": {"votantes": 100, "nulos": 1, "blanco": 2, "cand": {"C01": 50}}}, "extra": "<script>"}
+    s, r = get("/admin/api/oficial", admin=True, method="POST", body={"prov": "12", "datos": bueno}); check("carga el dato oficial de una provincia", s == 200 and r.get("mesas") == 1 and r.get("municipios") == 1, r)
+    s, r = get("/api/public/oficial/12.json")
+    check("y se publica tal cual, sin campos desconocidos", s == 200 and r["mesas"]["12-002-01-001-U"]["cand"] == {"C01": 50} and r["municipios"]["002"]["cand"]["?OTRA"] == 3 and "extra" not in r, r)
+    s, r = get("/admin/api/oficial", method="POST", body={"prov": "12", "datos": bueno}); check("sin contraseña no se puede cargar", s in (401, 403), s)
     print("\nRESULTADO:", "todo correcto" if ok else "HAY FALLOS")

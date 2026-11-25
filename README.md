@@ -139,8 +139,10 @@ la web no deja y el servidor la rechaza.
 - **Pendiente:** un solo envío. Se muestra, pero no cuenta en los totales.
 - **En conflicto:** envíos válidos con cifras distintas. Va a la cola del panel.
 - **En revisión:** la mesa es nueva ("Mi mesa no aparece") o el envío tiene alertas (foto repetida en otra mesa, foto
-  anterior al cierre, muchas mesas desde el mismo dispositivo, ubicación lejos del colegio, o la lectura automática dice
-  que no es un acta). No cuenta hasta que lo revises.
+  anterior al cierre, muchas mesas desde el mismo dispositivo —`MAX_MESAS_DISPOSITIVO_30MIN`: a partir de la 9.ª mesa
+  distinta en media hora—, o la lectura automática dice que no es un acta). No cuenta hasta que lo revises.
+  (El servidor aún admite una comprobación de distancia al colegio, `DISTANCIA_MAX_METROS`, pero la lista oficial de
+  mesas no trae coordenadas de los colegios y el formulario ya no pide la ubicación, así que no se aplica.)
 - **Validada:** has marcado un envío como válido en el panel; manda sobre lo demás.
 
 **Qué fotos son públicas.** Una foto solo se muestra cuando su mesa está verificada (y la foto coincide con la
@@ -183,6 +185,26 @@ distintas (2 por defecto), se oculta al momento (en menos de 5 minutos deja de v
 
 Nada se borra: las invalidadas siguen en la ficha con el motivo, sin imagen, y cada decisión queda en
 `/api/public/decisiones.json`.
+
+**Registro encadenado.** Cada decisión del registro lleva una `huella` (SHA-256) calculada con la huella de la decisión
+anterior y sus propios datos, y la `huella` de arriba del archivo resume el registro completo. Si alguien cambiara o
+borrara una decisión antigua en la base de datos, cambiarían todas las huellas desde ese punto y ya no coincidirían con
+las publicadas antes.
+
+Esto solo protege si existen copias del registro guardadas fuera de esta web, con su fecha. No hace falta pedir permiso
+a nadie para hacerlas: cualquiera puede descargar `https://recuentociudadano.es/api/public/decisiones.json` cuando quiera,
+o archivarlo en la Wayback Machine (`https://web.archive.org/save/https://recuentociudadano.es/api/public/decisiones.json`),
+donde queda una copia fechada que nadie del proyecto puede modificar. Más adelante, el programa de comprobación dice si
+todo lo que había en esa copia sigue igual:
+
+```
+python3 scripts/verificar_registro.py                                   # descarga el registro y recalcula las huellas
+python3 scripts/verificar_registro.py decisiones.json --huella HUELLA   # comprueba que una huella publicada sigue ahí
+python3 scripts/verificar_registro.py URL_O_ARCHIVO --anterior COPIA    # compara con una copia guardada antes
+```
+
+El archivo solo se regenera cuando hay decisiones nuevas. Los envíos de cada mesa (huella de la foto, cifras, hora y
+estado) están en `/api/public/prov/PP.json`, así que cualquiera puede rehacer los totales sin depender de esta web.
 
 ## Panel de validación
 
@@ -244,3 +266,38 @@ python3 test/panel_test.py      # recorre el panel: colas, registro de decisione
 - Sube temporalmente `MAX_ENVIOS_IP_10MIN` a `1000000`, porque todo el tráfico de k6 sale de tu IP (el valor normal es 300).
 - Copia una foto de acta como `test/acta_prueba.jpg` y ejecuta `k6 run -e BASE=https://tu-dominio test/carga_k6.js`.
 - Después, vacía los datos desde el panel y deja todo como estaba (ver "Antes de abrir").
+
+## Vista «Por zonas» del panal de mesas
+
+Al abrir un municipio en Resultados se ve un panal con un hexágono por mesa. En la vista «Por zonas» el panal tiene la
+forma del municipio y cada mesa está en la zona de su sección censal; en «Agrupadas», las verificadas se juntan en el
+centro. Las posiciones de «Por zonas» están precalculadas en `public/data/zonas/PP.json` con
+`scripts/zonas.py`, a partir de la cartografía de secciones censales del INE (no incluida por su tamaño; se descarga en
+https://ine.es/dyngs/DAB/index.htm?cid=1389). Si cambian las listas de mesas, hay que volver a ejecutarlo:
+
+```
+pip install pyshp shapely numpy
+python3 scripts/zonas.py RUTA/SECC_CE_20260101
+```
+
+## Comparación con el dato oficial de Interior
+
+La web compara las cifras de las actas con las que publica el Ministerio del Interior: en la ficha de cada mesa
+(acta, dato oficial y diferencia, en votos y en puntos sobre votos válidos) y en la página de cada provincia
+(mesas comparadas, de mayor a menor diferencia, sin valorar a quién afecta). Solo se muestra cuando ya se
+publican las cifras (a partir de las 21:00 del día de la votación).
+
+- **Noche electoral.** Interior da resultados provisionales por municipio, no por mesa. Se comparan los
+  municipios con una sola mesa y los que tienen todas sus mesas verificadas, si su escrutinio está al 100 %.
+- **Después.** Interior publica el resultado de cada mesa en el área de descargas de Infoelectoral (ZIP «MESA»
+  del Congreso). Se convierte con:
+
+      python3 scripts/oficial_desde_interior.py 02202611_MESA.zip
+
+  y se cargan los archivos de la carpeta `oficial/` desde el panel, con «Cargar dato oficial…».
+- **Voto CERA.** El voto desde el extranjero no se suma a ninguna mesa (en los ficheros es el municipio 999),
+  así que no explica diferencias en una mesa.
+
+El dato oficial se guarda por provincia en R2 (`public/oficial/PP.json`) y se sirve en `/api/public/oficial/PP.json`.
+El formato está descrito en `src/worker.js` (función `limpiarOficial`). En la versión de pruebas, el botón
+«Inventar dato oficial (pruebas)» del panel crea uno a partir de las actas verificadas, con algunas diferencias.

@@ -40,6 +40,8 @@ MAX_ENVIOS_IP_10MIN = "300"          # alto a propósito: muchas IP móviles son
 # Si una misma IP envía actas de tantas mesas distintas en una hora, sus envíos dejan de contar como fuentes independientes
 MAX_MESAS_RED_HORA = "8"
 MAX_ENVIOS_DISPOSITIVO_10MIN = "10"
+# Mesas distintas que un mismo navegador puede enviar en media hora sin aviso; a partir de la siguiente, van a revisión
+MAX_MESAS_DISPOSITIVO_30MIN = "8"
 DISTANCIA_MAX_METROS = "400"
 LECTURA_IA = "1"               # lectura automática de las fotos con Workers AI ("0" para desactivarla)
 MAX_LECTURAS_IP_10MIN = "300"
@@ -99,6 +101,8 @@ MAX_ENVIOS_IP_10MIN = "1000000"      # en pruebas, sin límite: los envíos simu
 # Si una misma IP envía actas de tantas mesas distintas en una hora, sus envíos dejan de contar como fuentes independientes
 MAX_MESAS_RED_HORA = "1000000"       # en pruebas, desactivado por el mismo motivo (en la pública: 8)
 MAX_ENVIOS_DISPOSITIVO_10MIN = "10"
+# Mesas distintas que un mismo navegador puede enviar en media hora sin aviso; a partir de la siguiente, van a revisión
+MAX_MESAS_DISPOSITIVO_30MIN = "8"
 DISTANCIA_MAX_METROS = "400"
 LECTURA_IA = "1"               # lectura automática de las fotos con Workers AI ("0" para desactivarla)
 MAX_LECTURAS_IP_10MIN = "300"
