@@ -59,6 +59,7 @@ npx wrangler d1 execute recuento --remote --file schema.sql
 npx wrangler d1 execute recuento --remote --file sql/01_mesas.sql
 npx wrangler d1 execute recuento --remote --file sql/02_candidaturas.sql
 npx wrangler d1 execute recuento --remote --file sql/03_provincias.sql
+# (las bases creadas antes del 25/11/2026 necesitan además, una sola vez, sql/cambios/2026-11-25_lectura_ia.sql)
 
 # 3. Fotos
 npx wrangler r2 bucket create recuento-fotos
@@ -151,8 +152,9 @@ ficha aparece el envío con sus cifras y el aviso "se publicará cuando otra per
 publicar una imagen cualquiera subiéndola una vez. Tú las ves todas en el panel.
 
 **Comprobaciones de la foto.** Al recibirla, el servidor mira que la zona de nombres esté tapada (la web la tapa siempre;
-esto pilla a quien se salta la web) y que la imagen parezca papel (sin mucho color ni tonos de piel). Si falla algo, la
-foto queda en **cuarentena**: no se publica nunca aunque la mesa esté verificada, y va a la cola "Fotos sospechosas".
+esto pilla a quien se salta la web) y que la imagen parezca papel (sin mucho color ni tonos de piel). Antes de medir los
+colores corrige el tono de la luz (equilibrio de blancos), para que un acta fotografiada con luz cálida no parezca otra
+cosa. Si falla algo, la foto queda en **cuarentena**: no se publica nunca aunque la mesa esté verificada, y va a la cola "Fotos sospechosas".
 
 **Lectura automática (Workers AI, `LECTURA_IA = "1"`).** Un modelo de visión lee cada foto: cifras, si es un acta y si es
 inapropiada. Sirve para tres cosas:
@@ -169,15 +171,27 @@ lectura. Si llega una foto con otras cifras, la mesa pasa a conflicto y entonces
 verificarse, como mucho `FOTOS_LEIDAS_POR_VERSION` fotos (3) con las mismas cifras se leen, por si llegan muchas a la
 vez. El formulario tampoco gasta lectura en mesas verificadas. Así todo el cupo va a mesas sin verificar.
 
-Mientras una foto no se ha leído, no se publica (el cron lee hasta 150 por minuto). Modelo: Llama 4 Scout
+**Ninguna foto se publica sin lectura automática o revisión manual.** Mientras una foto no se ha leído, no se publica
+(sus cifras cuentan igual). El cron lee hasta 150 por minuto, primero las de mesas verificadas (son las que se
+publicarían), y va aparte del recálculo del mapa: una lectura lenta no retrasa los resultados. Antes de leer cada foto
+la marca como «leyendo», para que dos tareas que coincidan en el tiempo no la lean dos veces. Si una lectura falla (por
+ejemplo, porque el servicio está saturado), se vuelve a intentar en los minutos siguientes, hasta 6 veces; después, o si
+se llega al tope de lecturas, la foto queda en la cola **Fotos aún sin leer** del panel para aprobarla a mano. Modelo: Llama 4 Scout
 (`@cf/meta/llama-4-scout-17b-16e-instruct`), elegido tras compararlo con otros modelos de visión de Workers AI sobre actas
 reales: es el que mejor lee las cifras manuscritas. Coste: Workers AI regala 10.000 "neuronas" al día (unas 120 fotos) y
 después cobra unos 0,0009 $ por foto (unas 80 neuronas; reducir la foto no lo abarata con este modelo). **Red de seguridad:**
 `MAX_LECTURAS_IA` (100.000 por defecto, unos 88 $ como máximo; con 40.000 mesas se esperan unas 88.000 lecturas, ≈ 77 $). Al llegar, se dejan de hacer lecturas: la web sigue
-igual, sin sugerencias, y las fotos se publican con el filtro sin IA. Con `LECTURA_IA = "0"` el coste es cero. El panel
+igual, sin sugerencias, y las fotos de mesas verificadas esperan en la cola **Fotos aún sin leer** del panel. El tope cuenta
+solo las lecturas hechas: si el servicio no llega a leer una foto (no se cobra), no se descuenta. Con `LECTURA_IA = "0"` el coste es cero. El panel
 muestra cuántas lecturas se llevan. Workers AI tiene límites de peticiones por minuto: en el pico, algunas personas no
-verán el amarillo y sus fotos tardarán unos minutos más en publicarse; las cifras cuentan igual.
+verán el amarillo y sus fotos tardarán más en publicarse; las cifras cuentan igual.
 La lectura de manuscritos no es perfecta: es una ayuda, no decide nada. Hay que probarla con actas reales nada más desplegar.
+
+**Antibots (Turnstile).** Se pide un «pase» antibots al leer la foto en el formulario, al enviar y al denunciar. Cada
+pase vale para una sola petición; la web pide el siguiente sola y normalmente no se ve nada.
+
+**Reintentos.** Si se corta la conexión al enviar, la web reintenta con los mismos datos. Si el primer intento sí había
+llegado, el servidor reconoce la foto (misma huella) y contesta como un envío correcto, sin duplicarlo.
 
 **Denuncias.** Las fotos públicas tienen un botón "Denunciar foto". Si la denuncian desde `DENUNCIAS_OCULTAR` redes
 distintas (2 por defecto), se oculta al momento (en menos de 5 minutos deja de verse en todas partes) y pasa a la cola
@@ -216,6 +230,9 @@ Entra en `https://tu-dominio/admin/`: primero el código de Cloudflare Access qu
   personas distintas; si empatan, la que mejor coincide con lo que se lee en sus fotos. Si en las fotos de una versión
   se lee otra cosa, te lo dice campo por campo. Un clic en **Esta es la buena** valida esa versión e invalida el resto.
   Las opciones por foto (validar, invalidar, reasignar) siguen disponibles dentro de cada versión.
+- **Fotos aún sin leer:** fotos de mesas verificadas que se publicarían, pero que la lectura automática aún no ha
+  podido leer (servicio saturado, varios fallos o tope alcanzado). **Aprobar foto** la publica. La lista se actualiza
+  sola cada 30 segundos: cuando la lectura automática lee una foto, sale de aquí (y si la marca, pasa a "Fotos sospechosas").
 - **Fotos en espera** (sin prioridad): fotos de mesas ya verificadas que no se han leído, para revisar a mano en las
   horas o días siguientes.
 - **Fotos sospechosas**, revisión **por foto**: cuarentena (nombres sin tapar, no parece un acta, la IA la marca) y

@@ -48,9 +48,12 @@ CREATE TABLE IF NOT EXISTS envios (
   publica     INTEGER NOT NULL DEFAULT 0, -- 1 = la foto se muestra al público (mesa verificada o validada a mano)
   denuncias   INTEGER NOT NULL DEFAULT 0, -- nº de redes distintas que la han denunciado
   ia          TEXT,                     -- lectura automática de la foto (JSON), si está activada
-  ia_estado   TEXT                      -- NULL (desactivada) | pendiente | hecha | error
+  ia_estado   TEXT,                     -- NULL (desactivada) | pendiente | leyendo | hecha | en_espera | forzada | error | omitida
+  ia_intentos INTEGER NOT NULL DEFAULT 0, -- veces que se ha intentado leer la foto
+  ia_ts       INTEGER                   -- hora del último intento (para recuperar las que se quedan a medio leer)
 );
 CREATE INDEX IF NOT EXISTS envios_ia ON envios(ia_estado);
+CREATE INDEX IF NOT EXISTS envios_prov ON envios(prov);   -- para preparar los datos de cada provincia sin recorrer todos los envíos
 
 -- Lecturas automáticas pedidas por el formulario antes de enviar (se reutilizan al guardar el envío)
 CREATE TABLE IF NOT EXISTS lecturas (hash TEXT PRIMARY KEY, lectura TEXT NOT NULL, ip_hash TEXT NOT NULL, ts INTEGER NOT NULL);

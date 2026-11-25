@@ -107,7 +107,8 @@ button.small,.btn.small{padding:7px 11px; font-size:14px}
 .checks{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px}
 .checks li{display:flex; gap:8px; padding:8px 10px; border-radius:8px; font-size:15px}
 .checks .ic{font-family:var(--mono); font-weight:600; width:16px; flex:none; text-align:center}
-input.dudoso{background:var(--warn-soft); border-color:var(--warn)} .pista{font-size:12px; color:var(--muted); min-height:0; margin-top:2px} .pista.f-alta{color:var(--ok)} .pista.f-baja{color:var(--bad); font-weight:600} input.dudoso+.pista{color:var(--warn); font-weight:600}
+input.dudoso{background:var(--warn-soft); border-color:var(--warn)} .ayuda{display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; min-height:0; padding:0; margin:0 0 0 6px; border-radius:50%; font-size:12px; font-weight:700; line-height:1; vertical-align:middle; background:var(--accent-soft); color:var(--accent); border:1px solid currentColor; cursor:pointer}
+.ayudaTxt{font-size:13px; background:var(--accent-soft); color:var(--ink); border-radius:8px; padding:8px 10px; margin:6px 0} .pista{font-size:12px; color:var(--muted); min-height:0; margin-top:2px} .pista.f-alta{color:var(--ok)} .pista.f-baja{color:var(--bad); font-weight:600} input.dudoso+.pista{color:var(--warn); font-weight:600}
 .mapa{width:100%; height:auto; max-height:62vh; display:block; margin:0 auto; touch-action:manipulation} .mapa path{stroke:var(--card); stroke-width:.7; cursor:pointer; transition:opacity .15s} .mapa path:hover{opacity:.75; stroke:var(--ink); stroke-width:1.2}
 .mapa .marco{fill:none; stroke:var(--line); stroke-width:1; pointer-events:none}
 .leyenda{display:flex; flex-wrap:wrap; gap:10px; font-size:12.5px; color:var(--muted); margin-top:8px} .leyenda i{display:inline-block; width:14px; height:14px; border-radius:3px; vertical-align:-3px; margin-right:4px}
@@ -457,7 +458,7 @@ table.comp tr.difiere td{background:var(--warn-soft)}
       <div class="card"><h2>Qué se publica</h2><p>Las fotos de las actas (con los nombres y firmas tapados), sus cifras, el estado de cada mesa y la hora de cada envío. Nunca se publican el identificador seudonimizado de la conexión ni el identificador del navegador. Las decisiones de revisión quedan en un registro público, sin ningún dato de quien envió la foto.</p></div>
       <div class="card"><h2>Durante cuánto tiempo</h2><p>Las fotos, las cifras y el registro de decisiones se conservan de forma indefinida, porque son la prueba pública de cada acta. El identificador seudonimizado de la conexión y el identificador del navegador se borrarán como tarde el <b>28 de febrero de 2027</b>, una vez cerradas las posibles reclamaciones sobre el recuento.</p></div>
       <div class="card"><h2>Proveedor del servicio</h2><p>La web está alojada en Cloudflare, que actúa como encargado del tratamiento conforme al Reglamento General de Protección de Datos. No hay publicidad, ni herramientas de analítica, ni botones de redes sociales que rastreen la visita.</p></div>
-      <div class="card"><h2>Almacenamiento en el navegador</h2><p>No se usan cookies de publicidad ni de analítica. El navegador guarda el identificador aleatorio descrito arriba, necesario para la seguridad del servicio. Mientras se rellena el formulario, también guarda la mesa elegida y las cifras escritas, para no perderlas si la página se recarga (por ejemplo, al abrir la cámara); no salen del dispositivo y se borran al enviar o al cerrar la pestaña. El formulario de envío incluye una verificación antibots de Cloudflare, que analiza datos técnicos de la conexión y del navegador con el único fin de distinguir a las personas de los programas automáticos (<a href="https://www.cloudflare.com/turnstile-privacy-policy/" target="_blank" rel="noopener">aviso de privacidad de Cloudflare</a>).</p></div>
+      <div class="card"><h2>Almacenamiento en el navegador</h2><p>No se usan cookies de publicidad ni de analítica. El navegador guarda el identificador aleatorio descrito arriba, necesario para la seguridad del servicio. Mientras se rellena el formulario, también guarda la mesa elegida y las cifras escritas, para no perderlas si la página se recarga (por ejemplo, al abrir la cámara); no salen del dispositivo y se borran al enviar o al cerrar la pestaña. El formulario de envío (también al leer la foto) y el botón para denunciar una foto incluyen una verificación antibots de Cloudflare, que analiza datos técnicos de la conexión y del navegador con el único fin de distinguir a las personas de los programas automáticos (<a href="https://www.cloudflare.com/turnstile-privacy-policy/" target="_blank" rel="noopener">aviso de privacidad de Cloudflare</a>).</p></div>
       <div class="card"><h2>Derechos</h2><p>Se pueden ejercer los derechos de acceso, rectificación, supresión, oposición y limitación escribiendo a <a href="mailto:privacidad@recuentociudadano.es">privacidad@recuentociudadano.es</a>. Como no se guarda ningún dato que identifique a nadie, es posible que no se pueda saber qué envíos corresponden a quien lo pide; en ese caso, indicar la mesa y la hora aproximada ayuda a localizarlos. Si alguien aparece en una foto publicada, puede pedir que se tape o se retire. También es posible reclamar ante la Agencia Española de Protección de Datos (<a href="https://www.aepd.es" target="_blank" rel="noopener">aepd.es</a>).</p></div>
       <p class="meta">Última actualización: 25 de noviembre de 2026.</p>
     </div>
@@ -679,7 +680,10 @@ async function recuperarBorrador(){ let b=null; try{ b=JSON.parse(sessionStorage
 // ---------- formulario: cifras ----------
 const BASICOS=[["electores","Total electores (1+2)"],["votantes","Total votantes (A+B)"],["nulos","Votos nulos"],["blanco","Votos en blanco"]];
 const casilla=(id,extra="")=>`<input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="5" enterkeyhint="next" autocomplete="off" class="cifra" id="${id}" ${extra}>`;
-$("fBasicos").innerHTML=BASICOS.map(([k,l])=>`<div><label for="n-${k}">${l}</label>${casilla("n-"+k)}<div class="pista" id="p-${k}"></div></div>`).join("");
+// Ayuda de «Total electores»: a veces la mesa deja esa casilla vacía en el acta
+const AYUDA_ELECTORES=`Si «Total electores (1+2)» está vacío en el acta, copia el número de la línea 1 del mismo recuadro: «Número de electores según las listas del censo».`;
+$("fBasicos").innerHTML=BASICOS.map(([k,l])=>`<div><label for="n-${k}">${l}${k==="electores"?`<button type="button" class="ayuda" id="bAyudaElect" aria-expanded="false" aria-controls="ayudaElect" aria-label="Ayuda: qué hacer si la casilla está vacía">?</button>`:""}</label>${casilla("n-"+k)}<div class="pista" id="p-${k}"></div>${k==="electores"?`<div class="ayudaTxt hide" id="ayudaElect">${AYUDA_ELECTORES}</div>`:""}</div>`).join("");
+$("bAyudaElect").addEventListener("click",()=>{ const oculta=$("ayudaElect").classList.toggle("hide"); $("bAyudaElect").setAttribute("aria-expanded",String(!oculta)); });
 const esc=t=>(t||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;");
 function pintarCands(){ $("fCands").innerHTML=CANDS.length?CANDS.map(c=>{ const den=c.denominacion&&norm(c.denominacion)!==norm(c.siglas)?c.denominacion:"";
       return `<div><label for="c-${c.codigo}">${esc(c.siglas)}<span class="den">${esc(den)}</span></label>${casilla("c-"+c.codigo,`data-cod="${c.codigo}"`)}<div class="pista" id="p-${c.codigo}"></div></div>`; }).join(""):'<span class="meta">Elige primero la provincia.</span>';
@@ -724,8 +728,11 @@ function dhash(c){ const t=document.createElement("canvas"); t.width=9; t.height
 // ---------- encuadre: misma comprobación que hace el servidor ----------
 function revisarEncuadre(){ const c=lienzo(300), d=c.getContext("2d").getImageData(0,0,c.width,c.height).data; const hist=new Uint32Array(256); let n=0;
   for(let i=0;i<d.length;i+=16){ hist[Math.max(d[i],d[i+1],d[i+2])]++; n++; } let acc=0,p90=255; for(let v=0;v<256;v++){ acc+=hist[v]; if(acc>=n*0.9){ p90=v; break; } }
+  // corrección del tono de la luz (equilibrio de blancos), igual que en el servidor: con luz cálida el papel sale amarillento
+  const k=[0,1,2].map(c=>{ const h=new Uint32Array(256); for(let i=c;i<d.length;i+=16) h[d[i]]++; let a=0; for(let v=0;v<256;v++){ a+=h[v]; if(a>=n*0.9) return Math.max(v,1); } return 255; });
+  const ref=Math.max(...k); for(let c=0;c<3;c++) k[c]=Math.min(2.5,ref/k[c]);
   const um=Math.max(50,p90*0.62); let papel=0,piel=0,col=0;
-  for(let i=0;i<d.length;i+=16){ const r=d[i],g=d[i+1],b=d[i+2],mx=Math.max(r,g,b),mn=Math.min(r,g,b),sat=mx?(mx-mn)/mx:0;
+  for(let i=0;i<d.length;i+=16){ const r=Math.min(255,d[i]*k[0]),g=Math.min(255,d[i+1]*k[1]),b=Math.min(255,d[i+2]*k[2]),mx=Math.max(r,g,b),mn=Math.min(r,g,b),sat=mx?(mx-mn)/mx:0;
     if(mx>um&&sat<0.22) papel++; if(sat>0.45&&mx>60) col++; if(r>95&&g>40&&b>20&&mx-mn>15&&Math.abs(r-g)>15&&r>g&&r>b&&sat>0.23) piel++; }
   const mal=papel/n<0.3||piel/n>0.3||col/n>0.3; const a=$("avisoEncuadre");
   a.classList.toggle("hide",!mal); a.innerHTML=mal?"<b>Parece que la foto tiene mucho fondo o no es un acta.</b> Acércate para que el acta ocupe casi toda la foto. Si la envías así, no se publicará hasta que la revisemos.":""; }
@@ -736,6 +743,7 @@ async function pedirLectura(){ LECTURA=null; marcarDudosos(); const prov=$("sPro
   if(!CFG.lectura_ia||!abierto()||!IMG||!prov){ $("iaInfo").textContent=""; return; }
   const id=++LECT_ID; $("iaInfo").innerHTML='<span class="spinner"></span> Leyendo la foto para ayudarte a comprobar las cifras…';
   try{ const foto=await aBlob(lienzo(1600),0.8); const fd=new FormData(); fd.append("foto",foto,"acta.jpg"); fd.append("prov",prov); const ms=mesaSel(); if(ms) fd.append("mesa_id",ms.id);
+    const tk=await pase(); if(tk) fd.append("turnstile",tk); if(id!==LECT_ID) return;
     const r=await fetch("/api/leer",{method:"POST",body:fd}); if(id!==LECT_ID) return; const d=await r.json();
     if(d.omitida){ $("iaInfo").textContent="Esta mesa ya está verificada por varias personas: tu foto se guardará como respaldo."; return; }
     if(!r.ok||!d.lectura){ $("iaInfo").textContent=""; return; }
@@ -758,7 +766,7 @@ function comprobar(){
   else if(faltan.length) add("idle",`Faltan cifras: ${faltan.slice(0,4).join(", ")}${faltan.length>4?"…":""}. Si una candidatura tiene 0 votos, escribe 0.`);
   else { const suma=CANDS.reduce((a,k)=>a+c.cand[k.codigo],0)+c.blanco+c.nulos;
     if(c.votantes>c.electores) add("bad",`Hay más votantes (${fmt(c.votantes)}) que electores (${fmt(c.electores)}). Revisa las cifras.`);
-    if(c.votantes!==suma) add("bad",`No cuadra: candidaturas + blanco + nulos = ${fmt(suma)}, pero votantes = ${fmt(c.votantes)}. Revisa lo copiado${LECTURA?" (empieza por las casillas en amarillo)":""}. Un acta que no cuadra no se puede enviar.`);
+    if(c.votantes!==suma) add("bad",`No cuadra: candidaturas + blanco + nulos = ${fmt(suma)}, pero votantes = ${fmt(c.votantes)}. Revisa las cifras${LECTURA?" (empieza por las casillas en amarillo)":""}. Si están bien copiadas, puede que haya un error en el propio acta: coméntaselo a la presidencia de la mesa. Un acta que no cuadra no se puede enviar.`);
     else add("ok","Las cuentas cuadran.");
     if(m&&m.censo&&!m.nueva&&Math.abs(c.electores-m.censo)>Math.max(15,m.censo*0.08)) add("warn",`Electores (${fmt(c.electores)}) muy distinto al censo de referencia (${fmt(m.censo)}). ¿Es la mesa correcta?`); }
   const listo=!!(m&&IMG&&CANDS.length&&!faltan.length&&!it.some(i=>i.l==="bad"));
@@ -789,25 +797,35 @@ $("barraBtn").addEventListener("click",()=>{ const {listo,m,faltan}=comprobar();
   $("checks").scrollIntoView({behavior:"smooth",block:"center"}); });
 
 // ---------- Turnstile ----------
-let TS_TOKEN=null, tsCargado=false;
-function cargarTurnstile(){ if(tsCargado||!CFG.turnstile_sitekey) return; tsCargado=true; window.onTs=()=>{ turnstile.render("#turnstile",{sitekey:CFG.turnstile_sitekey,callback:t=>{TS_TOKEN=t;},"expired-callback":()=>{TS_TOKEN=null;}}); };
+// Cada «pase» antibots vale para una sola petición (leer la foto, enviar o denunciar). Al usar uno se pide otro enseguida;
+// normalmente no se ve nada: solo si Cloudflare duda aparece una casilla para marcar.
+let TS_TOKEN=null, TS_ID=null, tsCargado=false; const TS_ESPERAN=[];
+function cargarTurnstile(){ if(tsCargado||!CFG.turnstile_sitekey) return; tsCargado=true; window.onTs=()=>{ TS_ID=turnstile.render("#turnstile",{sitekey:CFG.turnstile_sitekey,
+    callback:t=>{ TS_TOKEN=t; TS_ESPERAN.splice(0).forEach(f=>f()); },"expired-callback":()=>{TS_TOKEN=null;},"error-callback":()=>{TS_TOKEN=null;}}); };
   const s=document.createElement("script"); s.src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onTs&render=explicit"; s.async=true; document.head.append(s); }
+// Devuelve un pase (esperando hasta `espera` ms si aún no hay) y pide el siguiente. Sin antibots configurado, null.
+async function pase(espera=12000){ if(!CFG.turnstile_sitekey) return null; const fin=Date.now()+espera;
+  while(!TS_TOKEN&&Date.now()<fin) await new Promise(ok=>{ TS_ESPERAN.push(ok); setTimeout(ok,fin-Date.now()); });
+  const t=TS_TOKEN; TS_TOKEN=null; if(t&&window.turnstile&&TS_ID!=null){ try{ turnstile.reset(TS_ID); }catch(e){} } return t; }
 
 // ---------- envío ----------
 let ENVIANDO=false;
-const ERRORES={cerrado:"Los envíos aún no están abiertos.",verificacion:"No se ha podido verificar que no eres un robot. Recarga la página e inténtalo de nuevo.",duplicada:"Esta foto ya se había enviado.",
-  demasiados_envios:"Demasiados envíos seguidos desde tu conexión. Espera unos minutos.",mesa_desconocida:"No reconocemos esa mesa. Revisa los datos de la cabecera del acta.",cifras_incompletas:"Faltan cifras.",tamano_foto:"La foto es demasiado grande o pequeña. Prueba a hacerla de nuevo.",no_cuadra:"Las cuentas del acta no cuadran. Revisa las cifras.",formato_foto:"No se ha podido leer la foto. Hazla de nuevo."};
+const ERRORES={cerrado:"Los envíos aún no están abiertos.",verificacion:"No se ha podido completar la verificación antirrobots. Espera unos segundos y vuelve a pulsar Enviar (no hace falta recargar la página).",duplicada:"Esta foto ya se había enviado.",
+  demasiados_envios:"Demasiados envíos seguidos desde tu conexión. Espera unos minutos.",mesa_desconocida:"No reconocemos esa mesa. Revisa los datos de la cabecera del acta.",cifras_incompletas:"Faltan cifras.",tamano_foto:"La foto es demasiado grande o pequeña. Prueba a hacerla de nuevo.",no_cuadra:"Las cuentas no cuadran. Revisa las cifras. Si están bien copiadas, puede que haya un error en el propio acta: coméntaselo a la presidencia de la mesa.",formato_foto:"No se ha podido leer la foto. Hazla de nuevo."};
 $("btnEnviar").addEventListener("click",async()=>{
   const {listo,m,c}=comprobar(); if(!listo) return; ENVIANDO=true; validar(); $("resultado").innerHTML='<span class="spinner"></span> Preparando la foto…';
   try{
     const grande=lienzo(1600), peq=lienzo(480); const foto=await aBlob(grande,0.8), mini=await aBlob(peq,0.65); const hash=await sha256(foto);
     if(!abierto()){ borrarBorrador(); $("resultado").innerHTML=`<div class="banner b-ok"><b>Práctica completada.</b> Tu envío estaría listo: foto de ${Math.round(foto.size/1024)} KB, huella <span class="mono">${hash.slice(0,16)}…</span>. El día de las elecciones será igual.</div>`; return; }
-    if(CFG.turnstile_sitekey&&!TS_TOKEN){ $("resultado").innerHTML='<div class="banner b-warn">Completa la verificación antirrobots de arriba y vuelve a pulsar Enviar.</div>'; return; }
+    $("resultado").innerHTML='<span class="spinner"></span> Comprobando que no eres un robot…';
+    const tk=await pase(); if(CFG.turnstile_sitekey&&!tk){ $("resultado").innerHTML='<div class="banner b-warn">Completa la verificación antirrobots de arriba y vuelve a pulsar Enviar.</div>'; return; }
     $("resultado").innerHTML='<span class="spinner"></span> Enviando…';
-    const fd=new FormData(); fd.append("foto",foto,"acta.jpg"); fd.append("mini",mini,"mini.jpg"); if(TS_TOKEN) fd.append("turnstile",TS_TOKEN);
+    // Si la conexión se corta, se reintenta con los mismos datos: si el primer intento sí había llegado, el servidor
+    // reconoce la foto y contesta como un envío correcto (no se duplica).
+    const fd=new FormData(); fd.append("foto",foto,"acta.jpg"); fd.append("mini",mini,"mini.jpg"); if(tk) fd.append("turnstile",tk);
     fd.append("datos",JSON.stringify({mesa_id:m.id,mesa_nueva:!!m.nueva,cifras:c,hash,dhash:dhash(grande),dispositivo:disp,ts_foto:FOTO_TS}));
     let r, d; for(let intento=0; intento<3; intento++){ try{ r=await fetch("/api/envio",{method:"POST",body:fd}); d=await r.json(); break; }catch(err){ if(intento===2) throw err; await new Promise(z=>setTimeout(z,1500*(intento+1))); } }
-    if(!r.ok){ $("resultado").innerHTML=`<div class="banner b-bad">${ERRORES[d.error]||d.mensaje||"No se ha podido enviar. Inténtalo de nuevo."}</div>`; if(window.turnstile&&CFG.turnstile_sitekey){ turnstile.reset("#turnstile"); TS_TOKEN=null; } return; }
+    if(!r.ok){ $("resultado").innerHTML=`<div class="banner b-bad">${ERRORES[d.error]||d.mensaje||"No se ha podido enviar. Inténtalo de nuevo."}</div>`; return; }
     const url=`${location.origin}/#mesa=${d.mesa_id}`; borrarBorrador();
     $("resultado").innerHTML=`<div class="banner b-ok"><b>¡Enviada, gracias!</b> ${antesDeTotales()?"Las cifras y las fotos se publicarán a partir de las 21:00 (hora peninsular), cuando cierren todos los colegios, también en Canarias. Hasta entonces la ficha de la mesa solo muestra si está verificada.":"Tus cifras aparecerán en la ficha de la mesa en un minuto. La foto se hará pública cuando otra persona envíe la misma acta (o la revisemos)."}${d.foto_en_revision?" Hemos detectado algo raro en la foto (mucho fondo o algún nombre sin tapar), así que la revisaremos antes de publicarla.":""}
       <div class="row" style="margin-top:10px"><a class="btn small" href="#mesa=${d.mesa_id}">Ver mi mesa</a><button class="small" id="btnShareMesa">Compartir</button><button class="small" id="btnOtra">Enviar otra mesa</button></div></div>`;
@@ -815,7 +833,6 @@ $("btnEnviar").addEventListener("click",async()=>{
     $("btnOtra").onclick=()=>{ IMG=null; RECTS=[]; LECTURA=null; $("foto").value=""; $("editorBox").classList.add("hide"); $("lblFoto").textContent="Hacer o elegir foto";
       document.querySelectorAll("#fBasicos input,#fCands input").forEach(i=>i.value=""); $("resultado").innerHTML=""; $("iaInfo").textContent="";
       if(MODO_NUEVA) modoNueva(false); $("sMuni").dispatchEvent(new Event("change")); validar(); window.scrollTo(0,0); };   // se quedan provincia y municipio
-    if(window.turnstile&&CFG.turnstile_sitekey){ turnstile.reset("#turnstile"); TS_TOKEN=null; }
   }catch(e){ $("resultado").innerHTML='<div class="banner b-bad">Sin conexión o error de red. Tus datos siguen aquí: vuelve a pulsar Enviar cuando tengas cobertura.</div>'; }
   finally{ ENVIANDO=false; validar(); }
 });
@@ -1046,7 +1063,7 @@ async function verMesa(id,refresco){
     h+=`<div class="row" style="margin-top:14px"><button id="btnShareM">Compartir esta mesa</button>${otra}</div>`;
     $("mesaCuerpo").innerHTML=h;
     document.querySelectorAll("[data-denunciar]").forEach(b=>b.onclick=async()=>{ if(!confirm("¿Denunciar esta foto? Úsalo si no es un acta o tiene contenido inapropiado. Si varias personas la denuncian, se oculta hasta que la revisemos.")) return;
-      b.disabled=true; try{ const r=await fetch("/api/denuncia",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({hash:b.dataset.denunciar})}); b.textContent=r.ok?"Denuncia enviada, gracias":"No se pudo enviar"; }catch(e){ b.textContent="No se pudo enviar"; } });
+      b.disabled=true; b.textContent="Enviando…"; try{ const tk=await pase(); const r=await fetch("/api/denuncia",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({hash:b.dataset.denunciar,turnstile:tk})}); b.textContent=r.ok?"Denuncia enviada, gracias":"No se pudo enviar"; }catch(e){ b.textContent="No se pudo enviar"; } });
     $("mesaCuerpo").querySelectorAll("[data-ampliar]").forEach(a=>a.onclick=e=>{ e.preventDefault(); verFoto(a.dataset.ampliar); });
     $("btnShareM").onclick=()=>compartir(`Acta de la mesa ${pt[4]} de ${muni} (sección ${seccTxt(pt[3])}), con sus fotos:`,`${location.origin}/#mesa=${id}`);
   }catch(e){ if(!refresco) $("mesaCuerpo").innerHTML='<div class="meta">No se ha podido cargar la mesa.</div>'; }
