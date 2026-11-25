@@ -185,23 +185,33 @@ footer .xpie{display:inline-flex; align-items:center; gap:5px; vertical-align:-2
 
   <!-- INICIO -->
   <section class="view" id="v-inicio">
-    <h1>Cuando cierre tu colegio, fotografía el acta de tu mesa y súbela aquí.</h1>
-    <p>Al terminar el recuento, cada mesa pega en la puerta una copia del acta de escrutinio. Si muchas personas las fotografían, cualquiera podrá comprobar los resultados mesa por mesa, con la foto delante.</p>
-    <p class="meta">Verificación independiente y descentralizada del recuento oficial: cada foto del acta permite comprobar que el resultado publicado de esa mesa coincide con lo que se firmó en ella.</p>
-    <p><a href="#porque">Por qué existe esta web →</a></p>
-    <div id="inicioCerrado">
+    <!-- La portada cambia según el momento (ver «fases» en el código): antes del domingo, el domingo hasta las 20:00,
+         de 20:00 a 21:00, en directo (21:00 a 01:00) y después, cuando lo que interesa son los resultados. -->
+    <h1 id="inicioTit">Cuando cierre tu colegio, fotografía el acta de tu mesa y súbela aquí.</h1>
+    <p id="inicioTxt">Al terminar el recuento, cada mesa pega en la puerta una copia del acta de escrutinio. Si muchas personas las fotografían, cualquiera podrá comprobar los resultados mesa por mesa, con la foto delante.</p>
+    <p class="meta" id="inicioLema">Verificación independiente y descentralizada del recuento oficial: cada foto del acta permite comprobar que el resultado publicado de esa mesa coincide con lo que se firmó en ella.</p>
+    <p id="inicioPorque"><a href="#porque">Por qué existe esta web →</a></p>
+    <div id="inicioCuenta">
       <div class="meta">Los envíos se abren el <b id="abreTxt"></b>:</div>
       <div class="count" id="countdown"><div><b>–</b><span>días</span></div><div><b>–</b><span>horas</span></div><div><b>–</b><span>min</span></div><div><b>–</b><span>seg</span></div></div>
-      <div class="row">
-        <a class="btn primary" href="#enviar">Practicar el envío ahora</a>
-        <button id="btnIcs">Añadir aviso al calendario</button>
-        <button id="btnShareHome">Compartir</button>
-      </div>
     </div>
-    <div id="inicioAbierto" class="hide">
-      <div class="row" style="margin:14px 0"><a class="btn primary" href="#enviar" style="font-size:18px; padding:15px 22px">Enviar el acta de mi mesa</a><a class="btn" href="#resultados">Ver resultados</a></div>
+    <div class="tiles hide" id="inicioCifras" style="margin-top:14px"></div>
+    <div class="row" style="margin:14px 0 4px">
+      <a class="btn primary" href="#enviar" id="bEnviar">Practicar el envío ahora</a>
+      <a class="btn" href="#resultados" id="bMapa">Ver el mapa</a>
+      <button id="btnIcs">Añadir aviso al calendario</button>
+      <button id="btnShareHome">Compartir</button>
     </div>
-    <div class="card" style="margin-top:18px">
+    <p class="meta" id="inicioNota"></p>
+    <div class="card hide" id="colegioCard" style="margin-top:18px">
+      <h2>En el colegio</h2>
+      <ul class="meta" style="font-size:15px; padding-left:20px; margin:0">
+        <li>Haz la foto <b>cuando el acta ya esté colgada</b> en la puerta o la entrada. No hace falta entrar mientras se cuenta.</li>
+        <li>Fotografía <b>solo el acta</b>: entera, de frente y con luz. Ni votantes, ni miembros de la mesa, ni papeletas.</li>
+        <li>Si la presidencia de la mesa o la policía te piden algo, hazles caso.</li>
+      </ul>
+    </div>
+    <div class="card" id="pasosCard" style="margin-top:18px">
       <h2>En tres pasos</h2>
       <ol class="meta" style="font-size:15px; padding-left:20px; margin:0">
         <li>Espera a que peguen el acta en la puerta del colegio, normalmente entre las 21:00 y las 22:30.</li>
@@ -459,11 +469,54 @@ document.addEventListener("visibilitychange",refrescar);
 
 // ---------- inicio y cuenta atrás ----------
 let abPrev=null;
+// ---------- fases del domingo: la portada se adapta a lo que busca la gente en cada momento ----------
+// previa: antes del domingo · votacion: domingo hasta las 20:00 · envio: de 20:00 a 21:00 (cifras aún ocultas)
+// directo: de 21:00 a 01:00 · resultados: después. En la versión de pruebas se puede ver cada una con ?fase=nombre.
+const FASES={
+  previa:{tit:"Cuando cierre tu colegio, fotografía el acta de tu mesa y súbela aquí.",
+    txt:"Al terminar el recuento, cada mesa pega en la puerta una copia del acta de escrutinio. Si muchas personas las fotografían, cualquiera podrá comprobar los resultados mesa por mesa, con la foto delante.",
+    estado:"Envíos cerrados hasta el cierre de los colegios", enviar:"Practicar el envío ahora", ver:["lema","porque","cuenta","ics","pasos"]},
+  votacion:{tit:"Hoy se vota. Esta noche, fotografía el acta de tu mesa.",
+    txt:"Cuando cierre tu colegio y cuelguen el acta en la puerta (normalmente entre las 21:00 y las 22:30), hazle una foto y súbela aquí. Así cualquiera podrá comprobar el recuento de tu mesa con la foto delante.",
+    estado:"Hoy se vota · los envíos se abren a las 20:00 (hora peninsular)", enviar:"Prepárate: practica el envío", ver:["lema","porque","cuenta","ics","colegio","pasos"]},
+  envio:{tit:"Ya han cerrado los colegios. Fotografía el acta de tu mesa.",
+    txt:"En cuanto cuelguen el acta en la puerta, hazle una foto entera y de frente y súbela. Suele estar entre las 21:00 y las 22:30.",
+    nota:"Las cifras y las fotos se publican a partir de las 21:00 (hora peninsular), cuando cierran los colegios de Canarias. Hasta entonces, el mapa solo muestra cuántas mesas hay verificadas.",
+    estado:"Envíos abiertos · las cifras se publican a las 21:00", enviar:"Enviar el acta de mi mesa", grande:true, ver:["cifras","mapa","colegio","pasos"]},
+  directo:{tit:"En directo: el recuento, comprobado mesa a mesa.",
+    txt:"¿Tienes delante el acta de tu mesa? Súbela. ¿Quieres ver cómo va? Entra en el mapa y busca tu municipio: si tu barrio sale en gris, sus colegios aún esperan a alguien.",
+    estado:"En directo · envíos abiertos", enviar:"Enviar el acta de mi mesa", grande:true, ver:["cifras","mapa","colegio"]},
+  resultados:{tit:"Así va la verificación del recuento, mesa a mesa.",
+    txt:"Busca tu municipio en el mapa: cada mesa verificada tiene su acta firmada a la vista para compararla con el dato oficial.",
+    estado:"Envíos abiertos · resultados actualizados cada minuto", enviar:"¿Aún tienes la foto de un acta? Súbela", mapaPrimero:true, ver:["cifras","mapa"]},
+};
+function faseActual(){
+  if(CFG.modo_pruebas){ const f=new URLSearchParams(location.search).get("fase"); if(FASES[f]) return f; if(!f) return "directo"; }
+  if(!CFG.abre) return "previa";
+  const t=Date.now(), abre=Date.parse(CFG.abre), H=3600000, totales=CFG.totales_desde?Date.parse(CFG.totales_desde):abre+H;
+  return t<abre-11*H?"previa":t<abre?"votacion":t<totales?"envio":t<abre+5*H?"directo":"resultados";
+}
+let fasePrev=null;
+function pintarFase(f){ const F=FASES[f], v=k=>F.ver.includes(k);
+  $("inicioTit").textContent=F.tit; $("inicioTxt").textContent=F.txt; $("inicioNota").textContent=F.nota||"";
+  [["inicioLema","lema"],["inicioPorque","porque"],["inicioCuenta","cuenta"],["inicioCifras","cifras"],["bMapa","mapa"],["btnIcs","ics"],["colegioCard","colegio"],["pasosCard","pasos"]].forEach(([id,k])=>$(id).classList.toggle("hide",!v(k)));
+  const be=$("bEnviar"), bm=$("bMapa"); be.textContent=F.enviar; be.style.cssText=F.grande?"font-size:18px; padding:15px 22px":"";
+  be.classList.toggle("primary",!F.mapaPrimero); bm.classList.toggle("primary",!!F.mapaPrimero);
+  if(F.mapaPrimero) bm.after(be); else be.after(bm);          // el botón principal, siempre primero
+  bm.textContent=F.mapaPrimero?"Ver el mapa y las mesas":"Ver el mapa";
+  if(v("cifras")) cifrasInicio(); }
+// cifras de la portada en las fases con envíos: salen del mismo resumen que Resultados (caché de Cloudflare)
+async function cifrasInicio(){ try{ const r=await getJSON("/api/public/resumen.json",{fresh:true}); const n=r.nacional||{}; const verif=(n.verificada||0)+(n.validada||0);
+  $("inicioCifras").innerHTML=[["Mesas con foto",fmt(n.con_envio||0)],["Verificadas",fmt(verif)],["De todas las mesas",n.mesas?pct(verif/n.mesas).replace("menos del ","< "):"—"],["Actualizado",r.generado?hhmm(r.generado):"—"]]
+    .map(([k,x])=>`<div class="tile"><div class="v">${x}</div><div class="k">${k}</div></div>`).join(""); }catch(e){} }
+setInterval(()=>{ if(VISTA==="inicio"||VISTA===null||VISTA==="") if(FASES[fasePrev]&&FASES[fasePrev].ver.includes("cifras")&&document.visibilityState==="visible") cifrasInicio(); },60000);
+
 function tick(){
-  const ab=abierto(); $("inicioCerrado").classList.toggle("hide",ab); $("inicioAbierto").classList.toggle("hide",!ab); $("practicaBanner").classList.toggle("hide",ab);
+  const ab=abierto(), f=faseActual(); $("practicaBanner").classList.toggle("hide",ab);
+  if(f!==fasePrev){ fasePrev=f; pintarFase(f); }
   const eg=$("estadoGlobal"); eg.classList.toggle("abierto",ab);
-  const et=ab?"Envíos abiertos: fotografía el acta de tu mesa":"Envíos cerrados hasta el cierre de los colegios"; if(eg.lastChild.textContent!==et) eg.lastChild.textContent=et;
-  if(!ab&&CFG.abre){ let s=Math.max(0,Math.floor((Date.parse(CFG.abre)-Date.now())/1000)); const v=[Math.floor(s/86400),Math.floor(s%86400/3600),Math.floor(s%3600/60),s%60];
+  const et=FASES[f].estado; if(eg.lastChild.textContent!==et) eg.lastChild.textContent=et;
+  if(FASES[f].ver.includes("cuenta")&&CFG.abre){ let s=Math.max(0,Math.floor((Date.parse(CFG.abre)-Date.now())/1000)); const v=[Math.floor(s/86400),Math.floor(s%86400/3600),Math.floor(s%3600/60),s%60];
     $("countdown").querySelectorAll("b").forEach((b,i)=>b.textContent=v[i]); }
   if(ab!==abPrev){ abPrev=ab; validar(); }   // solo redibuja si cambia el estado (evita mover el botón cada segundo)
 }
