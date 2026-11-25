@@ -61,6 +61,7 @@ td.ia{color:var(--muted)} td.iadif{background:var(--bad-soft); color:var(--bad);
       <label for="fMesa">Mesa</label><input id="fMesa" size="18" placeholder="08-187-01-001-A"><button id="btnMesa">Abrir mesa</button>
       <button id="btnRecalc">Recalcular ahora</button>
       <button id="btnVaciar" class="bad">Vaciar datos de prueba</button>
+      <button id="btnDemo">Rellenar 10 % con datos inventados</button>
       <span class="meta" id="stats"></span>
     </div>
     <div id="cola"></div>
@@ -223,6 +224,14 @@ async function abrirTapar(hash){
 
 $("btnVaciar").onclick=async()=>{ if(prompt("Esto borra TODOS los envíos, fotos y resultados. Solo funciona en modo pruebas. Escribe VACIAR para confirmar:")!=="VACIAR") return;
   const r=await api("vaciar_pruebas",{method:"POST",body:JSON.stringify({confirmar:"VACIAR"})}); alertar(r.ok?`Vaciado: ${r.objetos_borrados} ficheros borrados.`:(r.error==="solo_en_modo_pruebas"?"Solo se puede vaciar con MODO_PRUEBAS activado.":r.error)); if(r.ok) cargar(); };
+// Solo en pruebas: inventa actas para el 10 % de las mesas de toda España, provincia a provincia, y recalcula.
+$("btnDemo").onclick=async()=>{ if(prompt("Esto añade actas INVENTADAS en unas 6.000 mesas (solo funciona en modo pruebas). Conviene vaciar antes los datos de prueba. Escribe RELLENAR para confirmar:")!=="RELLENAR") return;
+  const provs=Array.from({length:52},(_,i)=>String(i+1).padStart(2,"0")); let n=0;
+  for(const p of provs){ alertar(`Rellenando provincia ${p}… (${n} mesas hasta ahora)`);
+    const r=await api("rellenar_demo",{method:"POST",body:JSON.stringify({confirmar:"RELLENAR",prov:p,fraccion:0.1})});
+    if(!r.ok){ alertar(r.error==="solo_en_modo_pruebas"?"Solo se puede rellenar con MODO_PRUEBAS activado.":"Error en la provincia "+p+": "+(r.error||"")); return; } n+=r.mesas; }
+  for(let i=0;i<10;i++){ alertar(`Recalculando ${n} mesas… (paso ${i+1})`); const e=await api("recalcular",{method:"POST"}); if(!e.mesas) break; }
+  alertar(`Listo: ${n} mesas con actas inventadas.`); cargar(); };
 function alertar(t){ $("stats").textContent="⚠ "+t; }
 if(TOK){ entrar(); }
 </script>

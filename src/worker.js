@@ -197,17 +197,21 @@ async function conCache(req, ctx, segundos, producir) {
 // Una foto solo se sirve al público si es "publica" (mesa verificada por fuentes independientes o validada a mano).
 // Caché corta (5 min): si se oculta una foto, deja de verse en minutos en todo el mundo.
 // Antes de que cierren todos los colegios no se sirve ninguna foto (la foto del acta ya muestra los votos).
+// En pruebas, las actas inventadas con «Rellenar datos de demostración» no tienen foto: se muestra un cartel en su lugar.
+const FOTO_DEMO = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 400"><rect width="300" height="400" fill="#f6f2ea"/><rect x="40" y="40" width="220" height="320" rx="8" fill="#fffdf9" stroke="#d9d3c7" stroke-width="3"/><g fill="#d9d3c7"><rect x="70" y="90" width="160" height="10" rx="5"/><rect x="70" y="120" width="120" height="10" rx="5"/><rect x="70" y="150" width="150" height="10" rx="5"/><rect x="70" y="180" width="100" height="10" rx="5"/></g><text x="150" y="260" font-family="Arial,sans-serif" font-size="20" font-weight="700" fill="#23626a" text-anchor="middle">ACTA INVENTADA</text><text x="150" y="290" font-family="Arial,sans-serif" font-size="14" fill="#5e6b73" text-anchor="middle">datos de demostración</text></svg>`;
+const fotoDemo = () => new Response(FOTO_DEMO, { headers: { "content-type": "image/svg+xml", "cache-control": "public, max-age=300" } });
+
 async function servirFoto(req, env, ctx, tipo, hash) {
   if (!totalesVisibles(env)) return json({ error: "aun_no_publico" }, 404);
   return conCache(req, ctx, 300, async () => {
     const e = await env.DB.prepare("SELECT publica FROM envios WHERE hash = ?").bind(hash).first();
     if (!e || e.publica !== 1) return json({ error: "no_publica" }, 404);
-    const o = await env.FOTOS.get(`${tipo}/${hash}.jpg`); if (!o) return json({ error: "no_encontrada" }, 404);
+    const o = await env.FOTOS.get(`${tipo}/${hash}.jpg`); if (!o) return env.MODO_PRUEBAS === "1" ? fotoDemo() : json({ error: "no_encontrada" }, 404);
     return new Response(o.body, { headers: { "content-type": "image/jpeg" } });
   });
 }
 async function servirFotoAdmin(env, tipo, hash) {
-  const o = await env.FOTOS.get(`${tipo}/${hash}.jpg`); if (!o) return json({ error: "no_encontrada" }, 404);
+  const o = await env.FOTOS.get(`${tipo}/${hash}.jpg`); if (!o) return env.MODO_PRUEBAS === "1" ? fotoDemo() : json({ error: "no_encontrada" }, 404);
   return new Response(o.body, { headers: { "content-type": "image/jpeg", "cache-control": "private, no-store" } });
 }
 
@@ -266,6 +270,47 @@ export function calcularConsenso(envios, umbralDenuncias = 2) {
   if (orden.length > 1) return { estado: "conflicto", cifras: g[0].cifras, n_indep: indep, publicas: [] };
   const ver = indep >= 2;
   return { estado: ver ? "verificada" : "pendiente", cifras: g[0].cifras, n_indep: indep, publicas: ver ? g.filter(sinDenuncia).map(e => e.hash) : [] };
+}
+
+// ---------------------------------------------------------------- datos de demostración (solo pruebas)
+// Elige más o menos `fraccion` de las mesas de la provincia, con más participación en unos distritos que en otros (como
+// pasaría en la realidad), e inventa sus envíos: la mayoría verificadas (dos personas con las mismas cifras), y algunas
+// con una sola foto, en conflicto o en revisión. Los votos se reparten al azar entre las candidaturas, sin ningún patrón
+// real. No se suben fotos ni se piden lecturas automáticas: la web muestra un cartel de «acta inventada».
+async function rellenarDemo(env, prov, fraccion) {
+  const hex = (n) => [...crypto.getRandomValues(new Uint8Array(n))].map(x => x.toString(16).padStart(2, "0")).join("");
+  const mesas = (await env.DB.prepare("SELECT id, muni, distrito, censo FROM mesas WHERE prov = ? AND nueva = 0").bind(prov).all()).results;
+  const cods = (await env.DB.prepare("SELECT codigo FROM candidaturas WHERE prov = ?").bind(prov).all()).results.map(r => r.codigo);
+  if (!mesas.length || !cods.length) return { ok: true, prov, mesas: 0 };
+  const pesos = cods.map(() => Math.random() ** 3);                 // reparto al azar, distinto en cada provincia
+  const actividad = new Map();                                       // ganas de participar en cada distrito (0 a 1)
+  const cifras = (censo) => {
+    const electores = censo || 300 + Math.floor(Math.random() * 500), votantes = Math.floor(electores * (0.55 + Math.random() * 0.25));
+    const nulos = Math.floor(Math.random() * 8), blanco = Math.floor(Math.random() * 12), resto = votantes - nulos - blanco;
+    const w = pesos.map(p => p * (0.6 + Math.random() * 0.8)), tot = w.reduce((a, x) => a + x, 0);
+    const v = w.map(x => Math.floor(resto * x / tot)); v[0] += resto - v.reduce((a, x) => a + x, 0);
+    return { electores, votantes, nulos, blanco, cand: Object.fromEntries(cods.map((c, i) => [c, v[i]])) };
+  };
+  const t = ahora(), filas = [], tocadas = [];
+  const envio = (mesa, c, flags = []) => filas.push([hex(32), mesa.id, prov, JSON.stringify(c), firmaCifras(c, cods), 1, "[]", "demo-" + hex(8), hex(16),
+    null, t - Math.floor(Math.random() * 7200000), t - Math.floor(Math.random() * 7200000), JSON.stringify(flags)]);
+  for (const m of mesas) {
+    const d = m.muni + m.distrito; if (!actividad.has(d)) actividad.set(d, Math.random() ** 1.5);
+    if (Math.random() >= Math.min(0.9, fraccion * 2.5 * actividad.get(d))) continue;   // media ≈ fraccion
+    const u = Math.random(), c = cifras(m.censo); tocadas.push(m.id);
+    if (u < 0.78) { envio(m, c); envio(m, c); }                                        // verificada
+    else if (u < 0.93) envio(m, c);                                                    // una sola foto
+    else if (u < 0.98) { envio(m, c); const c2 = cifras(m.censo); envio(m, c2); }      // conflicto
+    else envio(m, c, ["muchas_mesas"]);                                                // en revisión
+  }
+  // D1 admite hasta 100 valores por consulta: 7 filas de 13 columnas por INSERT, 33 mesas por INSERT de pendientes
+  const st = [];
+  for (let i = 0; i < filas.length; i += 7) { const l = filas.slice(i, i + 7);
+    st.push(env.DB.prepare(`INSERT INTO envios (hash, mesa_id, prov, cifras, firma, cuadra, errores, dispositivo, ip_hash, dhash, ts_foto, ts, flags) VALUES ${l.map(() => "(?,?,?,?,?,?,?,?,?,?,?,?,?)").join(",")}`).bind(...l.flat())); }
+  for (let i = 0; i < tocadas.length; i += 33) { const l = tocadas.slice(i, i + 33);
+    st.push(env.DB.prepare(`INSERT INTO pendientes (mesa_id, prov, ts) VALUES ${l.map(() => "(?,?,?)").join(",")} ON CONFLICT(mesa_id) DO UPDATE SET ts = excluded.ts`).bind(...l.flatMap(id => [id, prov, t]))); }
+  for (let i = 0; i < st.length; i += 50) await env.DB.batch(st.slice(i, i + 50));
+  return { ok: true, prov, mesas: tocadas.length, envios: filas.length };
 }
 
 export async function recalcular(env) {
@@ -544,6 +589,13 @@ async function admin(req, env, url) {
     if (!env.AI) return json({ error: "sin_ia" }, 400);
     const r = await env.AI.run(env.MODELO_IA || MODELO_IA, { prompt: "agree" }).catch(e => ({ error: String(e) }));
     return json({ ok: true, respuesta: r });
+  }
+  if (p === "rellenar_demo" && req.method === "POST") {
+    // Inventa actas para una provincia, para ver la web con datos. Solo funciona con MODO_PRUEBAS = "1".
+    if (env.MODO_PRUEBAS !== "1") return json({ error: "solo_en_modo_pruebas" }, 403);
+    const b = await req.json().catch(() => ({})); if (b.confirmar !== "RELLENAR") return json({ error: "falta_confirmacion" }, 400);
+    if (!/^\d\d$/.test(String(b.prov || ""))) return json({ error: "provincia" }, 400);
+    return json(await rellenarDemo(env, String(b.prov), Math.min(0.5, Math.max(0.01, Number(b.fraccion) || 0.1))));
   }
   if (p === "vaciar_pruebas" && req.method === "POST") {
     // Borra todos los envíos, fotos y JSON públicos de las pruebas. Solo funciona con MODO_PRUEBAS = "1".

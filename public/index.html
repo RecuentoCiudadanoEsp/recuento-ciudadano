@@ -306,7 +306,8 @@ footer .xpie{display:inline-flex; align-items:center; gap:5px; vertical-align:-2
     <div class="card" style="margin-bottom:14px">
       <div class="row" style="justify-content:space-between; gap:8px"><h2>Municipios</h2>
         <div class="seg" id="segProv"><button data-modo="cobertura" class="on">Cobertura</button><button data-modo="votos">Más votado</button></div></div>
-      <div class="mapaInfo meta" id="infoProv">Toca un municipio para ver sus mesas una a una.</div>
+      <div class="busca" style="margin:10px 0 4px"><input type="text" id="qFMuni" placeholder="Busca un municipio…" autocomplete="off" spellcheck="false" aria-label="Buscar municipio"></div>
+      <div class="mapaInfo meta" id="infoProv">Escribe su nombre o tócalo en el mapa para ver sus mesas una a una.</div>
       <div id="mapaProv"></div><div class="leyenda" id="leyProv"></div>
     </div>
     <div class="card hide" id="panalCard" style="margin-bottom:14px">
@@ -320,7 +321,7 @@ footer .xpie{display:inline-flex; align-items:center; gap:5px; vertical-align:-2
     </div>
     <div class="card hide" id="votosProvCard" style="margin-bottom:14px"><h2>Votos provisionales en la provincia</h2><div class="meta" id="votosProvNota" style="margin:6px 0"></div><div class="tablewrap"><table id="tVotosProv"></table></div></div>
     <div class="grid2" style="margin-bottom:12px" id="filtrosProv">
-      <div><label for="fMuni">Municipio</label><select id="fMuni"><option value="">Todos</option></select></div>
+      <div class="hide"><select id="fMuni" tabindex="-1" aria-hidden="true"><option value="">Todos</option></select></div>
       <div><label for="fEst">Estado</label><select id="fEst"><option value="">Todos</option><option value="verificada">Verificadas</option><option value="validada">Validadas por revisión</option><option value="pendiente">Pendientes (1 envío)</option><option value="conflicto">En conflicto</option><option value="revision">En revisión</option></select></div>
     </div>
     <div class="card"><div class="tablewrap"><table id="tMesas"></table></div></div>
@@ -485,7 +486,7 @@ function opts(sel,items,ph){ sel.innerHTML=`<option value="">${ph}</option>`+ite
 
 // Buscador: se escribe y se filtra la lista ya descargada, sin pedir nada al servidor.
 // minimo = letras necesarias antes de mostrar resultados (0 = la lista entera al tocar la caja).
-function buscador(input,sel,{minimo=0,vacio="Elige…"}={}){
+function buscador(input,sel,{minimo=0,vacio="Elige…",vaciable=false}={}){
   const ul=document.createElement("ul"); ul.setAttribute("role","listbox"); ul.id=input.id+"-lista"; ul.hidden=true; input.parentNode.append(ul);
   input.setAttribute("role","combobox"); input.setAttribute("aria-autocomplete","list"); input.setAttribute("aria-controls",ul.id); input.setAttribute("aria-expanded","false");
   let items=[], vis=[], act=-1;
@@ -509,7 +510,9 @@ function buscador(input,sel,{minimo=0,vacio="Elige…"}={}){
     else if(e.key==="Escape") cerrar(); });
   ul.addEventListener("mousedown",e=>e.preventDefault());   // que el toque no quite el foco antes de elegir
   ul.addEventListener("click",e=>{ const li=e.target.closest("li[data-i]"); if(li) elegir(vis[+li.dataset.i]); });
-  input.addEventListener("blur",()=>{ cerrar(); const o=elegido(); input.value=o?natural(o.text):""; });
+  input.addEventListener("blur",()=>{ cerrar();
+    if(vaciable&&!input.value.trim()&&sel.value){ sel.value=""; sel.dispatchEvent(new Event("change")); return; }   // caja vacía: volver a «todos»
+    const o=elegido(); input.value=o?natural(o.text):""; });
   const minOrig=minimo;
   const api={ sync(){ items=[...sel.options].filter(o=>o.value).map(o=>({v:o.value,t:natural(o.text),k:norm(o.text)+" "+norm(natural(o.text))}));
       input.disabled=sel.disabled; const o=elegido(); input.value=o?natural(o.text):""; input.placeholder=sel.disabled?vacio:"Escribe o elige…";
@@ -518,6 +521,9 @@ function buscador(input,sel,{minimo=0,vacio="Elige…"}={}){
 }
 buscador($("qProv"),$("sProv"));
 buscador($("qMuni"),$("sMuni"),{minimo:2,vacio:"Elige primero la provincia"});
+// En Resultados, el municipio de la provincia también se busca escribiendo (en el mapa los pueblos pequeños cuestan de tocar)
+buscador($("qFMuni"),$("fMuni"),{minimo:2,vaciable:true});
+$("fMuni").addEventListener("change",()=>{ if($("fMuni").value) setTimeout(()=>$("panalCard").scrollIntoView({behavior:"smooth",block:"start"}),50); });
 
 async function cargarProvincia(p){
   MESAS=null; CANDS=[]; ["sMuni","sDist","sSecc","sMesa"].forEach(id=>opts($(id),[],"—")); pintarCands(); mesaInfo();
@@ -790,7 +796,7 @@ async function verProvincia(p,refresco){
       const pintarMapa=()=>{ $("segProv").querySelectorAll("button").forEach(b=>{ b.classList.toggle("on",b.dataset.modo===MODO_PROV); b.onclick=()=>{ if(b.disabled) return; MODO_PROV=b.dataset.modo; pintarMapa(); }; });
         const color=k=>{ if(MODO_PROV==="votos"){ const g=ganador((M[k]||{}).votos); return g?colorPartido(g.siglas):"var(--sin)"; } const x=M[k]||{}; return colorCob(x.ver||0,x.con||0,x.total||0); };
         const info=k=>{ const x=M[k]||{total:0,ver:0,con:0}; const g=votosOk?ganador(x.votos):null; return `${nombreMuni(k)}: ${fmt(x.ver)} de ${fmt(x.total)} mesas verificadas${x.con>x.ver?`, ${fmt(x.con-x.ver)} más con foto`:""}${g?` · más votado en ellas: ${g.siglas}`:""}`; };
-        svgMapa($("mapaProv"), mapa, mapa.municipios.map(x=>({id:x.muni,d:x.d})), {color, info, click:k=>{ $("fMuni").value=k; pintar(); $("infoProv").textContent=info(k); $("panalCard").scrollIntoView({behavior:"smooth"}); }});
+        svgMapa($("mapaProv"), mapa, mapa.municipios.map(x=>({id:x.muni,d:x.d})), {color, info, click:k=>{ $("fMuni").value=k; BUSC.fMuni.sync(); pintar(); $("infoProv").textContent=info(k); $("panalCard").scrollIntoView({behavior:"smooth"}); }});
         if(MODO_PROV==="votos"){ const vistos=new Map(); for(const x of Object.values(M)){ const g=ganador(x.votos); if(g) vistos.set(colorPartido(g.siglas),g.siglas); }
           $("leyProv").innerHTML=[...vistos].map(([c,s])=>`<span><i style="background:${c}"></i>${s}</span>`).join("")+"<span>Más votado en las mesas verificadas de cada municipio</span>"; }
         else $("leyProv").innerHTML=leyCob(); };
@@ -806,8 +812,8 @@ async function verProvincia(p,refresco){
     else $("votosProvCard").classList.add("hide");
     // lista de mesas: todos los municipios con mesas (aunque aún no tengan foto)
     const codsMuni=Object.keys(ref.municipios).sort((a,b)=>nombreMuni(a).localeCompare(nombreMuni(b),"es"));
-    $("fMuni").innerHTML='<option value="">Todos los que tienen foto</option>'+codsMuni.map(k=>`<option value="${k}">${nombreMuni(k)}${M[k]&&M[k].con?` (${M[k].con})`:""}</option>`).join("");
-    if(filtroPrev) $("fMuni").value=filtroPrev;
+    $("fMuni").innerHTML='<option value="">Todos los que tienen foto</option>'+codsMuni.map(k=>`<option value="${k}">${nombreMuni(k)}</option>`).join("");
+    if(filtroPrev) $("fMuni").value=filtroPrev; BUSC.fMuni.sync();
     const porId=new Map(d.mesas.map(m=>[m.id,m]));
     function pintar(){ const fm=$("fMuni").value, fe=$("fEst").value;
       let ms = fm ? ref.mesas.filter(([id])=>id.split("-")[1]===fm).map(([id])=>porId.get(id)||{id,municipio:nombreMuni(fm),n:0,estado:null}) : d.mesas.slice();
