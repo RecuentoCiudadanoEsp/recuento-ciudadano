@@ -550,7 +550,8 @@ const MOTIVOS_F={red_muchas_mesas:"red con muchos envíos",mesa_nueva:"mesa pend
 const antesDeTotales=()=>!CFG.modo_pruebas&&!!CFG.totales_desde&&Date.now()<Date.parse(CFG.totales_desde);
 const huellaFoto=f=>{ const r=(f.f||[]).find(x=>x.startsWith("retapada:")); return r?r.slice(9):f.h; };
 let CFG={abre:null,turnstile_sitekey:"",zonas_difuminado:[]}; let PROVS=[]; const cacheJSON={};
-async function getJSON(u,{fresh}={}){ if(!fresh&&cacheJSON[u]) return cacheJSON[u]; const r=await fetch(u); if(!r.ok) throw new Error(u+" "+r.status); const d=await r.json(); cacheJSON[u]=d; return d; }
+// Con «fresh», el navegador pregunta siempre al servidor en vez de usar una copia guardada (las cifras cambian cada minuto)
+async function getJSON(u,{fresh}={}){ if(!fresh&&cacheJSON[u]) return cacheJSON[u]; const r=await fetch(u,fresh?{cache:"no-cache"}:undefined);if(!r.ok) throw new Error(u+" "+r.status); const d=await r.json(); cacheJSON[u]=d; return d; }
 const abierto=()=>CFG.modo_pruebas || (CFG.abre && Date.now()>=Date.parse(CFG.abre));
 const disp=(()=>{ try{ let d=localStorage.getItem("rc-disp"); if(!d){ d=crypto.randomUUID(); localStorage.setItem("rc-disp",d); } return d; }catch(e){ return "sin-almacenamiento"; } })();
 const nombreProv=p=>(PROVS.find(x=>x.prov===p)||{}).nombre||p;
