@@ -963,7 +963,7 @@ $("sADist").addEventListener("change",()=>{ $("qCol").value=""; const d=$("sADis
 $("sASecc").addEventListener("change",()=>{ $("qCol").value=""; pintarColegios(); });
 $("chkVacios").addEventListener("change",()=>pintarColegios());
 const filaColegio=c=>{ const n=AP.cuentas[c[0]]||0;
-  return `<li tabindex="0" data-col="${c[0]}" class="${AP.elegido===c[0]?"elegido":""}"><div><div class="nom">${esc(c[1])}</div><div class="dir">${esc(c[2])} · ${c[3]} mesa${c[3]===1?"":"s"}</div></div><div class="ap ${n?"ap1":"ap0"}">${n?"👤 "+personas(n):"Nadie aún"}</div></li>`; };
+  return `<li tabindex="0" role="button" data-col="${c[0]}" class="${AP.elegido===c[0]?"elegido":""}"><div><div class="nom">${esc(c[1])}</div><div class="dir">${esc(c[2])} · ${c[3]} mesa${c[3]===1?"":"s"}</div></div><div class="ap ${n?"ap1":"ap0"}">${n?"👤 "+personas(n):"Nadie aún"}</div></li>`; };
 function pintarColegios(){ const l=colegiosMuni(), q=norm($("qCol").value), d=$("sADist").value, sc=$("sASecc").value, vacios=$("chkVacios").checked;
   let r=l.filter(c=>(!d||c[4].some(x=>x.startsWith(d+"-")&&(!sc||x===d+"-"+sc)))&&(!q||norm(c[1]+" "+c[2]).includes(q))&&(!vacios||!AP.cuentas[c[0]]));
   r.sort((a,b)=>a[1].localeCompare(b[1],"es"));

@@ -1,7 +1,7 @@
 # Prepara la lista de colegios electorales (locales) de cada municipio, para la sección «Me apunto».
 #
 # Un colegio es un local de votación: puede tener mesas de varias secciones, y alguna sección tiene mesas en dos
-# locales distintos. Por eso se agrupan las mesas por municipio, nombre del local y dirección, no por sección.
+# locales distintos. Por eso se agrupan las mesas por municipio, nombre del local y calle, no por sección.
 #
 # Entrada: sql/01_mesas.sql (las mesas oficiales del 29N, con local y dirección) y public/data/zonas/PP.json
 #          (posición aproximada de cada mesa en el panal «Por zonas», para ordenar los colegios cercanos).
@@ -23,9 +23,11 @@ SALIDA = os.path.join(RAIZ, "public", "data", "colegios")
 
 
 def clave(local, direccion):
-    """Misma regla que el servidor (claveColegio en src/worker.js): mayúsculas y espacios simples."""
+    """Misma regla que el servidor (claveColegio en src/worker.js): mayúsculas y espacios simples, y de la dirección
+    solo la calle, sin el número ni el código postal. Así un mismo local que figura con dos portales de la misma calle
+    (por ejemplo «C/ MAYOR 151» y «C/ MAYOR 153») cuenta como un solo colegio."""
     t = lambda s: re.sub(r"\s+", " ", (s or "").strip().upper())
-    return t(local) + "|" + t(direccion)
+    return t(local) + "|" + re.sub(r"\s*\d+[A-Z]?\s*(,.*)?$", "", t(direccion))
 
 
 def main():

@@ -290,7 +290,7 @@ Hasta que se abren los envíos (domingo a las 20:00, `APUNTARSE_HASTA`), cualqui
 para decir que irá a fotografiar sus actas. Sirve para ver qué colegios tienen ya a alguien y cuáles siguen esperando.
 
 - **Colegio = local de votación**, no sección: un local puede tener mesas de varias secciones y alguna sección tiene mesas en
-  dos locales. Las mesas se agrupan por municipio, nombre del local y dirección. El colegio se identifica por el código de su
+  dos locales. Las mesas se agrupan por municipio, nombre del local y calle (sin número: algunos locales figuran con dos portales). El colegio se identifica por el código de su
   primera mesa. La lista de la web (`public/data/colegios/PP.json` y `resumen.json`, con el total por provincia) se prepara
   con `python3 scripts/colegios.py`; el servidor agrupa igual a partir de la tabla `mesas`.
 - **Buscar:** provincia y municipio; después, nombre del colegio o calle, o distrito y sección. Con hasta 30 colegios en el

@@ -262,7 +262,10 @@ async function recibirDenuncia(req, env) {
 // Un colegio se identifica por el código de su primera mesa (la de código más bajo entre las mesas del mismo municipio
 // con el mismo local y la misma dirección). scripts/colegios.py prepara la lista de la web con la misma regla.
 const ALFABETO_CODIGO = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";   // sin 0/O ni 1/I, que se confunden al copiarlos
-export const claveColegio = (local, direccion) => [local, direccion].map(s => String(s || "").trim().replace(/\s+/g, " ").toUpperCase()).join("|");
+// Clave de un colegio: nombre del local y calle (sin número ni código postal), en mayúsculas y con espacios simples.
+// Así un mismo local que figura con dos portales de la misma calle («C/ MAYOR 151» y «C/ MAYOR 153») es un solo colegio.
+const textoSimple = (s) => String(s || "").trim().replace(/\s+/g, " ").toUpperCase();
+export const claveColegio = (local, direccion) => textoSimple(local) + "|" + textoSimple(direccion).replace(/\s*\d+[A-Z]?\s*(,.*)?$/, "");
 function nuevoCodigo() { const b = crypto.getRandomValues(new Uint8Array(6)); return [...b].map(x => ALFABETO_CODIGO[x % 32]).join(""); }   // 32⁶ ≈ 1.070 millones de códigos
 export const limpiarCodigo = (c) => String(c || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
 // Las reservas se cierran cuando se abren los envíos (domingo a las 20:00). En pruebas, siempre abiertas.
