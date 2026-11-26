@@ -93,6 +93,7 @@ export function validarCifras(c, cods, censo) {
 }
 export function firmaCifras(c, cods) { return [c.electores, c.votantes, c.nulos, c.blanco, ...[...cods].sort().map(k => `${k}:${c.cand[k]}`)].join("|"); }
 
+let ultimoFalloTurnstile = "";
 async function turnstileOK(env, token, ip) {
   if (!env.TURNSTILE_SECRET) return true; // sin configurar (desarrollo)
   // Solo en la versión de pruebas: los envíos simulados (ensayo del panel, prueba de carga) llevan esta marca en vez de un token real
@@ -101,6 +102,8 @@ async function turnstileOK(env, token, ip) {
   const f = new FormData(); f.append("secret", env.TURNSTILE_SECRET); f.append("response", token); if (ip) f.append("remoteip", ip);
   const r = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", { method: "POST", body: f });
   const d = await r.json().catch(() => ({}));
+  // En pruebas se apunta el motivo del rechazo, para poder diagnosticarlo (la respuesta lo devuelve como «detalle»)
+  if (!d.success) { ultimoFalloTurnstile = (d["error-codes"] || []).join(",") || "sin_respuesta"; console.log("Turnstile rechazado:", ultimoFalloTurnstile); }
   return !!d.success;
 }
 
@@ -300,7 +303,7 @@ async function recibirApuntado(req, env) {
   const pedido = String(b.colegio || "").toUpperCase(); const m = pedido.match(RE_MESA);
   if (!m) return json({ error: "colegio_desconocido" }, 400);
   const ip = req.headers.get("cf-connecting-ip") || "0.0.0.0";
-  if (!(await turnstileOK(env, b.turnstile, ip))) return json({ error: "verificacion" }, 403);
+  if (!(await turnstileOK(env, b.turnstile, ip))) return json({ error: "verificacion", ...(env.MODO_PRUEBAS === "1" ? { detalle: b.turnstile ? ultimoFalloTurnstile : "sin_pase" } : {}) }, 403);
   const colegio = colegioDe(await mesasDeMunicipio(env, m[1], m[2]), pedido);
   if (!colegio) return json({ error: "colegio_desconocido" }, 400);
   const disp = String(b.dispositivo || "").slice(0, 64) || "sin-id";
@@ -330,7 +333,7 @@ async function cancelarApuntado(req, env) {
   const b = await req.json().catch(() => ({})); const codigo = limpiarCodigo(b.codigo);
   if (codigo.length !== 6) return json({ error: "codigo", mensaje: "El código tiene 6 caracteres." }, 400);
   const ip = req.headers.get("cf-connecting-ip") || "0.0.0.0";
-  if (!(await turnstileOK(env, b.turnstile, ip))) return json({ error: "verificacion" }, 403);
+  if (!(await turnstileOK(env, b.turnstile, ip))) return json({ error: "verificacion", ...(env.MODO_PRUEBAS === "1" ? { detalle: b.turnstile ? ultimoFalloTurnstile : "sin_pase" } : {}) }, 403);
   // Límite de intentos por conexión, para que nadie pueda ir probando códigos al azar
   const ipHash = await huellaIP(env, ip); const t = ahora();
   const n = await env.DB.prepare("SELECT COUNT(*) AS n FROM intentos_cancelar WHERE ip_hash = ? AND ts > ?").bind(ipHash, t - 600000).first();

@@ -297,7 +297,7 @@ table.comp tr.difiere td{background:var(--warn-soft)}
         <h2 id="apColNom"></h2>
         <div class="meta" id="apColDir"></div>
         <div id="apColN" style="margin:10px 0; font-size:17px"></div>
-        <div id="tsApuntar"></div>
+        <div id="tsApuntar" style="margin-bottom:10px"></div>
         <button class="primary big" id="btnApuntar">Me apunto a este colegio</button>
         <div id="apResultado" style="margin-top:12px" aria-live="polite"></div>
         <div id="apCerca"></div>
@@ -316,6 +316,7 @@ table.comp tr.difiere td{background:var(--warn-soft)}
         <h2>Cancelar con un código</h2>
         <p class="meta">Si te apuntaste desde otro móvil o has borrado los datos del navegador, escribe aquí el código que recibiste.</p>
         <div class="row"><input type="text" id="qCodigo" maxlength="8" placeholder="Código de 6 caracteres" autocomplete="off" spellcheck="false" style="text-transform:uppercase; max-width:220px; font-family:var(--mono)"><button id="btnCancelarCod">Cancelar reserva</button></div>
+        <div id="tsCancelar" style="margin-top:10px"></div>
         <div id="apCancelRes" style="margin-top:8px" aria-live="polite"></div>
       </div>
       <p class="meta">Apuntarse no es obligatorio para subir fotos: el domingo cualquiera puede enviar el acta de cualquier mesa. Y aunque un colegio ya tenga gente apuntada, ve igualmente si puedes: cuantas más fotos de cada acta, mejor se verifica. Para frenar reservas falsas, cada navegador solo puede apuntarse a un colegio cada 15 minutos.</p>
@@ -381,7 +382,7 @@ table.comp tr.difiere td{background:var(--warn-soft)}
       <div class="card" id="cardEnvio">
         <div class="step"><span class="n">4</span><h2>Comprobación y envío</h2></div>
         <ul class="checks" id="checks"></ul>
-        <div id="tsEnviar"><div id="turnstile" style="margin-top:12px"></div></div>
+        <div id="turnstile" style="margin-top:12px"></div>
         <button class="primary big" id="btnEnviar" style="margin-top:12px" disabled>Enviar</button>
         <div id="resultado" style="margin-top:12px" aria-live="polite"></div>
       </div>
@@ -570,7 +571,7 @@ function route(){
   document.querySelectorAll("nav.tabs a").forEach(a=>{ if(a.dataset.v===tab) a.setAttribute("aria-current","page"); else a.removeAttribute("aria-current"); });
   if(vista==="resultados") verResultados(); if(vista==="prov") verProvincia(arg); if(vista==="mesa") verMesa(arg);
   if(vista==="apuntarme") verApuntarme(arg);
-  moverTurnstile(vista==="apuntarme"?"tsApuntar":"tsEnviar");
+  if(vista==="apuntarme") renderTs(TS.cancelar);
   if(vista==="enviar"&&arg) ponerMesa(decodeURIComponent(arg));   // «Enviar otra foto de esta mesa» llega con la mesa puesta
   const act=document.querySelector('nav.tabs a[aria-current="page"]'); if(act) act.scrollIntoView({block:"nearest",inline:"nearest"});
   window.scrollTo(0,0); barra();
@@ -880,14 +881,25 @@ $("barraBtn").addEventListener("click",()=>{ const {listo,m,faltan}=comprobar();
 // ---------- Turnstile ----------
 // Cada «pase» antibots vale para una sola petición (leer la foto, enviar o denunciar). Al usar uno se pide otro enseguida;
 // normalmente no se ve nada: solo si Cloudflare duda aparece una casilla para marcar.
-let TS_TOKEN=null, TS_ID=null, tsCargado=false; const TS_ESPERAN=[];
-function cargarTurnstile(){ if(tsCargado||!CFG.turnstile_sitekey) return; tsCargado=true; window.onTs=()=>{ TS_ID=turnstile.render("#turnstile",{sitekey:CFG.turnstile_sitekey,
-    callback:t=>{ TS_TOKEN=t; TS_ESPERAN.splice(0).forEach(f=>f()); },"expired-callback":()=>{TS_TOKEN=null;},"error-callback":()=>{TS_TOKEN=null;}}); };
+// Hay dos widgets independientes: uno en «Enviar acta» (también sirve para leer la foto y denunciar) y otro en
+// «Me apunto», en la ficha del colegio (apuntarse), No se mueven de sitio: mover el recuadro de Cloudflare dentro de la página lo
+// recarga y deja de entregar el pase, y el servidor lo rechazaba.
+// y un tercero en «Cancelar con un código» (cancelar), siempre visible, para cancelar desde «Mis reservas» o con el código.
+const TS={enviar:{sel:"#turnstile",id:null,token:null,esperan:[]},apuntar:{sel:"#tsApuntar",id:null,token:null,esperan:[]},cancelar:{sel:"#tsCancelar",id:null,token:null,esperan:[]}};
+let tsCargado=false;
+// Ojo: como hay un elemento con id="turnstile", «window.turnstile» existe aunque el programa de Cloudflare aún no se haya
+// cargado (los navegadores crean una variable por cada id). Por eso se comprueba que tenga la función render.
+const tsListo=()=>!!(window.turnstile&&typeof window.turnstile.render==="function");
+function renderTs(w){ if(w.id!=null||!tsListo()) return;
+  w.id=turnstile.render(w.sel,{sitekey:CFG.turnstile_sitekey,callback:t=>{ w.token=t; w.esperan.splice(0).forEach(f=>f()); },"expired-callback":()=>{w.token=null;},"error-callback":()=>{w.token=null;}}); }
+function cargarTurnstile(){ if(tsCargado||!CFG.turnstile_sitekey) return; tsCargado=true;
+  window.onTs=()=>{ renderTs(TS.enviar); if(VISTA==="apuntarme"){ renderTs(TS.cancelar); if(AP.elegido) renderTs(TS.apuntar); } };
   const s=document.createElement("script"); s.src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onTs&render=explicit"; s.async=true; document.head.append(s); }
-// Devuelve un pase (esperando hasta `espera` ms si aún no hay) y pide el siguiente. Sin antibots configurado, null.
-async function pase(espera=12000){ if(!CFG.turnstile_sitekey) return null; const fin=Date.now()+espera;
-  while(!TS_TOKEN&&Date.now()<fin) await new Promise(ok=>{ TS_ESPERAN.push(ok); setTimeout(ok,fin-Date.now()); });
-  const t=TS_TOKEN; TS_TOKEN=null; if(t&&window.turnstile&&TS_ID!=null){ try{ turnstile.reset(TS_ID); }catch(e){} } return t; }
+// Devuelve un pase del widget de la sección que se está viendo (esperando hasta `espera` ms si aún no hay) y pide el
+// siguiente. Sin antibots configurado, null.
+async function pase(cual,espera=12000){ if(!CFG.turnstile_sitekey) return null; const w=TS[cual||"enviar"]; renderTs(w); const fin=Date.now()+espera;
+  while(!w.token&&Date.now()<fin) await new Promise(ok=>{ w.esperan.push(ok); setTimeout(ok,fin-Date.now()); });
+  const t=w.token; w.token=null; if(t&&tsListo()&&w.id!=null){ try{ turnstile.reset(w.id); }catch(e){} } return t; }
 
 // ---------- envío ----------
 let ENVIANDO=false;
@@ -996,7 +1008,7 @@ function pintarCerca(id,tras){ const mu=id.split("-")[1], l=AP.col?AP.col.munici
 // Ficha del colegio elegido: cuántas personas hay, botón para apuntarse y los colegios más cercanos sin nadie
 function verColegio(id,desplazar){ const mu=id.split("-")[1], l=AP.col?AP.col.municipios[mu]||[]:[], c=l.find(x=>x[0]===id); if(!c) return;
   AP.elegido=id; pintarColegios(); const n=AP.cuentas[id]||0, ab=apuntarseAbierto();
-  $("apColegio").classList.remove("hide"); $("apColNom").textContent=c[1];
+  $("apColegio").classList.remove("hide"); $("apColNom").textContent=c[1]; renderTs(TS.apuntar);   // el widget, ya visible
   $("apColDir").textContent=`${c[2]} · ${natural(AP.nombres[mu]||"")} · ${c[3]} mesa${c[3]===1?"":"s"} (secciones ${c[4].map(x=>Number(x.slice(0,2))+"-"+x.slice(3)).join(", ")})`;
   $("apColN").innerHTML=n?`<b class="ap1">👤 ${personas(n)} ${n===1?"se ha sumado":"se han sumado"}</b> a fotografiar sus actas.`:`<b>Aún no va nadie.</b> Si te apuntas, serás la primera persona.`;
   const mia=misReservas().find(r=>r.colegio===id);
@@ -1006,8 +1018,8 @@ function verColegio(id,desplazar){ const mu=id.split("-")[1], l=AP.col?AP.col.mu
 const ERR_AP={verificacion:"No se ha podido completar la verificación antirrobots. Espera unos segundos y vuelve a pulsar.",colegio_desconocido:"No reconocemos ese colegio. Recarga la página.",cerrado:"Ya no se puede apuntar: los colegios han cerrado."};
 $("btnApuntar").addEventListener("click",async()=>{ const id=AP.elegido; if(!id) return; const b=$("btnApuntar"); b.disabled=true;
   $("apResultado").innerHTML='<span class="spinner"></span> Apuntando…';
-  try{ const tk=await pase(); const r=await fetch("/api/apuntarme",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({colegio:id,dispositivo:disp,turnstile:tk})}); const d=await r.json();
-    if(!r.ok){ $("apResultado").innerHTML=`<div class="banner b-${d.error==="espera"?"warn":"bad"}">${esc(d.mensaje||ERR_AP[d.error]||"No se ha podido completar. Inténtalo de nuevo.")}</div>`; return; }
+  try{ const tk=await pase("apuntar"); const r=await fetch("/api/apuntarme",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({colegio:id,dispositivo:disp,turnstile:tk})}); const d=await r.json();
+    if(!r.ok){ $("apResultado").innerHTML=`<div class="banner b-${d.error==="espera"?"warn":"bad"}">${esc(d.mensaje||ERR_AP[d.error]||"No se ha podido completar. Inténtalo de nuevo.")}${d.detalle?` <span class="mono">(${esc(d.detalle)})</span>`:""}</div>`; return; }
     const c=(AP.col.municipios[id.split("-")[1]]||[]).find(x=>x[0]===id)||[id,""];
     const l=misReservas().filter(x=>x.codigo!==d.codigo); l.push({codigo:d.codigo,colegio:d.colegio,nombre:c[1],muni:natural(AP.nombres[id.split("-")[1]]||""),ts:Date.now()}); guardarReservas(l);
     if(!d.ya_apuntado) AP.cuentas[id]=(AP.cuentas[id]||0)+1;
@@ -1024,8 +1036,8 @@ $("btnApuntar").addEventListener("click",async()=>{ const id=AP.elegido; if(!id)
   }catch(e){ $("apResultado").innerHTML='<div class="banner b-bad">Sin conexión o error de red. Vuelve a pulsar cuando tengas cobertura.</div>'; }
   finally{ b.disabled=false; } });
 async function cancelar(codigo,salida){ salida.innerHTML='<span class="spinner"></span> Cancelando…';
-  try{ const tk=await pase(); const r=await fetch("/api/cancelar",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({codigo,turnstile:tk})}); const d=await r.json();
-    if(!r.ok){ salida.innerHTML=`<div class="banner b-bad">${esc(d.mensaje||ERR_AP[d.error]||"No se ha podido cancelar.")}</div>`; return false; }
+  try{ const tk=await pase("cancelar"); const r=await fetch("/api/cancelar",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({codigo,turnstile:tk})}); const d=await r.json();
+    if(!r.ok){ salida.innerHTML=`<div class="banner b-bad">${esc(d.mensaje||ERR_AP[d.error]||"No se ha podido cancelar.")}${d.detalle?` <span class="mono">(${esc(d.detalle)})</span>`:""}</div>`; return false; }
     const lim=limpiarCodigo(codigo); guardarReservas(misReservas().filter(x=>x.codigo!==lim));
     if(!d.ya_cancelado&&AP.cuentas[d.colegio]) AP.cuentas[d.colegio]--;
     salida.innerHTML=`<div class="banner b-ok">${d.ya_cancelado?"Esa reserva ya estaba cancelada.":"Reserva cancelada. Gracias por avisar."}</div>`;
@@ -1070,10 +1082,8 @@ async function mapaApuntados(){ const p=$("sAProv").value, cont=$("apMapa");
 $("apMapaVolver").onclick=e=>{ e.preventDefault(); AP_MAPA_ESP=true; mapaApuntados(); };
 // Cifras de la portada: personas apuntadas y colegios con alguien
 async function cifrasApuntados(){ try{ const r=await getJSON("/api/public/apuntados.json",{fresh:true}); const n=r.personas||0;
-  $("apuntaLinea").innerHTML=n?`👤 <b>${personas(n)}</b> ya se ${n===1?"ha":"han"} apuntado en <b>${fmt(r.colegios||0)} colegio${r.colegios===1?"":"s"}</b> de toda España. <a href="#apuntarme">Mira dónde falta gente →</a>`:`<a href="#apuntarme">Sé la primera persona en apuntarse →</a>`; }catch(e){} }
-// El widget antibots es uno solo: se mueve a la sección que se está viendo
-function moverTurnstile(destino){ const el=$("turnstile"), d=$(destino); if(!el||!d||el.parentNode===d) return; d.append(el);
-  if(window.turnstile&&TS_ID!=null){ TS_TOKEN=null; try{ turnstile.reset(TS_ID); }catch(e){} } }
+  // Hasta que haya al menos 5 personas no se dan cifras (un «0» o un «2» no animan a nadie)
+  $("apuntaLinea").innerHTML=n>=5?`👤 <b>${personas(n)}</b> ya se ${n===1?"ha":"han"} apuntado en <b>${fmt(r.colegios||0)} colegio${r.colegios===1?"":"s"}</b> de toda España. <a href="#apuntarme">Mira dónde falta gente →</a>`:`<a href="#apuntarme">Sé de las primeras personas en apuntarte →</a>`; }catch(e){} }
 
 // ---------- resultados ----------
 async function verResultados(){
