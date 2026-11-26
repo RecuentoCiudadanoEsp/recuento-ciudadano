@@ -242,17 +242,12 @@ table.comp tr.difiere td{background:var(--warn-soft)}
       <button id="btnIcs">Añadir aviso al calendario</button>
       <button id="btnShareHome">Compartir</button>
     </div>
+    <p class="meta hide" id="apuntaLinea" style="font-size:15px; margin:2px 0 12px"></p>
     <div id="inicioCuenta">
       <div class="meta">Los envíos se abren el <b id="abreTxt"></b>:</div>
       <div class="count" id="countdown"><div><b>–</b><span>días</span></div><div><b>–</b><span>horas</span></div><div><b>–</b><span>min</span></div><div><b>–</b><span>seg</span></div></div>
     </div>
     <p id="inicioPorque"><a href="#porque">Por qué existe esta web →</a></p>
-    <div class="card" id="apuntaCard" style="margin-top:18px">
-      <h2>Apúntate a un colegio</h2>
-      <p class="meta" style="font-size:15px; margin:4px 0 10px">Di a qué colegio vas a ir el domingo a fotografiar las actas. No pedimos nombre ni correo: eliges el colegio y recibes un código, por si luego no puedes ir. Así se ve qué colegios tienen ya a alguien y cuáles siguen esperando.</p>
-      <div class="tiles" id="apuntaCifras"></div>
-      <div class="row" style="margin-top:12px"><a class="btn primary" href="#apuntarme">Me apunto</a><a class="btn" href="#resultados=apuntados">Ver el mapa de apuntados</a></div>
-    </div>
     <div class="tiles hide" id="inicioCifras" style="margin-top:14px"></div>
     <p class="meta" id="inicioNota"></p>
     <div class="card hide" id="colegioCard" style="margin-top:18px">
@@ -306,6 +301,11 @@ table.comp tr.difiere td{background:var(--warn-soft)}
         <button class="primary big" id="btnApuntar">Me apunto a este colegio</button>
         <div id="apResultado" style="margin-top:12px" aria-live="polite"></div>
         <div id="apCerca"></div>
+      </div>
+      <div class="card" id="apMapaCard">
+        <div class="row" style="justify-content:space-between; gap:8px"><h2 id="apMapaTit">¿Dónde falta gente?</h2><a href="#" class="meta hide" id="apMapaVolver">← Toda España</a></div>
+        <div class="mapaInfo meta" id="apMapaInfo">Toca una provincia para ver sus municipios.</div>
+        <div id="apMapa"></div><div class="leyenda" id="apMapaLey"></div>
       </div>
       <div class="card hide" id="apMias">
         <h2>Mis reservas</h2>
@@ -395,7 +395,7 @@ table.comp tr.difiere td{background:var(--warn-soft)}
     <div class="tiles" id="tiles"></div>
     <div class="card" style="margin-bottom:14px">
       <div class="row" style="justify-content:space-between; gap:8px"><h2>Mapa por provincias</h2>
-        <div class="seg" id="segEsp"><button data-modo="apuntados">Apuntados</button><button data-modo="cobertura" class="on">Cobertura</button><button data-modo="votos">Más votado</button></div></div>
+        <div class="seg" id="segEsp"><button data-modo="cobertura" class="on">Cobertura</button><button data-modo="votos">Más votado</button></div></div>
       <div class="mapaInfo meta" id="infoEsp">Toca una provincia para ver sus municipios y mesas.</div>
       <div id="mapaEsp"></div><div class="leyenda" id="leyEsp"></div>
     </div>
@@ -416,7 +416,7 @@ table.comp tr.difiere td{background:var(--warn-soft)}
     <h1 id="provTit"></h1>
     <div class="card" style="margin-bottom:14px">
       <div class="row" style="justify-content:space-between; gap:8px"><h2>Municipios</h2>
-        <div class="seg" id="segProv"><button data-modo="apuntados">Apuntados</button><button data-modo="cobertura" class="on">Cobertura</button><button data-modo="votos">Más votado</button></div></div>
+        <div class="seg" id="segProv"><button data-modo="cobertura" class="on">Cobertura</button><button data-modo="votos">Más votado</button></div></div>
       <div class="busca" style="margin:10px 0 4px"><input type="text" id="qFMuni" placeholder="Busca un municipio…" autocomplete="off" spellcheck="false" aria-label="Buscar municipio"></div>
       <div class="mapaInfo meta" id="infoProv">Escribe su nombre o tócalo en el mapa para ver sus mesas una a una.</div>
       <div id="mapaProv"></div><div class="leyenda" id="leyProv"></div>
@@ -568,7 +568,7 @@ function route(){
   document.querySelectorAll(".view").forEach(s=>s.classList.toggle("on",s.id==="v-"+vista));
   const tab=vista==="prov"||vista==="mesa"?"resultados":vista;
   document.querySelectorAll("nav.tabs a").forEach(a=>{ if(a.dataset.v===tab) a.setAttribute("aria-current","page"); else a.removeAttribute("aria-current"); });
-  if(vista==="resultados"){ if(arg==="apuntados") MODO_ESP="apuntados"; verResultados(); } if(vista==="prov") verProvincia(arg); if(vista==="mesa") verMesa(arg);
+  if(vista==="resultados") verResultados(); if(vista==="prov") verProvincia(arg); if(vista==="mesa") verMesa(arg);
   if(vista==="apuntarme") verApuntarme(arg);
   moverTurnstile(vista==="apuntarme"?"tsApuntar":"tsEnviar");
   if(vista==="enviar"&&arg) ponerMesa(decodeURIComponent(arg));   // «Enviar otra foto de esta mesa» llega con la mesa puesta
@@ -613,9 +613,13 @@ function faseActual(){
   return t<abre-11*H?"previa":t<abre?"votacion":t<totales?"envio":t<abre+5*H?"directo":"resultados";
 }
 let fasePrev=null;
-function pintarFase(f){ const F=FASES[f], v=k=>F.ver.includes(k);
+// Hasta el domingo a las 18:00 la portada invita sobre todo a apuntarse a un colegio
+const PORTADA_APUNTAR={tit:"Únete al Recuento Ciudadano: apúntate para fotografiar el acta de tu colegio.",
+  txt:"Al terminar el recuento, cada mesa cuelga en la puerta una copia del acta. Si muchas personas la fotografían, cualquiera podrá comprobar el recuento oficial mesa por mesa. Ayúdanos a organizarnos mejor y a llegar a más colegios: apúntate aquí abajo."};
+const portadaApuntar=()=>CFG.modo_pruebas||!CFG.abre||Date.now()<Date.parse(CFG.abre)-2*3600000;
+function pintarFase(clave){ const f=clave.replace("+",""), F={...FASES[f],...(clave.endsWith("+")?PORTADA_APUNTAR:{})}, v=k=>F.ver.includes(k);
   $("inicioTit").textContent=F.tit; $("inicioTxt").textContent=F.txt; $("inicioNota").textContent=F.nota||"";
-  [["inicioLema","lema"],["inicioPorque","porque"],["inicioCuenta","cuenta"],["inicioCifras","cifras"],["bMapa","mapa"],["btnIcs","ics"],["apuntaCard","apuntados"],["colegioCard","colegio"],["pasosCard","pasos"]].forEach(([id,k])=>$(id).classList.toggle("hide",!v(k)));
+  [["inicioLema","lema"],["inicioPorque","porque"],["inicioCuenta","cuenta"],["inicioCifras","cifras"],["bMapa","mapa"],["btnIcs","ics"],["apuntaLinea","apuntados"],["colegioCard","colegio"],["pasosCard","pasos"]].forEach(([id,k])=>$(id).classList.toggle("hide",!v(k)));
   // «Me apunto» va primero mientras se puede reservar (hasta el domingo a las 20:00); después desaparece la pestaña
   const apunta=!!F.apuntar&&apuntarseAbierto(); $("bApuntar").classList.toggle("hide",!apunta);
   ["tabApuntar","menuApuntar"].forEach(id=>$(id).classList.toggle("hide",!apuntarseAbierto())); menuNav();
@@ -628,11 +632,13 @@ function pintarFase(f){ const F=FASES[f], v=k=>F.ver.includes(k);
 async function cifrasInicio(){ try{ const r=await getJSON("/api/public/resumen.json",{fresh:true}); const n=r.nacional||{}; const verif=(n.verificada||0)+(n.validada||0);
   $("inicioCifras").innerHTML=[["Mesas con foto",fmt(n.con_envio||0)],["Verificadas",fmt(verif)],["De todas las mesas",n.mesas?pct(verif/n.mesas).replace("menos del ","< "):"—"],["Actualizado",r.generado?hhmm(r.generado):"—"]]
     .map(([k,x])=>`<div class="tile"><div class="v">${x}</div><div class="k">${k}</div></div>`).join(""); }catch(e){} }
-setInterval(()=>{ if(VISTA==="inicio"||VISTA===null||VISTA==="") if(FASES[fasePrev]&&document.visibilityState==="visible"){ if(FASES[fasePrev].ver.includes("cifras")) cifrasInicio(); if(FASES[fasePrev].ver.includes("apuntados")) cifrasApuntados(); } },60000);
+setInterval(()=>{ if(VISTA!=="inicio"&&VISTA!==null&&VISTA!=="") return; const F=FASES[(fasePrev||"").replace("+","")];
+  if(F&&document.visibilityState==="visible"){ if(F.ver.includes("cifras")) cifrasInicio(); if(F.ver.includes("apuntados")) cifrasApuntados(); } },60000);
 
 function tick(){
   const ab=abierto(), f=faseActual(); $("practicaBanner").classList.toggle("hide",ab);
-  if(f!==fasePrev){ fasePrev=f; pintarFase(f); }
+  const clave=f+(FASES[f].apuntar&&portadaApuntar()&&apuntarseAbierto()?"+":"");
+  if(clave!==fasePrev){ fasePrev=clave; pintarFase(clave); }
   const eg=$("estadoGlobal"); eg.classList.toggle("abierto",ab);
   const et=FASES[f].estado; if(eg.lastChild.textContent!==et) eg.lastChild.textContent=et;
   if(FASES[f].ver.includes("cuenta")&&CFG.abre){ let s=Math.max(0,Math.floor((Date.parse(CFG.abre)-Date.now())/1000)); const v=[Math.floor(s/86400),Math.floor(s%86400/3600),Math.floor(s%3600/60),s%60];
@@ -939,12 +945,13 @@ function mensajeProvincia(nombre,con,total,personasN){ if(!total) return "";
   return `<div class="mensajeProv alta"><b>¡En ${esc(nombre)} casi todos los colegios tienen a alguien!</b> Ve igualmente: cada foto de más refuerza la verificación.</div>`; }
 async function apElegirProvincia(p){
   AP={prov:p,col:null,cuentas:{},elegido:null}; opts($("sAMuni"),[],"—"); $("apBusca").classList.add("hide"); $("apColegio").classList.add("hide"); $("apMensaje").innerHTML="";
-  if(!p) return;
+  if(!p){ mapaApuntados(); return; }
   try{ const [c,a,tot,res]=await Promise.all([cargarColegios(p),cargarApuntados(p),totalColegios(),getJSON("/api/public/apuntados.json",{fresh:true}).catch(()=>({provincias:{}}))]);
     if($("sAProv").value!==p) return; AP.col=c; AP.cuentas=a.colegios||{};
     const ref=await getJSON(`/data/mesas/${p}.json`); AP.nombres=ref.municipios;
     opts($("sAMuni"),Object.keys(c.municipios).map(k=>[k,ref.municipios[k]||k]).sort((x,y)=>natural(x[1]).localeCompare(natural(y[1]),"es")),"Elige municipio…");
     const pr=(res.provincias||{})[p]||{personas:0,colegios:0}; AP.msgProv=mensajeProvincia(natural(nombreProv(p)),pr.colegios,tot[p]||0,pr.personas); $("apMensaje").innerHTML=AP.msgProv;
+    AP_MAPA_ESP=false; mapaApuntados();
   }catch(e){ $("apMensaje").innerHTML='<div class="meta">No se han podido cargar los colegios. Recarga la página.</div>'; } }
 $("sAProv").addEventListener("change",()=>apElegirProvincia($("sAProv").value));
 const colegiosMuni=()=>AP.col&&$("sAMuni").value?AP.col.municipios[$("sAMuni").value]||[]:[];
@@ -975,6 +982,17 @@ function alTocar(ul){ const ir=li=>{ if(li) verColegio(li.dataset.col,true); };
   ul.addEventListener("click",e=>ir(e.target.closest("li[data-col]")));
   ul.addEventListener("keydown",e=>{ if(e.key==="Enter") ir(e.target.closest("li[data-col]")); }); }
 alTocar($("apLista"));
+// Colegios cercanos al elegido que aún no tienen a nadie. Distancia en el panal «Por zonas» (solo dentro del municipio).
+// Es aproximada: en los municipios grandes el panal desplaza algunas mesas de su sección. Por eso se da preferencia a los
+// colegios del mismo distrito. Tras apuntarse («tras»), se invita a mirar otro y se recuerda el límite de 15 minutos.
+function pintarCerca(id,tras){ const mu=id.split("-")[1], l=AP.col?AP.col.municipios[mu]||[]:[], c=l.find(x=>x[0]===id); if(!c){ $("apCerca").innerHTML=""; return; }
+  const dist=x=>x[4][0].slice(0,2), mismo=new Set(c[4].map(y=>y.slice(0,2)));
+  let cerca=[]; if(c[5]!=null) cerca=l.filter(x=>x[0]!==id&&x[5]!=null&&!AP.cuentas[x[0]]).map(x=>[x,Math.hypot(x[5]-c[5],(x[6]-c[6])*0.87)+(mismo.has(dist(x))?0:4)]).sort((a,b)=>a[1]-b[1]).slice(0,5).map(x=>x[0]);
+  const aviso=tras?`<p class="meta" style="margin:14px 0 0">(Para evitar reservas masivas hechas con bots, cada móvil puede apuntarse a un colegio cada ${CFG.minutos_entre_apuntados||15} minutos.)</p>`:"";
+  const tit=tras?"¿Te animas con otro? Cerca de este colegio, aún sin nadie":"Cerca de este colegio, aún sin nadie";
+  $("apCerca").innerHTML=l.length>1?(cerca.length?`${aviso}<h3 style="margin-top:${tras?6:18}px">${tit}</h3><p class="meta" style="margin:2px 0 0">Por zona aproximada. Comprueba la dirección antes de ir.</p><ul class="cols" id="apCercaLista">${cerca.map(filaColegio).join("")}</ul>`
+    :c[5]!=null?`${aviso}<p class="meta" style="margin-top:14px">Todos los colegios de ${esc(natural(AP.nombres[mu]||""))} tienen ya a alguien. 💪</p>`:aviso):aviso;
+  if($("apCercaLista")) alTocar($("apCercaLista")); }
 // Ficha del colegio elegido: cuántas personas hay, botón para apuntarse y los colegios más cercanos sin nadie
 function verColegio(id,desplazar){ const mu=id.split("-")[1], l=AP.col?AP.col.municipios[mu]||[]:[], c=l.find(x=>x[0]===id); if(!c) return;
   AP.elegido=id; pintarColegios(); const n=AP.cuentas[id]||0, ab=apuntarseAbierto();
@@ -983,13 +1001,7 @@ function verColegio(id,desplazar){ const mu=id.split("-")[1], l=AP.col?AP.col.mu
   $("apColN").innerHTML=n?`<b class="ap1">👤 ${personas(n)} ${n===1?"se ha sumado":"se han sumado"}</b> a fotografiar sus actas.`:`<b>Aún no va nadie.</b> Si te apuntas, serás la primera persona.`;
   const mia=misReservas().find(r=>r.colegio===id);
   $("btnApuntar").classList.toggle("hide",!ab||!!mia); $("apResultado").innerHTML=mia?`<div class="banner b-ok">Ya te habías apuntado a este colegio con el código <b class="mono">${mia.codigo}</b>.</div>`:"";
-  // Cercanos: distancia en el panal «Por zonas» (solo dentro del municipio). Es aproximada: en los municipios grandes
-  // el panal desplaza algunas mesas de su sección. Por eso se da preferencia a los colegios del mismo distrito.
-  const dist=x=>x[4][0].slice(0,2), mismo=new Set(c[4].map(y=>y.slice(0,2)));
-  let cerca=[]; if(c[5]!=null) cerca=l.filter(x=>x[0]!==id&&x[5]!=null&&!AP.cuentas[x[0]]).map(x=>[x,Math.hypot(x[5]-c[5],(x[6]-c[6])*0.87)+(mismo.has(dist(x))?0:4)]).sort((a,b)=>a[1]-b[1]).slice(0,5).map(x=>x[0]);
-  $("apCerca").innerHTML=l.length>1?(cerca.length?`<h3 style="margin-top:18px">Cerca de este colegio, aún sin nadie</h3><p class="meta" style="margin:2px 0 0">Por zona aproximada. Comprueba la dirección antes de ir.</p><ul class="cols" id="apCercaLista">${cerca.map(filaColegio).join("")}</ul>`
-    :c[5]!=null?`<p class="meta" style="margin-top:14px">Todos los colegios de ${esc(natural(AP.nombres[mu]||""))} tienen ya a alguien. 💪</p>`:""):"";
-  if($("apCercaLista")) alTocar($("apCercaLista"));
+  pintarCerca(id,false);
   if(desplazar) setTimeout(()=>$("apColegio").scrollIntoView({behavior:"smooth",block:"start"}),50); }
 const ERR_AP={verificacion:"No se ha podido completar la verificación antirrobots. Espera unos segundos y vuelve a pulsar.",colegio_desconocido:"No reconocemos ese colegio. Recarga la página.",cerrado:"Ya no se puede apuntar: los colegios han cerrado."};
 $("btnApuntar").addEventListener("click",async()=>{ const id=AP.elegido; if(!id) return; const b=$("btnApuntar"); b.disabled=true;
@@ -1007,6 +1019,7 @@ $("btnApuntar").addEventListener("click",async()=>{ const id=AP.elegido; if(!id)
       <p style="margin:6px 0">El domingo, a partir de las 20:00, espera a que cuelguen las actas en la puerta y fotografíalas todas. Aunque haya más gente apuntada, ve igualmente: cuantas más fotos, mejor.</p>
       <div class="row" style="margin-top:8px"><button class="small" id="btnApIcs">Añadir aviso al calendario</button><button class="small" id="btnApShare">Compartir</button></div></div>`;
     $("btnApIcs").onclick=()=>$("btnIcs").click();
+    pintarCerca(id,true); mapaApuntados();
     $("btnApShare").onclick=()=>compartir(`Me he apuntado a fotografiar las actas de mi colegio en las elecciones del 29N. ¿Te sumas? Mira qué colegios cerca de ti aún no tienen a nadie:`,`${location.origin}/#apuntarme=${id}`);
   }catch(e){ $("apResultado").innerHTML='<div class="banner b-bad">Sin conexión o error de red. Vuelve a pulsar cuando tengas cobertura.</div>'; }
   finally{ b.disabled=false; } });
@@ -1030,14 +1043,34 @@ async function irAColegio(arg){ const pt=(arg||"").split("-"); if(!/^\d\d$/.test
   if($("sAProv").value!==pt[0]){ $("sAProv").value=pt[0]; BUSC.sAProv.sync(); await apElegirProvincia(pt[0]); }
   if(pt[1]&&$("sAMuni").value!==pt[1]&&[...$("sAMuni").options].some(o=>o.value===pt[1])){ $("sAMuni").value=pt[1]; $("sAMuni").dispatchEvent(new Event("change")); BUSC.sAMuni.sync(); }
   if(pt.length===5) verColegio(arg,true); }
-async function verApuntarme(arg){ const ab=apuntarseAbierto(); $("apCerrado").classList.toggle("hide",ab); pintarMias();
+async function verApuntarme(arg){ const ab=apuntarseAbierto(); $("apCerrado").classList.toggle("hide",ab); pintarMias(); mapaApuntados();
   if(arg) await irAColegio(decodeURIComponent(arg));
   else if(AP.prov){ const a=await cargarApuntados(AP.prov); AP.cuentas=a.colegios||{}; if($("sAMuni").value) pintarColegios();   // al refrescar solo cambian las cifras
     if(AP.elegido){ const n=AP.cuentas[AP.elegido]||0; if(n) $("apColN").innerHTML=`<b class="ap1">👤 ${personas(n)} ${n===1?"se ha sumado":"se han sumado"}</b> a fotografiar sus actas.`; } } }
+// Mapa de «Me apunto»: parte de los colegios con alguien apuntado, en España (por provincia) o en la provincia elegida
+// (por municipio). Usa los mismos contornos que Resultados (archivos estáticos, en caché) y las cifras de apuntados.
+let AP_MAPA_ESP=false;   // true = ver España aunque haya provincia elegida
+async function mapaApuntados(){ const p=$("sAProv").value, cont=$("apMapa");
+  try{ if(!p||AP_MAPA_ESP){ const [m,ap,tot]=await Promise.all([getJSON("/data/mapa/espana.json"),getJSON("/api/public/apuntados.json",{fresh:true}).catch(()=>({provincias:{}})),totalColegios()]);
+      const A=id=>({...((ap.provincias||{})[id]||{personas:0,colegios:0}),total:tot[id]||0});
+      const info=id=>{ const a=A(id); return `${natural(nombreProv(id))}: ${personas(a.personas)} en ${fmt(a.colegios)} de ${fmt(a.total)} colegios (${pct(a.total?a.colegios/a.total:0)})`; };
+      $("apMapaTit").textContent="¿Dónde falta gente?"; $("apMapaVolver").classList.add("hide"); $("apMapaInfo").textContent="Toca una provincia para ver sus municipios y colegios.";
+      svgMapa(cont,m,m.provincias.map(x=>({id:x.prov,d:x.d})),{color:id=>{ const a=A(id); return colorCob(a.colegios,0,a.total); },info,marco:m.marcoCanarias,
+        click:async id=>{ AP_MAPA_ESP=false; $("sAProv").value=id; BUSC.sAProv.sync(); await apElegirProvincia(id); }}); }
+    else { const m=await getJSON(`/data/mapa/municipios/${p}.json`); const cols=(AP.col||{}).municipios||{};
+      const X=k=>{ const l=cols[k]||[]; let con=0, n=0; for(const c of l){ const v=AP.cuentas[c[0]]||0; if(v){ con++; n+=v; } } return {total:l.length,con,n}; };
+      const info=k=>{ const x=X(k); return `${natural((AP.nombres||{})[k]||k)}: ${personas(x.n)} en ${fmt(x.con)} de ${fmt(x.total)} colegio${x.total===1?"":"s"}`; };
+      $("apMapaTit").textContent=`¿Dónde falta gente en ${natural(nombreProv(p))}?`; $("apMapaVolver").classList.remove("hide"); $("apMapaInfo").textContent="Toca un municipio para ver sus colegios.";
+      svgMapa(cont,m,m.municipios.map(x=>({id:x.muni,d:x.d})),{color:k=>{ const x=X(k); return colorCob(x.con,0,x.total); },info,
+        click:k=>{ if(![...$("sAMuni").options].some(o=>o.value===k)) return; $("sAMuni").value=k; $("sAMuni").dispatchEvent(new Event("change")); BUSC.sAMuni.sync();
+          setTimeout(()=>$("apBusca").scrollIntoView({behavior:"smooth",block:"start"}),50); }}); }
+    if(!cont.dataset.escucha){ cont.dataset.escucha="1"; cont.addEventListener("info",()=>$("apMapaInfo").textContent=cont.dataset.info); }
+    $("apMapaLey").innerHTML=leyAp();
+  }catch(e){ cont.innerHTML=""; } }
+$("apMapaVolver").onclick=e=>{ e.preventDefault(); AP_MAPA_ESP=true; mapaApuntados(); };
 // Cifras de la portada: personas apuntadas y colegios con alguien
-async function cifrasApuntados(){ try{ const [r,tot]=await Promise.all([getJSON("/api/public/apuntados.json",{fresh:true}),totalColegios()]); const total=Object.values(tot).reduce((a,b)=>a+b,0);
-  $("apuntaCifras").innerHTML=[["Personas apuntadas",fmt(r.personas||0)],["Colegios con alguien",fmt(r.colegios||0)],["De todos los colegios",total?pct((r.colegios||0)/total).replace("menos del ","< "):"—"],["Colegios sin nadie aún",total?fmt(total-(r.colegios||0)):"—"]]
-    .map(([k,x])=>`<div class="tile"><div class="v">${x}</div><div class="k">${k}</div></div>`).join(""); }catch(e){} }
+async function cifrasApuntados(){ try{ const r=await getJSON("/api/public/apuntados.json",{fresh:true}); const n=r.personas||0;
+  $("apuntaLinea").innerHTML=n?`👤 <b>${personas(n)}</b> ya se ${n===1?"ha":"han"} apuntado en <b>${fmt(r.colegios||0)} colegio${r.colegios===1?"":"s"}</b> de toda España. <a href="#apuntarme">Mira dónde falta gente →</a>`:`<a href="#apuntarme">Sé la primera persona en apuntarse →</a>`; }catch(e){} }
 // El widget antibots es uno solo: se mueve a la sección que se está viendo
 function moverTurnstile(destino){ const el=$("turnstile"), d=$(destino); if(!el||!d||el.parentNode===d) return; d.append(el);
   if(window.turnstile&&TS_ID!=null){ TS_TOKEN=null; try{ turnstile.reset(TS_ID); }catch(e){} } }
@@ -1085,31 +1118,25 @@ function svgMapa(cont, datos, items, {color, info, click, marco}){
 }
 function ganador(votos){ const e=Object.entries(votos||{}).filter(([k])=>!k.startsWith("_")).sort((a,b)=>b[1]-a[1]); if(!e.length||!e[0][1]) return null;
   const tot=e.reduce((a,[,v])=>a+v,0)+((votos||{})._blanco||0); return {siglas:e[0][0], pct:tot?e[0][1]/tot:0}; }
-// Antes del domingo a las 20:00 el mapa abre en «Apuntados» (aún no hay actas); después, en «Cobertura»
-let MODO_ESP=null, RESUMEN=null;
-const modoInicial=()=>apuntarseAbierto()&&!CFG.modo_pruebas?"apuntados":"cobertura";
-async function mapaEspana(r){ RESUMEN=r; if(!MODO_ESP) MODO_ESP=modoInicial();
-  const [m,ap,tot]=await Promise.all([getJSON("/data/mapa/espana.json"),getJSON("/api/public/apuntados.json",{fresh:true}).catch(()=>({provincias:{}})),totalColegios()]); const P=new Map((r.provincias||[]).map(p=>[p.prov,p]));
-  const A=id=>({...((ap.provincias||{})[id]||{personas:0,colegios:0}),total:tot[id]||0});
+let MODO_ESP="cobertura", RESUMEN=null;
+async function mapaEspana(r){ RESUMEN=r; const m=await getJSON("/data/mapa/espana.json"); const P=new Map((r.provincias||[]).map(p=>[p.prov,p]));
   const cob=id=>{ const p=P.get(id); return p&&p.mesas?((p.verificada||0)+(p.validada||0))/p.mesas:0; };
   const votosOk=r.totales_visibles;
   $("segEsp").querySelector('[data-modo="votos"]').disabled=!votosOk; if(!votosOk&&MODO_ESP==="votos") MODO_ESP="cobertura";
   $("segEsp").querySelectorAll("button").forEach(b=>{ b.classList.toggle("on",b.dataset.modo===MODO_ESP); b.onclick=()=>{ if(b.disabled) return; MODO_ESP=b.dataset.modo; mapaEspana(RESUMEN); }; });
-  const color=id=>{ if(MODO_ESP==="votos"){ const g=ganador((P.get(id)||{}).votos); return g?colorPartido(g.siglas):"var(--sin)"; }
-    if(MODO_ESP==="apuntados"){ const a=A(id); return colorCob(a.colegios,0,a.total); } const p=P.get(id)||{}; return colorCob((p.verificada||0)+(p.validada||0),p.con_envio||0,p.mesas||0); };
-  const info=id=>{ if(MODO_ESP==="apuntados"){ const a=A(id); return `${natural(nombreProv(id))}: ${personas(a.personas)} apuntada${a.personas===1?"":"s"} en ${fmt(a.colegios)} de ${fmt(a.total)} colegios (${pct(a.total?a.colegios/a.total:0)})`; } const p=P.get(id)||{}; const v=(p.verificada||0)+(p.validada||0); const g=votosOk?ganador(p.votos):null;
+  const color=id=>{ if(MODO_ESP==="votos"){ const g=ganador((P.get(id)||{}).votos); return g?colorPartido(g.siglas):"var(--sin)"; } const p=P.get(id)||{}; return colorCob((p.verificada||0)+(p.validada||0),p.con_envio||0,p.mesas||0); };
+  const info=id=>{ const p=P.get(id)||{}; const v=(p.verificada||0)+(p.validada||0); const g=votosOk?ganador(p.votos):null;
     return `${natural(nombreProv(id))}: ${fmt(v)} de ${fmt(p.mesas||0)} mesas verificadas (${pct(cob(id))})${(p.con_envio||0)>v?`, ${fmt((p.con_envio||0)-v)} más con foto`:""}${g?` · más votado en ellas: ${g.siglas}`:""}`; };
   svgMapa($("mapaEsp"), m, m.provincias.map(x=>({id:x.prov,d:x.d})), {color, info, click:id=>location.hash="prov="+id, marco:m.marcoCanarias});
   $("mapaEsp").addEventListener("info",()=>$("infoEsp").textContent=$("mapaEsp").dataset.info);
   if(MODO_ESP==="votos"){ const vistos=new Map(); for(const p of P.values()){ const g=ganador(p.votos); if(g) vistos.set(colorPartido(g.siglas), g.siglas); }
     $("leyEsp").innerHTML=[...vistos].map(([c,s])=>`<span><i style="background:${c}"></i>${s}</span>`).join("")+`<span>Partido más votado en las mesas verificadas de cada provincia (no es el resultado de la provincia)</span>`; }
-  else if(MODO_ESP==="apuntados") $("leyEsp").innerHTML=leyAp()+`<span>· Personas que han dicho que irán a fotografiar las actas. <a href="#apuntarme">Apúntate tú también</a></span>`;
   else $("leyEsp").innerHTML=leyCob()+(votosOk?"":`<span>· «Más votado» se activa cuando cierran todos los colegios (también en Canarias)</span>`);
 }
 
 let PROV_DATA=null;
 async function cargarProv(p,fresh){ const d=await getJSON(`/api/public/prov/${p}.json`,{fresh}); PROV_DATA=d; return d; }
-let MODO_PROV=null, MODO_PANAL="zonas";
+let MODO_PROV="cobertura", MODO_PANAL="zonas";
 // ---------- comparación con el dato oficial de Interior (public/oficial/PP.json, lo carga el panel)
 const cargarOficial=p=>getJSON(`/api/public/oficial/${p}.json`,{fresh:true}).catch(()=>null);
 // Dato oficial con el que se puede comparar una mesa: el suyo propio o, si su municipio solo tiene esa mesa,
@@ -1141,10 +1168,7 @@ const fuenteOfi=(ofi,nivel)=>`${nivel==="muni1"?"Este municipio tiene una sola m
 async function verProvincia(p,refresco){
   const filtroPrev=refresco?$("fMuni").value:"";
   $("provTit").textContent=natural(nombreProv(p)); if(!refresco) $("tMesas").innerHTML='<tr><td><span class="spinner"></span> Cargando…</td></tr>';
-  if(!MODO_PROV) MODO_PROV=MODO_ESP||modoInicial();
-  try{ const [d,ref,mapa,zonas,r,cols,apu]=await Promise.all([cargarProv(p,true),getJSON(`/data/mesas/${p}.json`),getJSON(`/data/mapa/municipios/${p}.json`).catch(()=>null),getJSON(`/data/zonas/${p}.json`).catch(()=>null),getJSON("/api/public/resumen.json",{fresh:true}).catch(()=>({})),cargarColegios(p).catch(()=>({municipios:{}})),cargarApuntados(p)]);
-    // personas apuntadas por municipio: colegios con alguien, total de colegios y personas
-    const AM={}; for(const [k,l] of Object.entries(cols.municipios||{})){ const x=AM[k]={total:l.length,con:0,personas:0}; for(const c of l){ const n=(apu.colegios||{})[c[0]]||0; if(n){ x.con++; x.personas+=n; } } }
+  try{ const [d,ref,mapa,zonas,r]=await Promise.all([cargarProv(p,true),getJSON(`/data/mesas/${p}.json`),getJSON(`/data/mapa/municipios/${p}.json`).catch(()=>null),getJSON(`/data/zonas/${p}.json`).catch(()=>null),getJSON("/api/public/resumen.json",{fresh:true}).catch(()=>({}))]);
     const ofi=r.totales_visibles?await cargarOficial(p):null;
     const votosOk=!!r.totales_visibles; const cods=Object.fromEntries((d.candidaturas||[]).map(c=>[c.codigo,c.siglas]));
     // por municipio: total de mesas (lista oficial), verificadas y votos de las verificadas
@@ -1155,16 +1179,11 @@ async function verProvincia(p,refresco){
     const cob=k=>{ const x=M[k]; return x&&x.total?x.ver/x.total:0; };
     if(mapa){ $("segProv").querySelector('[data-modo="votos"]').disabled=!votosOk; if(!votosOk&&MODO_PROV==="votos") MODO_PROV="cobertura";
       const pintarMapa=()=>{ $("segProv").querySelectorAll("button").forEach(b=>{ b.classList.toggle("on",b.dataset.modo===MODO_PROV); b.onclick=()=>{ if(b.disabled) return; MODO_PROV=b.dataset.modo; pintarMapa(); }; });
-        const color=k=>{ if(MODO_PROV==="votos"){ const g=ganador((M[k]||{}).votos); return g?colorPartido(g.siglas):"var(--sin)"; }
-          if(MODO_PROV==="apuntados"){ const a=AM[k]||{}; return colorCob(a.con||0,0,a.total||0); } const x=M[k]||{}; return colorCob(x.ver||0,x.con||0,x.total||0); };
-        const info=k=>{ if(MODO_PROV==="apuntados"){ const a=AM[k]||{total:0,con:0,personas:0}; return `${nombreMuni(k)}: ${personas(a.personas)} apuntada${a.personas===1?"":"s"} en ${fmt(a.con)} de ${fmt(a.total)} colegio${a.total===1?"":"s"}`; } const x=M[k]||{total:0,ver:0,con:0}; const g=votosOk?ganador(x.votos):null; return `${nombreMuni(k)}: ${fmt(x.ver)} de ${fmt(x.total)} mesas verificadas${x.con>x.ver?`, ${fmt(x.con-x.ver)} más con foto`:""}${g?` · más votado en ellas: ${g.siglas}`:""}`; };
-        svgMapa($("mapaProv"), mapa, mapa.municipios.map(x=>({id:x.muni,d:x.d})), {color, info, click:k=>{
-          // en «Apuntados», tocar un municipio lleva a sus colegios en «Me apunto»
-          if(MODO_PROV==="apuntados"&&apuntarseAbierto()){ location.hash=`apuntarme=${p}-${k}`; return; }
-          $("fMuni").value=k; BUSC.fMuni.sync(); pintar(); $("infoProv").textContent=info(k); $("panalCard").scrollIntoView({behavior:"smooth"}); }});
+        const color=k=>{ if(MODO_PROV==="votos"){ const g=ganador((M[k]||{}).votos); return g?colorPartido(g.siglas):"var(--sin)"; } const x=M[k]||{}; return colorCob(x.ver||0,x.con||0,x.total||0); };
+        const info=k=>{ const x=M[k]||{total:0,ver:0,con:0}; const g=votosOk?ganador(x.votos):null; return `${nombreMuni(k)}: ${fmt(x.ver)} de ${fmt(x.total)} mesas verificadas${x.con>x.ver?`, ${fmt(x.con-x.ver)} más con foto`:""}${g?` · más votado en ellas: ${g.siglas}`:""}`; };
+        svgMapa($("mapaProv"), mapa, mapa.municipios.map(x=>({id:x.muni,d:x.d})), {color, info, click:k=>{ $("fMuni").value=k; BUSC.fMuni.sync(); pintar(); $("infoProv").textContent=info(k); $("panalCard").scrollIntoView({behavior:"smooth"}); }});
         if(MODO_PROV==="votos"){ const vistos=new Map(); for(const x of Object.values(M)){ const g=ganador(x.votos); if(g) vistos.set(colorPartido(g.siglas),g.siglas); }
           $("leyProv").innerHTML=[...vistos].map(([c,s])=>`<span><i style="background:${c}"></i>${s}</span>`).join("")+"<span>Más votado en las mesas verificadas de cada municipio</span>"; }
-        else if(MODO_PROV==="apuntados") $("leyProv").innerHTML=leyAp()+(apuntarseAbierto()?"<span>· Toca un municipio para ver sus colegios y apuntarte</span>":"");
         else $("leyProv").innerHTML=leyCob(); };
       $("mapaProv").addEventListener("info",()=>$("infoProv").textContent=$("mapaProv").dataset.info); pintarMapa(); }
     else { $("mapaProv").innerHTML=""; $("leyProv").innerHTML=""; }

@@ -303,7 +303,7 @@ para decir que irá a fotografiar sus actas. Sirve para ver qué colegios tienen
   (`MAX_APUNTADOS_IP_HORA`), 20 intentos de cancelar por conexión cada 10 minutos (`MAX_CANCELAR_IP_10MIN`) y antibots en
   apuntarse y cancelar.
 - **Publicación:** el cron rehace cada minuto `public/apuntados/PP.json` (personas por colegio) y `public/apuntados.json`
-  (resumen) solo si hay cambios. Se ven en la portada, en el modo «Apuntados» de los mapas y en la ficha de cada mesa.
+  (resumen) solo si hay cambios. Se ven en la portada (una línea con el total), en el mapa de la propia sección «Me apunto» (España por provincias y, al elegir provincia, por municipios; tocar uno abre sus colegios) y en la ficha de cada mesa. Hasta el domingo a las 18:00 la portada invita sobre todo a apuntarse.
 - Las tablas (`apuntados`, `apuntados_cambios`, `intentos_cancelar`) se crean solas la primera vez; también están en
   `schema.sql` y en `sql/cambios/2026-11-26_apuntados.sql`. En pruebas, el panel tiene «Inventar apuntados (pruebas)».
 
