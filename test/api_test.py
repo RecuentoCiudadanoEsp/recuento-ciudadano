@@ -90,7 +90,7 @@ if __name__ == "__main__":
         global ok; ok &= bool(cond); print(("OK   " if cond else "FALLO"), nombre, extra)
 
     s, r = post_envio(cifras_ain(), variante=0, ip="10.0.0.1"); check("envío 1 aceptado y cuadra", s == 200 and r["cuadra"], r)
-    s, r2 = post_envio(cifras_ain(), variante=0, ip="10.0.0.2"); check("misma foto rechazada como duplicada", s == 409, r2)
+    s, r2 = post_envio(cifras_ain(), variante=0, ip="10.0.0.2"); check("la misma foto otra vez (reintento) se contesta como enviada, sin duplicarla", s == 200 and r2.get("ya_enviada") and r2["mesa_id"] == r["mesa_id"], r2)
     s, r = post_envio(cifras_ain(), variante=1, ip="10.0.0.2"); check("envío 2 (otra persona) aceptado", s == 200, r)
     cron(); s, p = get("/api/public/prov/12.json"); m = next((x for x in p["mesas"] if x["id"] == "12-002-01-001-U"), None)
     check("mesa de Aín verificada con 2 fuentes", m and m["estado"] == "verificada" and m["indep"] == 2, m and (m["estado"], m["indep"]))
@@ -203,7 +203,7 @@ if __name__ == "__main__":
     # ---- Lectura automática (simulada en local)
     m3 = otras[11]
     s, r = post_envio(cifras_ain(), variante=310, ip="10.31.0.1", mesa=m3, lectura=lectura_de(cifras_ain(), es_acta=False, inapropiada=True))
-    h_ia = r["hash"]; s, r = post_envio(cifras_ain(), variante=311, ip="10.31.0.2", mesa=m3); cron()
+    h_ia = r["hash"]; s, r = post_envio(cifras_ain(), variante=311, ip="10.31.0.2", mesa=m3); cron(); cron()   # el mapa no espera a la lectura: se ve en el minuto siguiente
     s, q = get("/admin/api/mesa?id=" + m3, admin=True); fl = next(e for e in q["mesas"][0]["envios"] if e["hash"] == h_ia)["flags"]
     check("la IA marca imagen inapropiada / no acta: cuarentena", "ia_inapropiada" in fl and "ia_no_acta" in fl, fl)
     s, p = get("/api/public/prov/12.json"); mm = next(x for x in p["mesas"] if x["id"] == m3)
@@ -305,4 +305,96 @@ if __name__ == "__main__":
     s, r = get("/api/public/oficial/12.json")
     check("y se publica tal cual, sin campos desconocidos", s == 200 and r["mesas"]["12-002-01-001-U"]["cand"] == {"C01": 50} and r["municipios"]["002"]["cand"]["?OTRA"] == 3 and "extra" not in r, r)
     s, r = get("/admin/api/oficial", method="POST", body={"prov": "12", "datos": bueno}); check("sin contraseña no se puede cargar", s in (401, 403), s)
+    # ---- Ninguna foto se publica sin lectura automática: si el servicio falla, la foto espera y se reintenta
+    mesas_f = [m[0] for m in json.load(open("public/data/mesas/12.json"))["mesas"] if not m[0].startswith("12-002-")][60:62]
+    m5 = mesas_f[0]; falla = {**lectura_de(cifras_ain()), "_falla": True}
+    cron(); cron()   # que no quede ninguna lectura pendiente de las pruebas anteriores
+    s, st0 = get("/admin/api/estadisticas", admin=True)
+    s, ra = post_envio(cifras_ain(), variante=601, ip="10.60.0.1", mesa=m5, lectura=falla)
+    s, rb = post_envio(cifras_ain(), variante=602, ip="10.60.0.2", mesa=m5, lectura=falla); cron(); cron()
+    s, p = get("/api/public/prov/12.json"); mm = next(x for x in p["mesas"] if x["id"] == m5)
+    check("si la IA no puede leer, la mesa se verifica igual (las cifras cuentan)", mm["estado"] == "verificada", mm["estado"])
+    check("…pero sus fotos no se publican", all(not f["pub"] for f in mm["fotos"]), [f["pub"] for f in mm["fotos"]])
+    s, st1 = get("/admin/api/estadisticas", admin=True)
+    check("los intentos fallidos no gastan del tope de lecturas", st1["lecturas_ia"] == st0["lecturas_ia"], (st0["lecturas_ia"], st1["lecturas_ia"]))
+    s, q = get("/admin/api/mesa?id=" + m5, admin=True)
+    check("tras un fallo, la foto vuelve a la cola de lectura", all(e["ia_estado"] == "pendiente" for e in q["mesas"][0]["envios"]), [e["ia_estado"] for e in q["mesas"][0]["envios"]])
+    s, q = get("/admin/api/cola?estado=sin_leer", admin=True)
+    check("aparece en la cola «Fotos aún sin leer» del panel", any(x["mesa_id"] == m5 for x in q["mesas"]))
+    for _ in range(4): cron()
+    s, q = get("/admin/api/mesa?id=" + m5, admin=True)
+    check("tras 6 intentos fallidos se deja de intentar", all(e["ia_estado"] == "error" for e in q["mesas"][0]["envios"]), [e["ia_estado"] for e in q["mesas"][0]["envios"]])
+    s, q = get("/admin/api/cola?estado=sin_leer", admin=True)
+    check("y sigue en la cola para aprobarla a mano", any(x["mesa_id"] == m5 for x in q["mesas"]))
+    get("/admin/api/aprobar_foto", admin=True, method="POST", body={"hash": ra["hash"]}); cron()
+    s, p = get("/api/public/prov/12.json"); mm = next(x for x in p["mesas"] if x["id"] == m5)
+    check("al aprobarla a mano, se publica (solo esa)", {f["h"]: f["pub"] for f in mm["fotos"]} == {ra["hash"]: 1, rb["hash"]: 0}, [(f["h"][:8], f["pub"]) for f in mm["fotos"]])
+    s, q = get("/admin/api/cola?estado=sin_leer", admin=True)
+    s2, q2 = get("/admin/api/mesa?id=" + m5, admin=True)
+    check("la foto aprobada sale de la cola y la otra sigue", any(x["mesa_id"] == m5 for x in q["mesas"]) and q2["mesas"][0]["envios"], len(q["mesas"]))
+    # ---- Un acta fotografiada con luz cálida (bombilla, farola) sigue pareciendo un acta
+    import tempfile
+    im = ImageOps.exif_transpose(Image.open(ACTA)).convert("RGB"); R, G, B = im.split()
+    calida = Image.merge("RGB", (R, G.point(lambda v: v * 0.86), B.point(lambda v: v * 0.66)))
+    tmp = tempfile.NamedTemporaryFile(suffix=".jpg", delete=False).name; calida.save(tmp, quality=90)
+    s, r = post_envio(cifras_ain(), variante=0, ip="10.61.0.1", mesa=mesas_f[1], imagen=tmp)
+    check("un acta con luz cálida no se marca como «no parece un acta»", s == 200 and "no_parece_acta" not in r.get("avisos", []), r)
+    # ---- «Me apunto»: reservas de colegios con código para cancelar
+    def post_ap(ruta, cuerpo, ip):
+        req = urllib.request.Request(BASE + ruta, data=json.dumps(cuerpo).encode(), method="POST", headers={"content-type": "application/json", "cf-connecting-ip": ip})
+        try:
+            with urllib.request.urlopen(req) as r: return r.status, json.loads(r.read())
+        except urllib.error.HTTPError as e: return e.code, json.loads(e.read() or b"{}")
+    cols28 = json.load(open("public/data/colegios/28.json"))["municipios"]
+    ref28 = json.load(open("public/data/mesas/28.json"))["mesas"]
+    grande = next(c for c in cols28["079"] if c[3] >= 3)            # un colegio de Madrid con varias mesas
+    segunda = sorted(m[0] for m in ref28 if m[0].startswith("28-079-") and m[2] == grande[1] and (m[0].split("-")[2] + "-" + m[0].split("-")[3]) in grande[4])[1]
+    s, c = get("/api/config")
+    check("la configuración dice hasta cuándo se puede apuntar", bool(c.get("apuntarse_hasta")) and c.get("minutos_entre_apuntados") == 15, c)
+    d1 = uuid.uuid4().hex
+    s, a1 = post_ap("/api/apuntarme", {"colegio": segunda, "dispositivo": d1}, "10.70.0.1")
+    import re as _re
+    check("apuntarse a un colegio devuelve un código de 6 caracteres sin letras confusas", s == 200 and _re.fullmatch(r"[2-9A-HJ-NP-Z]{6}", a1.get("codigo", "")) is not None, a1)
+    check("el colegio se identifica por su primera mesa, igual que en la lista de la web", a1.get("colegio") == grande[0], (a1.get("colegio"), grande[0]))
+    s, a2 = post_ap("/api/apuntarme", {"colegio": grande[0], "dispositivo": d1}, "10.70.0.1")
+    check("si el mismo navegador repite, se le recuerda su código", s == 200 and a2.get("ya_apuntado") and a2.get("codigo") == a1["codigo"], a2)
+    otro = cols28["079"][0] if cols28["079"][0][0] != grande[0] else cols28["079"][1]
+    s, a3 = post_ap("/api/apuntarme", {"colegio": otro[0], "dispositivo": d1}, "10.70.0.1")
+    check("el mismo navegador no puede apuntarse a otro colegio antes de 15 minutos", s == 429 and a3.get("error") == "espera" and 1 <= a3.get("minutos", 0) <= 15, (s, a3))
+    s, a4 = post_ap("/api/apuntarme", {"colegio": grande[0], "dispositivo": uuid.uuid4().hex}, "10.70.0.2")
+    check("otra persona puede apuntarse al mismo colegio", s == 200 and a4["codigo"] != a1["codigo"], a4)
+    s, a5 = post_ap("/api/apuntarme", {"colegio": "28-079-99-999-Z", "dispositivo": uuid.uuid4().hex}, "10.70.0.3")
+    check("un colegio que no existe se rechaza", s == 400, (s, a5))
+    cron()
+    s, pa = get("/api/public/apuntados/28.json"); s2, ra = get("/api/public/apuntados.json")
+    check("el cron publica cuántas personas hay en cada colegio", pa["colegios"].get(grande[0]) == 2, pa)
+    check("y el resumen de España (personas y colegios con alguien)", ra.get("personas", 0) >= 2 and ra["provincias"].get("28", {}).get("colegios", 0) >= 1, ra)
+    check("la lista pública no contiene códigos ni identificadores", a1["codigo"] not in json.dumps(pa) and d1 not in json.dumps(pa) and a1["codigo"] not in json.dumps(ra))
+    s, k1 = post_ap("/api/cancelar", {"codigo": a1["codigo"].lower()[:3] + "-" + a1["codigo"].lower()[3:]}, "10.70.0.9")
+    check("se cancela con el código (aunque se escriba en minúsculas o con guion)", s == 200 and k1.get("ok") and k1.get("colegio") == grande[0], (s, k1))
+    s, k2 = post_ap("/api/cancelar", {"codigo": a1["codigo"]}, "10.70.0.9")
+    check("cancelar dos veces no descuenta dos veces", s == 200 and k2.get("ya_cancelado"), k2)
+    s, k3 = post_ap("/api/cancelar", {"codigo": "ZZZZZ2"}, "10.70.0.9")
+    check("un código inexistente se rechaza", s == 404, (s, k3))
+    cron()
+    s, pa = get("/api/public/apuntados/28.json")
+    check("tras cancelar, el colegio cuenta una persona menos", pa["colegios"].get(grande[0]) == 1, pa)
+    s, a6 = post_ap("/api/apuntarme", {"colegio": grande[0], "dispositivo": d1}, "10.70.0.1")
+    check("tras cancelar, el navegador sigue esperando sus 15 minutos para otra reserva", s == 429, (s, a6))
+    n_ok = 0
+    for i in range(32):
+        s, r = post_ap("/api/apuntarme", {"colegio": cols28["079"][i + 2][0], "dispositivo": uuid.uuid4().hex}, "10.70.1.1"); n_ok += s == 200
+    check("una misma conexión no puede hacer más de 30 reservas por hora", n_ok == 30, n_ok)
+    for i in range(20): post_ap("/api/cancelar", {"codigo": "ZZZZZ3"}, "10.70.2.1")
+    s, k4 = post_ap("/api/cancelar", {"codigo": a4["codigo"]}, "10.70.2.1")
+    check("tras 20 intentos de cancelar seguidos, la conexión debe esperar", s == 429, (s, k4))
+    # El servidor y scripts/colegios.py agrupan igual las mesas en colegios
+    import random as _rnd
+    _rnd.seed(7); malos = []
+    for prov in ("08", "46", "41"):
+        cl = json.load(open(f"public/data/colegios/{prov}.json"))["municipios"]
+        for muni in _rnd.sample(sorted(cl), 3):
+            c = _rnd.choice(cl[muni]); s, r = post_ap("/api/apuntarme", {"colegio": c[0], "dispositivo": uuid.uuid4().hex}, f"10.71.{prov}.{int(muni) % 250}")
+            if r.get("colegio") != c[0]: malos.append((c[0], r))
+    check("el servidor reconoce como colegio la primera mesa de cada colegio de la lista", not malos, malos)
     print("\nRESULTADO:", "todo correcto" if ok else "HAY FALLOS")

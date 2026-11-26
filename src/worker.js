@@ -22,6 +22,10 @@ function iaDePrueba(buf) {
   }
   return { response: '{"es_acta": true, "inapropiada": false, "electores": null, "votantes": null, "nulos": null, "blanco": null, "votos": []}' };
 }
+// Estados de la lectura automática con los que una foto aún no se puede publicar sola (ver la cola «sin_leer» del panel)
+const SIN_LEER = ["pendiente", "leyendo", "forzada", "error", "omitida"];
+// Intentos de lectura automática de una misma foto antes de dejarla para la revisión manual
+const MAX_INTENTOS_IA = 6;
 const RE_MESA = /^(\d{2})-(\d{3})-(\d{2})-(\d{3,4})-([A-Z])$/;
 
 export default {
@@ -33,9 +37,11 @@ export default {
       if (url.pathname === "/api/envio" && req.method === "POST") return await recibirEnvio(req, env);
       if (url.pathname === "/api/denuncia" && req.method === "POST") return await recibirDenuncia(req, env);
       if (url.pathname === "/api/leer" && req.method === "POST") return await leerParaFormulario(req, env);
+      if (url.pathname === "/api/apuntarme" && req.method === "POST") return await recibirApuntado(req, env);
+      if (url.pathname === "/api/cancelar" && req.method === "POST") return await cancelarApuntado(req, env);
       let m;
       if ((m = url.pathname.match(/^\/api\/(foto|mini)\/([a-f0-9]{64})\.jpg$/))) return await servirFoto(req, env, ctx, m[1], m[2]);
-      if ((m = url.pathname.match(/^\/api\/public\/(resumen|decisiones|prov\/\d{2}|oficial\/\d{2})\.json$/))) return await servirPublico(req, env, ctx, m[1]);
+      if ((m = url.pathname.match(/^\/api\/public\/(resumen|decisiones|apuntados|apuntados\/\d{2}|prov\/\d{2}|oficial\/\d{2})\.json$/))) return await servirPublico(req, env, ctx, m[1]);
       return json({ error: "no_encontrado" }, 404);
     } catch (e) {
       console.error(e && e.stack || e);
@@ -43,7 +49,9 @@ export default {
     }
   },
   async scheduled(evt, env, ctx) {
-    ctx.waitUntil((async () => { if (iaActiva(env)) await leerPendientesIA(env); await recalcular(env); })());
+    // Dos tareas independientes: rehacer los datos del mapa no espera a que termine la lectura automática de fotos
+    // Las cifras de «Me apunto» también van aparte: son independientes de las actas.
+    ctx.waitUntil(Promise.all([recalcular(env), iaActiva(env) ? leerPendientesIA(env) : null, publicarApuntados(env)]));
   },
 };
 
@@ -59,7 +67,8 @@ const ahora = () => Date.now();
 function config(env) {
   let zonas = []; try { zonas = JSON.parse(env.ZONAS_DIFUMINADO || "[]"); } catch {}
   return { nombre: env.NOMBRE || "Recuento Ciudadano", abre: env.ABRE, totales_desde: env.TOTALES_DESDE || env.ABRE,
-    turnstile_sitekey: env.TURNSTILE_SITEKEY || "", zonas_difuminado: zonas, modo_pruebas: env.MODO_PRUEBAS === "1", lectura_ia: iaActiva(env) };
+    turnstile_sitekey: env.TURNSTILE_SITEKEY || "", zonas_difuminado: zonas, modo_pruebas: env.MODO_PRUEBAS === "1", lectura_ia: iaActiva(env),
+    apuntarse_hasta: env.APUNTARSE_HASTA || env.ABRE, minutos_entre_apuntados: Number(env.MINUTOS_ENTRE_APUNTADOS || 15) };
 }
 const abierto = (env) => env.MODO_PRUEBAS === "1" || ahora() >= Date.parse(env.ABRE);
 // Las cifras de votos y las fotos de las actas no se publican hasta que cierran todos los colegios (también en
@@ -84,6 +93,7 @@ export function validarCifras(c, cods, censo) {
 }
 export function firmaCifras(c, cods) { return [c.electores, c.votantes, c.nulos, c.blanco, ...[...cods].sort().map(k => `${k}:${c.cand[k]}`)].join("|"); }
 
+let ultimoFalloTurnstile = "";
 async function turnstileOK(env, token, ip) {
   if (!env.TURNSTILE_SECRET) return true; // sin configurar (desarrollo)
   // Solo en la versión de pruebas: los envíos simulados (ensayo del panel, prueba de carga) llevan esta marca en vez de un token real
@@ -92,6 +102,8 @@ async function turnstileOK(env, token, ip) {
   const f = new FormData(); f.append("secret", env.TURNSTILE_SECRET); f.append("response", token); if (ip) f.append("remoteip", ip);
   const r = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", { method: "POST", body: f });
   const d = await r.json().catch(() => ({}));
+  // En pruebas se apunta el motivo del rechazo, para poder diagnosticarlo (la respuesta lo devuelve como «detalle»)
+  if (!d.success) { ultimoFalloTurnstile = (d["error-codes"] || []).join(",") || "sin_respuesta"; console.log("Turnstile rechazado:", ultimoFalloTurnstile); }
   return !!d.success;
 }
 
@@ -105,12 +117,17 @@ async function recibirEnvio(req, env) {
   if (!(foto instanceof File) || !(mini instanceof File)) return json({ error: "falta_foto" }, 400);
   if (foto.size > 2_500_000 || mini.size > 250_000 || foto.size < 5_000) return json({ error: "tamano_foto" }, 400);
 
-  if (!(await turnstileOK(env, form.get("turnstile"), ip))) return json({ error: "verificacion", mensaje: "No se ha podido verificar que no eres un robot. Recarga la página." }, 403);
-
   const fotoBuf = await foto.arrayBuffer(); const miniBuf = await mini.arrayBuffer();
   const u8 = new Uint8Array(fotoBuf); if (u8[0] !== 0xff || u8[1] !== 0xd8) return json({ error: "formato_foto" }, 400);
   const hash = await sha256hex(fotoBuf);
   if (d.hash && d.hash !== hash) return json({ error: "huella_distinta" }, 400);
+  // Si esta misma foto (mismo archivo exacto) ya había entrado, es un reintento: por ejemplo, se cortó la conexión
+  // justo después de enviarla y la persona no vio la respuesta. Se contesta como un envío correcto, sin guardar nada.
+  // Se comprueba antes que la verificación antibots porque el reintento reutiliza el mismo «pase», que ya no vale.
+  const yaEstaba = await env.DB.prepare("SELECT mesa_id FROM envios WHERE hash = ?").bind(hash).first();
+  if (yaEstaba) return json({ ok: true, ya_enviada: true, hash, mesa_id: yaEstaba.mesa_id, avisos: [], foto_en_revision: false });
+
+  if (!(await turnstileOK(env, form.get("turnstile"), ip))) return json({ error: "verificacion", mensaje: "No se ha podido completar la verificación antirrobots. Vuelve a pulsar Enviar." }, 403);
 
   const mesaId = String(d.mesa_id || "").toUpperCase();
   let mesa = await env.DB.prepare("SELECT id, prov, censo, lat, lon, nueva FROM mesas WHERE id = ?").bind(mesaId).first();
@@ -127,7 +144,7 @@ async function recibirEnvio(req, env) {
   const cods = (await env.DB.prepare("SELECT codigo FROM candidaturas WHERE prov = ?").bind(mesa.prov).all()).results.map(r => r.codigo);
   const val = validarCifras(d.cifras, cods, mesa.censo);
   if (val.errores.some(e => e.startsWith("falta") || e.startsWith("cand_desconocida") || e === "formato")) return json({ error: "cifras_incompletas", detalle: val.errores }, 400);
-  if (!val.ok) return json({ error: "no_cuadra", detalle: val.errores, mensaje: "Las cuentas del acta no cuadran. Revisa las cifras copiadas." }, 400);
+  if (!val.ok) return json({ error: "no_cuadra", detalle: val.errores, mensaje: "Las cuentas no cuadran. Revisa las cifras. Si están bien copiadas, puede que haya un error en el propio acta: coméntaselo a la presidencia de la mesa." }, 400);
 
   // Comprobaciones de la imagen (foto grande y miniatura): zona de nombres tapada y aspecto de documento
   let zonas = []; try { zonas = JSON.parse(env.ZONAS_DIFUMINADO || "[]"); } catch {}
@@ -146,7 +163,7 @@ async function recibirEnvio(req, env) {
     env.DB.prepare("SELECT COUNT(DISTINCT mesa_id) AS n FROM envios WHERE ip_hash = ? AND ts > ?").bind(ipHash, t - 60 * 60 * 1000),
     env.DB.prepare("SELECT COUNT(*) AS n FROM envios WHERE dhash = ? AND mesa_id <> ?").bind(String(d.dhash || "-"), mesa.id),
   ]);
-  if (dup.results.length) return json({ error: "duplicada", mensaje: "Esta foto ya se había enviado.", mesa_id: mesa.id }, 409);
+  if (dup.results.length) return json({ ok: true, ya_enviada: true, hash, mesa_id: mesa.id, avisos: [], foto_en_revision: false });
   if (nIp.results[0].n >= Number(env.MAX_ENVIOS_IP_10MIN || 300) || nDisp.results[0].n >= Number(env.MAX_ENVIOS_DISPOSITIVO_10MIN || 10))
     return json({ error: "demasiados_envios", mensaje: "Demasiados envíos seguidos. Espera unos minutos." }, 429);
 
@@ -222,6 +239,7 @@ async function recibirDenuncia(req, env) {
   const b = await req.json().catch(() => ({}));
   if (!/^[a-f0-9]{64}$/.test(b.hash || "")) return json({ error: "parametros" }, 400);
   const ip = req.headers.get("cf-connecting-ip") || "0.0.0.0";
+  if (!(await turnstileOK(env, b.turnstile, ip))) return json({ error: "verificacion" }, 403);
   const ipHash = await huellaIP(env, ip);
   const t = ahora();
   const rec = await env.DB.prepare("SELECT COUNT(*) AS n FROM denuncias WHERE ip_hash = ? AND ts > ?").bind(ipHash, t - 600000).first();
@@ -238,10 +256,140 @@ async function recibirDenuncia(req, env) {
   ]);
   return json({ ok: true });
 }
+// ---------------------------------------------------------------- «Me apunto»: personas que irán a fotografiar un colegio
+// Cualquiera puede apuntarse a un colegio electoral (un local de votación, con todas sus mesas) para decir que irá a
+// fotografiar sus actas. No se pide ningún dato: se guardan el colegio, la hora, el identificador del navegador y la
+// huella de la conexión (los mismos que en los envíos), solo para frenar abusos. A cambio se entrega un código de
+// 6 caracteres que sirve para cancelar. La web muestra cuántas personas hay apuntadas en cada colegio.
+//
+// Un colegio se identifica por el código de su primera mesa (la de código más bajo entre las mesas del mismo municipio
+// con el mismo local y la misma dirección). scripts/colegios.py prepara la lista de la web con la misma regla.
+const ALFABETO_CODIGO = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";   // sin 0/O ni 1/I, que se confunden al copiarlos
+// Clave de un colegio: nombre del local y calle (sin número ni código postal), en mayúsculas y con espacios simples.
+// Así un mismo local que figura con dos portales de la misma calle («C/ MAYOR 151» y «C/ MAYOR 153») es un solo colegio.
+const textoSimple = (s) => String(s || "").trim().replace(/\s+/g, " ").toUpperCase();
+export const claveColegio = (local, direccion) => textoSimple(local) + "|" + textoSimple(direccion).replace(/\s*\d+[A-Z]?\s*(,.*)?$/, "");
+function nuevoCodigo() { const b = crypto.getRandomValues(new Uint8Array(6)); return [...b].map(x => ALFABETO_CODIGO[x % 32]).join(""); }   // 32⁶ ≈ 1.070 millones de códigos
+export const limpiarCodigo = (c) => String(c || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+// Las reservas se cierran cuando se abren los envíos (domingo a las 20:00). En pruebas, siempre abiertas.
+const apuntarseAbierto = (env) => env.MODO_PRUEBAS === "1" || ahora() < Date.parse(env.APUNTARSE_HASTA || env.ABRE);
+// Mesas de un municipio, leídas por el índice del código (todas empiezan por «PP-MMM-»)
+const mesasDeMunicipio = (env, prov, muni) => env.DB.prepare("SELECT id, local, direccion FROM mesas WHERE id >= ? AND id < ? AND nueva = 0")
+  .bind(`${prov}-${muni}-`, `${prov}-${muni}-~`).all().then(r => r.results);
+// Código del colegio de una mesa: el de la primera mesa del mismo local
+function colegioDe(mesas, id) {
+  const m = mesas.find(x => x.id === id); if (!m) return null; const k = claveColegio(m.local, m.direccion);
+  return mesas.filter(x => claveColegio(x.local, x.direccion) === k).map(x => x.id).sort()[0];
+}
+// Las tablas de «Me apunto» se crean solas la primera vez que hacen falta (una vez por instancia del Worker), para no
+// depender de ejecutar a mano una migración. Son las mismas de schema.sql y sql/cambios/2026-11-26_apuntados.sql.
+let tablasApuntados = null;
+function asegurarTablasApuntados(env) {
+  if (!tablasApuntados) tablasApuntados = env.DB.batch([
+    "CREATE TABLE IF NOT EXISTS apuntados (codigo TEXT PRIMARY KEY, colegio TEXT NOT NULL, prov TEXT NOT NULL, dispositivo TEXT NOT NULL, ip_hash TEXT NOT NULL, ts INTEGER NOT NULL, cancelado INTEGER)",
+    "CREATE INDEX IF NOT EXISTS apuntados_colegio ON apuntados(prov, colegio)",
+    "CREATE INDEX IF NOT EXISTS apuntados_disp ON apuntados(dispositivo, ts)",
+    "CREATE INDEX IF NOT EXISTS apuntados_ip ON apuntados(ip_hash, ts)",
+    "CREATE TABLE IF NOT EXISTS apuntados_cambios (prov TEXT PRIMARY KEY, ts INTEGER NOT NULL)",
+    "CREATE TABLE IF NOT EXISTS intentos_cancelar (ip_hash TEXT NOT NULL, ts INTEGER NOT NULL)",
+    "CREATE INDEX IF NOT EXISTS intentos_cancelar_ip ON intentos_cancelar(ip_hash, ts)",
+  ].map(q => env.DB.prepare(q))).catch(e => { tablasApuntados = null; throw e; });
+  return tablasApuntados;
+}
+async function recibirApuntado(req, env) {
+  await asegurarTablasApuntados(env);
+  if (!apuntarseAbierto(env)) return json({ error: "cerrado", mensaje: "Ya no se puede apuntar: los colegios han cerrado. Si estás cerca de uno, fotografía sus actas y súbelas." }, 403);
+  const b = await req.json().catch(() => ({}));
+  const pedido = String(b.colegio || "").toUpperCase(); const m = pedido.match(RE_MESA);
+  if (!m) return json({ error: "colegio_desconocido" }, 400);
+  const ip = req.headers.get("cf-connecting-ip") || "0.0.0.0";
+  if (!(await turnstileOK(env, b.turnstile, ip))) return json({ error: "verificacion", ...(env.MODO_PRUEBAS === "1" ? { detalle: b.turnstile ? ultimoFalloTurnstile : "sin_pase" } : {}) }, 403);
+  const colegio = colegioDe(await mesasDeMunicipio(env, m[1], m[2]), pedido);
+  if (!colegio) return json({ error: "colegio_desconocido" }, 400);
+  const disp = String(b.dispositivo || "").slice(0, 64) || "sin-id";
+  const ipHash = await huellaIP(env, ip); const t = ahora();
+  const minutos = Number(env.MINUTOS_ENTRE_APUNTADOS || 15);
+  const [ya, ultimo, nIp] = await env.DB.batch([
+    env.DB.prepare("SELECT codigo FROM apuntados WHERE dispositivo = ? AND colegio = ? AND cancelado IS NULL").bind(disp, colegio),
+    env.DB.prepare("SELECT MAX(ts) AS ts FROM apuntados WHERE dispositivo = ? AND ts > ?").bind(disp, t - minutos * 60000),
+    env.DB.prepare("SELECT COUNT(*) AS n FROM apuntados WHERE ip_hash = ? AND ts > ?").bind(ipHash, t - 3600000),
+  ]);
+  // Si este navegador ya estaba apuntado a este colegio, se le recuerda su código en vez de crear otro
+  if (ya.results.length) return json({ ok: true, ya_apuntado: true, codigo: ya.results[0].codigo, colegio });
+  if (ultimo.results[0].ts) {
+    const faltan = Math.max(1, Math.ceil((ultimo.results[0].ts + minutos * 60000 - t) / 60000));
+    return json({ error: "espera", minutos: faltan, mensaje: `Para que nadie pueda apuntarse a colegios a los que no va a ir, cada navegador solo puede apuntarse a un colegio cada ${minutos} minutos. Podrás apuntarte a otro dentro de ${faltan} minuto${faltan === 1 ? "" : "s"}. Disculpa las molestias.` }, 429);
+  }
+  if (nIp.results[0].n >= Number(env.MAX_APUNTADOS_IP_HORA || 30)) return json({ error: "demasiados", mensaje: "Se han hecho muchas reservas seguidas desde tu conexión. Vuelve a intentarlo dentro de un rato." }, 429);
+  for (let i = 0; i < 5; i++) {   // si el código ya existiera (casi imposible), se prueba con otro
+    const codigo = nuevoCodigo();
+    const r = await env.DB.prepare("INSERT OR IGNORE INTO apuntados (codigo, colegio, prov, dispositivo, ip_hash, ts) VALUES (?,?,?,?,?,?)").bind(codigo, colegio, m[1], disp, ipHash, t).run();
+    if (r.meta.changes) { await marcarApuntados(env, m[1], t); return json({ ok: true, codigo, colegio }); }
+  }
+  return json({ error: "error_interno" }, 500);
+}
+async function cancelarApuntado(req, env) {
+  await asegurarTablasApuntados(env);
+  const b = await req.json().catch(() => ({})); const codigo = limpiarCodigo(b.codigo);
+  if (codigo.length !== 6) return json({ error: "codigo", mensaje: "El código tiene 6 caracteres." }, 400);
+  const ip = req.headers.get("cf-connecting-ip") || "0.0.0.0";
+  if (!(await turnstileOK(env, b.turnstile, ip))) return json({ error: "verificacion", ...(env.MODO_PRUEBAS === "1" ? { detalle: b.turnstile ? ultimoFalloTurnstile : "sin_pase" } : {}) }, 403);
+  // Límite de intentos por conexión, para que nadie pueda ir probando códigos al azar
+  const ipHash = await huellaIP(env, ip); const t = ahora();
+  const n = await env.DB.prepare("SELECT COUNT(*) AS n FROM intentos_cancelar WHERE ip_hash = ? AND ts > ?").bind(ipHash, t - 600000).first();
+  if (n.n >= Number(env.MAX_CANCELAR_IP_10MIN || 20)) return json({ error: "demasiados", mensaje: "Demasiados intentos seguidos. Espera unos minutos." }, 429);
+  await env.DB.prepare("INSERT INTO intentos_cancelar (ip_hash, ts) VALUES (?,?)").bind(ipHash, t).run();
+  const a = await env.DB.prepare("SELECT colegio, prov, cancelado FROM apuntados WHERE codigo = ?").bind(codigo).first();
+  if (!a) return json({ error: "no_encontrado", mensaje: "No hay ninguna reserva con ese código. Revisa que esté bien copiado." }, 404);
+  if (a.cancelado) return json({ ok: true, ya_cancelado: true, colegio: a.colegio });
+  await env.DB.prepare("UPDATE apuntados SET cancelado = ? WHERE codigo = ?").bind(t, codigo).run();
+  await marcarApuntados(env, a.prov, t);
+  return json({ ok: true, colegio: a.colegio });
+}
+// Apunta que una provincia ha cambiado, para que el cron rehaga sus cifras de apuntados
+const marcarApuntados = (env, prov, t) => env.DB.prepare("INSERT INTO apuntados_cambios (prov, ts) VALUES (?,?) ON CONFLICT(prov) DO UPDATE SET ts = excluded.ts").bind(prov, t).run();
+// Cada minuto (cron): personas apuntadas por colegio en las provincias que han cambiado, y el resumen de toda España.
+// public/apuntados/PP.json: { prov, generado, colegios: { id_colegio: personas } }
+// public/apuntados.json:    { generado, personas, colegios, provincias: { PP: { personas, colegios } } }
+//   («colegios» = colegios con al menos una persona; el total de colegios de cada provincia está en public/data/colegios/)
+export async function publicarApuntados(env) {
+  await asegurarTablasApuntados(env);
+  const cambios = (await env.DB.prepare("SELECT prov, ts FROM apuntados_cambios").all()).results;
+  const resumen = await env.FOTOS.head("public/apuntados.json");
+  if (!cambios.length && resumen) return { provincias: 0 };
+  for (const c of cambios) {
+    const r = (await env.DB.prepare("SELECT colegio, COUNT(*) AS n FROM apuntados WHERE prov = ? AND cancelado IS NULL GROUP BY colegio").bind(c.prov).all()).results;
+    await env.FOTOS.put(`public/apuntados/${c.prov}.json`, JSON.stringify({ prov: c.prov, generado: ahora(), colegios: Object.fromEntries(r.map(x => [x.colegio, x.n])) }), { httpMetadata: { contentType: "application/json" } });
+    await env.DB.prepare("DELETE FROM apuntados_cambios WHERE prov = ? AND ts <= ?").bind(c.prov, c.ts).run();
+  }
+  const pr = (await env.DB.prepare("SELECT prov, COUNT(*) AS personas, COUNT(DISTINCT colegio) AS colegios FROM apuntados WHERE cancelado IS NULL GROUP BY prov").all()).results;
+  const provincias = Object.fromEntries(pr.map(x => [x.prov, { personas: x.personas, colegios: x.colegios }]));
+  await env.FOTOS.put("public/apuntados.json", JSON.stringify({ generado: ahora(), abierto: apuntarseAbierto(env), personas: pr.reduce((a, x) => a + x.personas, 0), colegios: pr.reduce((a, x) => a + x.colegios, 0), provincias }),
+    { httpMetadata: { contentType: "application/json" } });
+  return { provincias: cambios.length };
+}
+// Solo en pruebas: apunta personas inventadas en una parte de los colegios de una provincia, para ver el mapa con datos
+async function apuntadosDemo(env, prov, fraccion) {
+  await asegurarTablasApuntados(env);
+  const mesas = (await env.DB.prepare("SELECT id, muni, local, direccion FROM mesas WHERE prov = ? AND nueva = 0 ORDER BY id").bind(prov).all()).results;
+  const colegios = new Map(); for (const m of mesas) { const k = m.muni + "|" + claveColegio(m.local, m.direccion); if (!colegios.has(k)) colegios.set(k, m.id); }
+  const ganas = Math.random() ** 1.5;          // unas provincias se animan más que otras
+  const st = [], t = ahora();
+  for (const id of colegios.values()) {
+    if (Math.random() > fraccion * 2 * ganas) continue;
+    const n = 1 + Math.floor(Math.random() ** 3 * 6);
+    for (let i = 0; i < n; i++) st.push(env.DB.prepare("INSERT OR IGNORE INTO apuntados (codigo, colegio, prov, dispositivo, ip_hash, ts) VALUES (?,?,?,?,?,?)").bind(nuevoCodigo(), id, prov, "demo", "demo", t));
+  }
+  for (let i = 0; i < st.length; i += 50) await env.DB.batch(st.slice(i, i + 50));
+  await marcarApuntados(env, prov, t);
+  return { ok: true, prov, personas: st.length };
+}
+
 async function servirPublico(req, env, ctx, nombre) {
   return conCache(req, ctx, env.MODO_PRUEBAS === "1" ? 1 : 30, async () => {
     const o = await env.FOTOS.get(`public/${nombre}.json`);
     if (!o) return json(nombre === "resumen" ? { generado: null, provincias: [], nacional: null } : nombre === "decisiones" ? { decisiones: [] }
+      : nombre === "apuntados" ? { generado: null, personas: 0, colegios: 0, provincias: {} } : nombre.startsWith("apuntados/") ? { prov: nombre.slice(10), colegios: {} }
       : nombre.startsWith("oficial/") ? { prov: nombre.slice(8), municipios: {}, mesas: {} } : { mesas: [] }, 200);
     return new Response(o.body, { headers: JSONH });
   });
@@ -253,9 +401,11 @@ export function calcularConsenso(envios, umbralDenuncias = 2) {
   if (!envios.length) return null;
   const validadas = visibles.filter(e => e.estado === "valida").sort((a, b) => b.ts - a.ts);
   // Fotos públicas: las validadas a mano y, en mesas verificadas, las del grupo coincidente sin denuncias suficientes.
+  // Ninguna foto se publica sin lectura automática o revisión manual: hace falta que la lectura automática esté hecha
+  // (y no la haya marcado) o que la foto se haya aprobado en el panel. Mientras tanto, sus cifras cuentan igual.
   const sinDenuncia = (e) => { const fl = JSON.parse(e.flags || "[]");
     if (fl.includes("foto_aprobada")) return true; // revisada en el panel: se publica aunque tenga avisos o denuncias
-    return (e.denuncias || 0) < umbralDenuncias && !["pendiente", "en_espera", "forzada"].includes(e.ia_estado) && !fl.some(f => CUARENTENA.includes(f)); };
+    return (e.denuncias || 0) < umbralDenuncias && e.ia_estado === "hecha" && !fl.some(f => CUARENTENA.includes(f)); };
   if (validadas.length) {
     const ref = validadas[0].firma;
     const pub = visibles.filter(e => (e.firma === ref && e.cuadra === 1 && sinDenuncia(e)) || (e.estado === "valida" && sinDenuncia(e))).map(e => e.hash);
@@ -307,7 +457,7 @@ async function rellenarDemo(env, prov, fraccion) {
   // D1 admite hasta 100 valores por consulta: 7 filas de 13 columnas por INSERT, 33 mesas por INSERT de pendientes
   const st = [];
   for (let i = 0; i < filas.length; i += 7) { const l = filas.slice(i, i + 7);
-    st.push(env.DB.prepare(`INSERT INTO envios (hash, mesa_id, prov, cifras, firma, cuadra, errores, dispositivo, ip_hash, dhash, ts_foto, ts, flags) VALUES ${l.map(() => "(?,?,?,?,?,?,?,?,?,?,?,?,?)").join(",")}`).bind(...l.flat())); }
+    st.push(env.DB.prepare(`INSERT INTO envios (hash, mesa_id, prov, cifras, firma, cuadra, errores, dispositivo, ip_hash, dhash, ts_foto, ts, flags, ia_estado) VALUES ${l.map(() => "(?,?,?,?,?,?,?,?,?,?,?,?,?,'hecha')").join(",")}`).bind(...l.flat())); }
   for (let i = 0; i < tocadas.length; i += 33) { const l = tocadas.slice(i, i + 33);
     st.push(env.DB.prepare(`INSERT INTO pendientes (mesa_id, prov, ts) VALUES ${l.map(() => "(?,?,?)").join(",")} ON CONFLICT(mesa_id) DO UPDATE SET ts = excluded.ts`).bind(...l.flatMap(id => [id, prov, t]))); }
   for (let i = 0; i < st.length; i += 50) await env.DB.batch(st.slice(i, i + 50));
@@ -435,6 +585,20 @@ async function admin(req, env, url) {
     let sql = `SELECT m.id AS mesa_id, m.prov, m.muni, m.municipio, m.censo, m.local, m.nueva, c.estado, c.cifras, c.n_envios, c.n_indep, MIN(e.ts) AS t
       FROM envios e JOIN mesas m ON m.id = e.mesa_id LEFT JOIN consenso c ON c.mesa_id = m.id
       WHERE e.ia_estado = 'en_espera' AND e.estado = 'pendiente' AND e.flags NOT LIKE '%foto_aprobada%'`;
+    if (prov) { sql += " AND e.prov = ?"; args.push(prov); }
+    sql += " GROUP BY m.id ORDER BY t LIMIT 30";
+    return json({ mesas: await conEnvios(env, (await env.DB.prepare(sql).bind(...args).all()).results) });
+  }
+  if (p === "cola" && req.method === "GET" && url.searchParams.get("estado") === "sin_leer") {
+    // Fotos de mesas ya verificadas que se publicarían, pero que la lectura automática aún no ha podido leer (está
+    // saturada, ha fallado varias veces o se ha llegado al tope). Se pueden aprobar a mano; cuando la lectura automática
+    // las lee, salen solas de esta lista (y si las marca, pasan a «Fotos sospechosas»). Las más antiguas primero.
+    const prov = url.searchParams.get("prov"); const args = [];
+    let sql = `SELECT m.id AS mesa_id, m.prov, m.muni, m.municipio, m.censo, m.local, m.nueva, c.estado, c.cifras, c.n_envios, c.n_indep, MIN(e.ts) AS t
+      FROM envios e JOIN consenso c ON c.mesa_id = e.mesa_id JOIN mesas m ON m.id = e.mesa_id
+      WHERE c.estado IN ('verificada','validada') AND e.estado != 'invalida' AND e.ia_estado IN (${SIN_LEER.map(() => "?").join(",")})
+        AND e.flags NOT LIKE '%foto_aprobada%' AND ${CUARENTENA.map(() => "e.flags NOT LIKE ?").join(" AND ")}`;
+    args.push(...SIN_LEER, ...CUARENTENA.map(f => `%"${f}"%`));
     if (prov) { sql += " AND e.prov = ?"; args.push(prov); }
     sql += " GROUP BY m.id ORDER BY t LIMIT 30";
     return json({ mesas: await conEnvios(env, (await env.DB.prepare(sql).bind(...args).all()).results) });
@@ -598,6 +762,15 @@ async function admin(req, env, url) {
     if (!/^\d\d$/.test(String(b.prov || ""))) return json({ error: "provincia" }, 400);
     return json(await rellenarDemo(env, String(b.prov), Math.min(0.5, Math.max(0.01, Number(b.fraccion) || 0.1))));
   }
+  if (p === "apuntados_demo" && req.method === "POST") {
+    // Inventa personas apuntadas a colegios de una provincia (para ver «Me apunto» con datos). Solo en MODO_PRUEBAS = "1".
+    if (env.MODO_PRUEBAS !== "1") return json({ error: "solo_en_modo_pruebas" }, 403);
+    const b = await req.json().catch(() => ({})); if (b.confirmar !== "RELLENAR") return json({ error: "falta_confirmacion" }, 400);
+    if (!/^\d\d$/.test(String(b.prov || ""))) return json({ error: "provincia" }, 400);
+    const r = await apuntadosDemo(env, String(b.prov), Math.min(0.9, Math.max(0.01, Number(b.fraccion) || 0.3)));
+    if (b.publicar) await publicarApuntados(env);
+    return json(r);
+  }
   if (p === "oficial" && req.method === "POST") {
     // Carga el dato oficial de Interior de una provincia (ya convertido con scripts/oficial_desde_interior.py o con el
     // lector de la noche electoral). Sustituye entero al que hubiera de esa provincia. La web lo compara con las actas.
@@ -621,26 +794,30 @@ async function admin(req, env, url) {
     // Borra todos los envíos, fotos y JSON públicos de las pruebas. Solo funciona con MODO_PRUEBAS = "1".
     if (env.MODO_PRUEBAS !== "1") return json({ error: "solo_en_modo_pruebas" }, 403);
     const b = await req.json().catch(() => ({})); if (b.confirmar !== "VACIAR") return json({ error: "falta_confirmacion" }, 400);
-    await env.DB.batch(["DELETE FROM envios", "DELETE FROM denuncias", "DELETE FROM lecturas", "DELETE FROM contador", "DELETE FROM consenso", "DELETE FROM pendientes", "DELETE FROM decisiones", "DELETE FROM mesas WHERE de_usuario = 1"].map(q => env.DB.prepare(q)));
+    await asegurarTablasApuntados(env);
+    await env.DB.batch(["DELETE FROM envios", "DELETE FROM denuncias", "DELETE FROM lecturas", "DELETE FROM contador", "DELETE FROM consenso", "DELETE FROM pendientes", "DELETE FROM decisiones", "DELETE FROM mesas WHERE de_usuario = 1",
+      "DELETE FROM apuntados", "DELETE FROM apuntados_cambios", "DELETE FROM intentos_cancelar"].map(q => env.DB.prepare(q)));
     let borrados = 0;
     for (const prefix of ["foto/", "mini/", "public/"]) {
       let cursor;
       do { const l = await env.FOTOS.list({ prefix, cursor, limit: 1000 }); const keys = l.objects.map(o => o.key);
            if (keys.length) { await env.FOTOS.delete(keys); borrados += keys.length; } cursor = l.truncated ? l.cursor : undefined; } while (cursor);
     }
-    await publicarResumen(env); await publicarDecisiones(env);
+    await publicarResumen(env); await publicarDecisiones(env); await publicarApuntados(env);
     return json({ ok: true, objetos_borrados: borrados });
   }
   if (p === "estadisticas" && req.method === "GET") {
-    const [a, b, c, dd, ee] = await env.DB.batch([
+    await asegurarTablasApuntados(env);
+    const [a, b, c, dd, ee, ap] = await env.DB.batch([
       env.DB.prepare("SELECT COUNT(*) AS envios, COUNT(DISTINCT mesa_id) AS mesas, MAX(ts) AS ultimo FROM envios"),
       env.DB.prepare("SELECT estado, COUNT(*) AS n FROM consenso GROUP BY estado"),
       env.DB.prepare("SELECT COUNT(*) AS n FROM pendientes"),
-      env.DB.prepare("SELECT SUM(ia_estado IN ('pendiente','forzada')) AS n, SUM(ia_estado = 'en_espera') AS espera FROM envios"),
+      env.DB.prepare("SELECT SUM(ia_estado IN ('pendiente','forzada','leyendo')) AS n, SUM(ia_estado = 'en_espera') AS espera, SUM(ia_estado IN ('error','omitida')) AS sin_leer FROM envios"),
       env.DB.prepare("SELECT COALESCE(MAX(n), 0) AS n FROM contador WHERE clave = 'lecturas_ia'"),
+      env.DB.prepare("SELECT COUNT(*) AS n, COUNT(DISTINCT colegio) AS colegios FROM apuntados WHERE cancelado IS NULL"),
     ]);
-    return json({ ...a.results[0], estados: b.results, pendientes_recalculo: c.results[0].n, lecturas_pendientes: dd.results[0].n || 0, fotos_en_espera: dd.results[0].espera || 0, lecturas_ia: ee.results[0].n, tope_lecturas_ia: Number(env.MAX_LECTURAS_IA || 100000),
-      clave_ip_ok: !!env.SAL_IP && env.SAL_IP.length >= 12 });
+    return json({ ...a.results[0], estados: b.results, pendientes_recalculo: c.results[0].n, lecturas_pendientes: dd.results[0].n || 0, fotos_en_espera: dd.results[0].espera || 0, fotos_no_leidas: dd.results[0].sin_leer || 0, lecturas_ia: ee.results[0].n, tope_lecturas_ia: Number(env.MAX_LECTURAS_IA || 100000),
+      apuntados: ap.results[0].n, colegios_con_apuntados: ap.results[0].colegios, clave_ip_ok: !!env.SAL_IP && env.SAL_IP.length >= 12 });
   }
   return json({ error: "no_encontrado" }, 404);
 }
@@ -770,7 +947,11 @@ ${lista}`;
   const entrada = modelo.includes("llama-3.2")
     ? { messages: [sistema, { role: "user", content: prompt }], image: datosFoto }
     : { messages: [sistema, { role: "user", content: [{ type: "text", text: prompt }, { type: "image_url", image_url: { url: datosFoto } }] }] };
-  const r = iaSimulada(env) ? iaDePrueba(fotoBuf) : await env.AI.run(modelo, { ...entrada, max_tokens: 900, temperature: 0 });
+  let r;
+  try { r = iaSimulada(env) ? iaDePrueba(fotoBuf) : await env.AI.run(modelo, { ...entrada, max_tokens: 900, temperature: 0 }); }
+  catch (e) { const err = new Error("ia_no_disponible: " + String(e && e.message || e).slice(0, 300)); err.sinCoste = true; throw err; }
+  // En pruebas locales, una foto con el comentario {"_falla": true} simula que el servicio está saturado
+  if (iaSimulada(env) && /"_falla":\s*true/.test(String(r && r.response))) { const err = new Error("ia_no_disponible: simulado"); err.sinCoste = true; throw err; }
   const o = jsonDeRespuesta(r && (r.response ?? r.result?.response ?? r.choices?.[0]?.message?.content));
   const n = (v) => (Number.isInteger(v) && v >= 0 ? v : (typeof v === "string" && /^\d+$/.test(v.trim()) ? Number(v) : null));
   const fiab = {};
@@ -819,6 +1000,11 @@ async function hayCupoIA(env) {
   const r = await env.DB.prepare("INSERT INTO contador (clave, n) VALUES ('lecturas_ia', 1) ON CONFLICT(clave) DO UPDATE SET n = n + 1 WHERE n < ? RETURNING n").bind(tope).first();
   return !!r;
 }
+// Si el servicio de lectura no llega a leer la foto (por ejemplo, porque está saturado), no se cobra: se devuelve al contador,
+// para que el tope cuente solo las lecturas hechas.
+async function devolverCupoIA(env) {
+  await env.DB.prepare("UPDATE contador SET n = n - 1 WHERE clave = 'lecturas_ia' AND n > 0").run();
+}
 // El formulario pide la lectura en cuanto la persona elige la foto (mientras copia las cifras).
 async function leerParaFormulario(req, env) {
   if (!iaActiva(env)) return json({ error: "desactivada" }, 404);
@@ -840,25 +1026,31 @@ async function leerParaFormulario(req, env) {
   if (ya && !modeloPrueba) return json({ hash, lectura: JSON.parse(ya.lectura) });
   const n = await env.DB.prepare("SELECT COUNT(*) AS n FROM lecturas WHERE ip_hash = ? AND ts > ?").bind(ipHash, ahora() - 600000).first();
   if (n.n >= Number(env.MAX_LECTURAS_IP_10MIN || 300)) return json({ error: "demasiadas_lecturas" }, 429);
+  if (!(await turnstileOK(env, form.get("turnstile"), ip))) return json({ error: "verificacion" }, 403);
   if (!(await hayCupoIA(env))) return json({ error: "tope_alcanzado" }, 429);
   // En la versión de pruebas se devuelve también el motivo del fallo, para poder ajustar la lectura; en la pública, no
-  let lectura; try { lectura = await leerConIA(env, buf, prov, modeloPrueba); } catch (e) { console.error("IA", e); return json({ error: "lectura_fallida", ...(env.MODO_PRUEBAS === "1" ? { detalle: String(e && e.message || e).slice(0, 600) } : {}) }, 502); }
+  let lectura; try { lectura = await leerConIA(env, buf, prov, modeloPrueba); } catch (e) { console.error("IA", e); if (e.sinCoste) await devolverCupoIA(env); return json({ error: "lectura_fallida", ...(env.MODO_PRUEBAS === "1" ? { detalle: String(e && e.message || e).slice(0, 600) } : {}) }, 502); }
   if (modeloPrueba) return json({ hash, lectura });
   await env.DB.prepare("INSERT OR REPLACE INTO lecturas (hash, lectura, ip_hash, ts) VALUES (?,?,?,?)").bind(hash, JSON.stringify(lectura), ipHash, ahora()).run();
   return json({ hash, lectura });
 }
 // El cron lee las fotos enviadas sin lectura previa (por ejemplo, de quien se salta la web). Hasta entonces no se publican.
+// Va aparte del recálculo del mapa, así que una lectura lenta no retrasa los resultados.
 async function leerPendientesIA(env) {
   // Solo se gasta en mesas que aún no están verificadas:
   //  - si la mesa ya está verificada o validada y tiene 2 fotos leídas de esa versión, las fotos nuevas quedan "en_espera" (sin leer ni publicar; las cifras
   //    cuentan igual) y se revisan a mano desde la cola "Fotos en espera" del panel;
   //  - si llega una foto con otras cifras, la mesa pasa a conflicto y entonces sí se leen sus fotos en espera;
   //  - antes de verificarse, como mucho FOTOS_LEIDAS_POR_VERSION fotos leídas con las mismas cifras (por si llegan muchas a la vez);
-  //  - las que se fuerzan desde el panel van primero.
-  const N = Number(env.FOTOS_LEIDAS_POR_VERSION || 3);
+  //  - van primero las que se fuerzan desde el panel y después las de mesas verificadas (son las que se publicarían).
+  // Si una lectura falla (por ejemplo, el servicio está saturado), la foto se vuelve a intentar en los minutos siguientes,
+  // hasta MAX_INTENTOS_IA veces; después queda para la revisión manual (cola «Fotos aún sin leer» del panel).
+  const t0 = ahora(); const N = Number(env.FOTOS_LEIDAS_POR_VERSION || 3);
+  // Fotos que se quedaron a medio leer (la tarea se cortó): vuelven a la lista
+  await env.DB.prepare("UPDATE envios SET ia_estado = 'pendiente' WHERE ia_estado = 'leyendo' AND ia_ts < ?").bind(t0 - 5 * 60 * 1000).run();
   const cand = (await env.DB.prepare(`SELECT e.hash, e.mesa_id, e.prov, e.flags, e.firma, e.ia_estado, c.estado AS mesa_estado FROM envios e LEFT JOIN consenso c ON c.mesa_id = e.mesa_id
     WHERE e.ia_estado IN ('pendiente','forzada') OR (e.ia_estado = 'en_espera' AND c.estado IN ('conflicto','revision'))
-    ORDER BY (e.ia_estado = 'forzada') DESC, (e.ia_estado = 'en_espera') DESC, e.ts LIMIT 150`).all()).results;
+    ORDER BY (e.ia_estado = 'forzada') DESC, (c.estado IN ('verificada','validada')) DESC, (e.ia_estado = 'en_espera') DESC, e.ts LIMIT 150`).all()).results;
   const mesas = [...new Set(cand.map(e => e.mesa_id))]; const leidas = new Map();
   for (let i = 0; i < mesas.length; i += 90) {
     const ids = mesas.slice(i, i + 90);
@@ -872,13 +1064,21 @@ async function leerPendientesIA(env) {
     // en mesas verificadas se leen igualmente las 2 primeras fotos de cada versión (las que se publican); el resto espera
     if ((verificada && n >= 2) || n >= N) { if (e.ia_estado !== "en_espera") espera.push(e.hash); } else { pend.push(e); leidas.set(k, n + 1); } }
   for (let i = 0; i < espera.length; i += 90) { const h = espera.slice(i, i + 90);
-    await env.DB.prepare(`UPDATE envios SET ia_estado = 'en_espera' WHERE hash IN (${h.map(() => "?").join(",")})`).bind(...h).run(); }
+    await env.DB.prepare(`UPDATE envios SET ia_estado = 'en_espera' WHERE hash IN (${h.map(() => "?").join(",")}) AND ia_estado = 'pendiente'`).bind(...h).run(); }
   for (let i = 0; i < pend.length; i += 15) {
-    await Promise.all(pend.slice(i, i + 15).map(async (e) => {
+    // Sin empezar tandas nuevas pasados 45 s: la siguiente tarea (dentro de un minuto) sigue por donde se quedó
+    if (ahora() - t0 > 45000) break;
+    const tanda = pend.slice(i, i + 15);
+    // Se reservan antes de leerlas («leyendo»): si otra tarea coincide en el tiempo, se las salta y no se leen dos veces
+    const reservadas = (await env.DB.prepare(`UPDATE envios SET ia_estado = 'leyendo', ia_ts = ?, ia_intentos = ia_intentos + 1
+      WHERE hash IN (${tanda.map(() => "?").join(",")}) AND ia_estado IN ('pendiente','forzada','en_espera') RETURNING hash, ia_intentos`).bind(ahora(), ...tanda.map(e => e.hash)).all()).results;
+    const intentos = new Map(reservadas.map(r => [r.hash, r.ia_intentos]));
+    await Promise.all(tanda.filter(e => intentos.has(e.hash)).map(async (e) => {
       try {
-        const o = await env.FOTOS.get(`foto/${e.hash}.jpg`); if (!o) return;
+        const o = await env.FOTOS.get(`foto/${e.hash}.jpg`);
+        if (!o) { await env.DB.prepare("UPDATE envios SET ia_estado = 'error' WHERE hash = ?").bind(e.hash).run(); return; }
         if (!(await hayCupoIA(env))) { await env.DB.prepare("UPDATE envios SET ia_estado = 'omitida' WHERE hash = ?").bind(e.hash).run(); return; }
-        const l = await leerConIA(env, await o.arrayBuffer(), e.prov);
+        let l; try { l = await leerConIA(env, await o.arrayBuffer(), e.prov); } catch (err) { if (err.sinCoste) await devolverCupoIA(env); throw err; }
         const flags = [...new Set([...JSON.parse(e.flags || "[]"), ...flagsLectura(l)])];
         await env.DB.batch([
           env.DB.prepare("UPDATE envios SET ia = ?, ia_estado = 'hecha', flags = ? WHERE hash = ?").bind(JSON.stringify(l), JSON.stringify(flags), e.hash),
@@ -886,7 +1086,12 @@ async function leerPendientesIA(env) {
         ]);
       } catch (err) {
         console.error("IA cron", err);
-        await env.DB.prepare("UPDATE envios SET ia_estado = 'error' WHERE hash = ?").bind(e.hash).run();
+        const otraVez = intentos.get(e.hash) < MAX_INTENTOS_IA;
+        await env.DB.batch([
+          env.DB.prepare("UPDATE envios SET ia_estado = ? WHERE hash = ?").bind(otraVez ? "pendiente" : "error", e.hash),
+          // si ya no se vuelve a intentar, se recalcula la mesa para que la foto aparezca en la cola de revisión manual
+          ...(otraVez ? [] : [env.DB.prepare("INSERT INTO pendientes (mesa_id, prov, ts) VALUES (?,?,?) ON CONFLICT(mesa_id) DO UPDATE SET ts = excluded.ts").bind(e.mesa_id, e.prov, ahora())]),
+        ]);
       }
     }));
   }

@@ -1,6 +1,8 @@
 // Comprobaciones de la foto en el servidor (sin IA). Decodifica el JPEG y comprueba dos cosas:
 //  1) que la zona de nombres esté tapada (la web la rellena de gris oscuro uniforme antes de subir);
 //  2) que la imagen parezca un documento en papel: mayoría de píxeles claros y sin color, y poca piel.
+//     Antes se corrige el tono de la luz (equilibrio de blancos): con luz cálida, de bombilla o de farola, el papel sale
+//     amarillento y sin esta corrección parecería que no es papel.
 import jpegDecoder from "jpeg-js/lib/decoder.js";
 const decode = jpegDecoder.decode || jpegDecoder;
 
@@ -18,9 +20,10 @@ export function analizarJPEG(buf, zonas) {
   for (let y = 0; y < H; y += paso) for (let x = 0; x < W; x += paso) { const i = (y * W + x) * 4; hist[Math.max(D[i], D[i + 1], D[i + 2])]++; n++; }
   let acc = 0, p90 = 255; for (let v = 0; v < 256; v++) { acc += hist[v]; if (acc >= n * 0.9) { p90 = v; break; } }
   const umbralClaro = Math.max(50, p90 * 0.62);
+  const k = equilibrioBlancos(D, W, H, paso, n);
   let papel = 0, piel = 0, colorido = 0;
   for (let y = 0; y < H; y += paso) for (let x = 0; x < W; x += paso) {
-    const i = (y * W + x) * 4, r = D[i], g = D[i + 1], b = D[i + 2];
+    const i = (y * W + x) * 4, r = Math.min(255, D[i] * k[0]), g = Math.min(255, D[i + 1] * k[1]), b = Math.min(255, D[i + 2] * k[2]);
     const mx = Math.max(r, g, b), mn = Math.min(r, g, b), sat = mx === 0 ? 0 : (mx - mn) / mx;
     if (mx > umbralClaro && sat < 0.22) papel++;
     if (sat > 0.45 && mx > 60) colorido++;
@@ -38,6 +41,18 @@ export function analizarJPEG(buf, zonas) {
     res.zonas.push({ media: Math.round(media), sd: Math.round(sd * 10) / 10, tapada: k > 0 && Math.abs(media - COLOR_TAPADO) < 18 && sd < 14 });
   }
   return res;
+}
+
+// Equilibrio de blancos: la parte más clara de la foto (el papel) debería ser gris neutro. Se mide el percentil 90 de
+// cada color y se calcula cuánto hay que subir cada uno para igualarlos (como mucho ×2,5, para no inventar color).
+export function equilibrioBlancos(D, W, H, paso, n) {
+  const p90 = [0, 1, 2].map(c => {
+    const h = new Uint32Array(256);
+    for (let y = 0; y < H; y += paso) for (let x = 0; x < W; x += paso) h[D[(y * W + x) * 4 + c]]++;
+    let a = 0; for (let v = 0; v < 256; v++) { a += h[v]; if (a >= n * 0.9) return Math.max(v, 1); } return 255;
+  });
+  const ref = Math.max(...p90);
+  return p90.map(v => Math.min(2.5, ref / v));
 }
 
 // Avisos que dejan la foto en cuarentena (no se publica hasta que la revises).

@@ -55,7 +55,7 @@ td.ia{color:var(--muted)} td.iadif{background:var(--bad-soft); color:var(--bad);
   <div id="app" style="display:none">
     <div class="card row">
       <label for="fEstado">Cola</label>
-      <select id="fEstado"><option value="conflicto,revision">Mesas por revisar (conflictos y avisos)</option><option value="fotos">Fotos sospechosas</option><option value="espera">Fotos en espera (mesas ya verificadas, sin prioridad)</option><option value="nuevas">Mesas nuevas por confirmar</option><option value="pendiente">Pendientes (1 fuente)</option><option value="verificada,validada">Verificadas</option><option value="acciones">Últimas acciones (registro de decisiones)</option></select>
+      <select id="fEstado"><option value="conflicto,revision">Mesas por revisar (conflictos y avisos)</option><option value="fotos">Fotos sospechosas</option><option value="sin_leer">Fotos aún sin leer por la IA (mesas verificadas)</option><option value="espera">Fotos en espera (mesas ya verificadas, sin prioridad)</option><option value="nuevas">Mesas nuevas por confirmar</option><option value="pendiente">Pendientes (1 fuente)</option><option value="verificada,validada">Verificadas</option><option value="acciones">Últimas acciones (registro de decisiones)</option></select>
       <label for="fProv">Provincia</label><input id="fProv" size="3" placeholder="28">
       <button id="btnCargar">Cargar</button>
       <label for="fMesa">Mesa</label><input id="fMesa" size="18" placeholder="28-079-01-001-A"><button id="btnMesa">Abrir mesa</button>
@@ -64,6 +64,7 @@ td.ia{color:var(--muted)} td.iadif{background:var(--bad-soft); color:var(--bad);
       <button id="btnDemo">Rellenar 10 % con datos inventados</button>
       <button id="btnOficial">Cargar dato oficial…</button><input type="file" id="fOficial" accept=".json,application/json" multiple hidden>
       <button id="btnOfiDemo">Inventar dato oficial (pruebas)</button>
+      <button id="btnApDemo">Inventar apuntados (pruebas)</button>
       <span class="meta" id="stats"></span>
     </div>
     <div id="cola"></div>
@@ -79,7 +80,7 @@ async function api(path,opts={}){ const r=await fetch("/admin/api/"+path,{...opt
   if(r.status===401){ $("app").style.display="none"; $("login").style.display="flex"; $("loginInfo").textContent="Contraseña incorrecta."; throw new Error("401"); } return r.json(); }
 async function entrar(){ TOK=$("tok").value||TOK; try{ await stats(); sessionStorage.setItem("rc-admin",TOK); $("login").style.display="none"; $("app").style.display="block"; cargar(); }catch(e){} }
 $("btnLogin").onclick=entrar; $("tok").addEventListener("keydown",e=>{ if(e.key==="Enter") entrar(); });
-async function stats(){ const s=await api("estadisticas"); $("stats").textContent=`${s.envios} envíos · ${s.mesas} mesas · `+s.estados.map(e=>`${e.estado}: ${e.n}`).join(" · ")+` · pendientes de recalcular: ${s.pendientes_recalculo}${s.lecturas_pendientes?` · fotos por leer: ${s.lecturas_pendientes}`:""}${s.fotos_en_espera?` · fotos en espera: ${s.fotos_en_espera}`:""}${s.lecturas_ia?` · lecturas IA: ${s.lecturas_ia} de ${s.tope_lecturas_ia}`:""}`+(s.clave_ip_ok===false?" · ⚠ FALTA LA CLAVE SAL_IP (o es demasiado corta): las IP no quedan bien protegidas":""); }
+async function stats(){ const s=await api("estadisticas"); $("stats").textContent=`${s.envios} envíos · ${s.mesas} mesas · `+s.estados.map(e=>`${e.estado}: ${e.n}`).join(" · ")+` · pendientes de recalcular: ${s.pendientes_recalculo}${s.lecturas_pendientes?` · fotos por leer: ${s.lecturas_pendientes}`:""}${s.fotos_en_espera?` · fotos en espera: ${s.fotos_en_espera}`:""}${s.fotos_no_leidas?` · fotos que la IA no ha podido leer: ${s.fotos_no_leidas}`:""}${s.lecturas_ia?` · lecturas IA: ${s.lecturas_ia} de ${s.tope_lecturas_ia}`:""}${s.apuntados?` · apuntados: ${s.apuntados} en ${s.colegios_con_apuntados} colegios`:""}`+(s.clave_ip_ok===false?" · ⚠ FALTA LA CLAVE SAL_IP (o es demasiado corta): las IP no quedan bien protegidas":""); }
 // VISTA recuerda si se está viendo una cola o una mesa concreta, para volver a ella después de cada acción
 let VISTA={modo:"cola"};
 async function cargar(){ VISTA={modo:"cola"}; const modo=$("fEstado").value;
@@ -164,6 +165,20 @@ function pintarFotos(m){ const campos=CAMPOS(m);
     <div class="row">${e.flags.includes("nombres_sin_tapar")?`<button class="ok" data-tapar="${e.hash}">Tapar nombres y aprobar</button>`:""}<button class="ok" data-aprobar="${e.hash}">Aprobar foto</button><button class="bad" data-h="${e.hash}" data-d="invalida" data-motivo="Foto retirada: no es un acta o muestra datos personales">Retirar</button></div></div></div></div>`; }).join("");
 }
 
+// ---------- fotos aún sin leer: mesas verificadas cuya foto espera a la lectura automática ----------
+const SIN_LEER=["pendiente","leyendo","forzada","error","omitida"];
+const ESTADO_IA={pendiente:"en cola para leer",leyendo:"leyéndose ahora",forzada:"en cola para leer",error:"la lectura ha fallado varias veces",omitida:"tope de lecturas alcanzado"};
+function pintarSinLeer(m){ const campos=CAMPOS(m);
+  return m.envios.filter(e=>SIN_LEER.includes(e.ia_estado)&&e.estado!=="invalida"&&!e.flags.includes("foto_aprobada")).map(e=>{
+    const igual=m.cifras&&campos.every(([k])=>val(e.cifras,k)===val(m.cifras,k));
+    return `<div class="card"><div class="row" style="align-items:flex-start; gap:16px"><div style="flex:0 0 300px">${img(e.hash,380)}</div>
+    <div style="flex:1; min-width:260px"><h2 class="mono">${m.mesa_id}</h2><div class="meta">${m.municipio||""} · mesa ${m.estado||""} · ${new Date(e.ts).toLocaleString("es-ES")} · IA: ${ESTADO_IA[e.ia_estado]||e.ia_estado}</div>
+    <p>${igual?"Sus cifras coinciden con las de la mesa.":"<b>Sus cifras no coinciden con las de la mesa.</b>"}</p>${avisosEnvio(e).length?`<div class="flag">${avisosEnvio(e).join(" · ")}</div>`:""}
+    <p class="meta">La lectura automática aún no ha revisado esta foto. Si es el acta de esta mesa, no se ven nombres y no hay nada inapropiado, <b>Aprobar</b> la publica. <b>Retirar</b> la quita. Si no haces nada, se publicará sola cuando la IA la lea y la dé por buena.</p>
+    <div class="row"><button data-tapar="${e.hash}">Tapar nombres y aprobar</button><button class="ok" data-aprobar="${e.hash}">Aprobar foto</button><button class="bad" data-h="${e.hash}" data-d="invalida" data-motivo="Foto retirada en la revisión manual">Retirar</button></div></div></div></div>`; }).join(""); }
+// La cola «Fotos aún sin leer» se actualiza sola cada 30 segundos (sin moverte si estás tapando una foto)
+setInterval(()=>{ if(VISTA.modo==="cola"&&$("fEstado").value==="sin_leer"&&$("app").style.display!=="none"&&document.visibilityState==="visible"&&!document.getElementById("cvTapar")) cargar(); },30000);
+
 // ---------- fotos en espera: mesas ya verificadas, revisión manual sin prisa ----------
 function pintarEspera(m){ const campos=CAMPOS(m);
   return m.envios.filter(e=>e.ia_estado==="en_espera"&&e.estado==="pendiente"&&!e.flags.includes("foto_aprobada")).map(e=>{
@@ -176,7 +191,7 @@ function pintarEspera(m){ const campos=CAMPOS(m);
 
 function pintar(mesas, modo){
   if(!mesas.length){ $("cola").innerHTML='<div class="card meta">No hay nada en esta cola.</div>'; return; }
-  $("cola").innerHTML = modo==="fotos" ? mesas.map(pintarFotos).join("") : modo==="espera" ? mesas.map(pintarEspera).join("") : mesas.map(pintarMesa).join("");
+  $("cola").innerHTML = modo==="fotos" ? mesas.map(pintarFotos).join("") : modo==="espera" ? mesas.map(pintarEspera).join("") : modo==="sin_leer" ? mesas.map(pintarSinLeer).join("") : mesas.map(pintarMesa).join("");
   document.querySelectorAll("img[data-foto]").forEach(async im=>{ try{ const r=await fetch(`/admin/api/foto/${im.dataset.foto}.jpg`,{headers:{authorization:"Bearer "+TOK}}); if(!r.ok) return;
     im.src=URL.createObjectURL(await r.blob()); im.onclick=()=>window.open(im.src,"_blank"); }catch(e){} });
   document.querySelectorAll("datalist[data-prov]").forEach(async d=>{ try{ const r=await api(`mesas_municipio?prov=${d.dataset.prov}&muni=${d.dataset.muni}`); d.innerHTML=r.mesas.map(x=>`<option value="${x.id}">censo ${x.censo??"—"}</option>`).join(""); }catch(e){} });
@@ -241,6 +256,12 @@ $("fOficial").onchange=async e=>{ const fs=[...e.target.files]; e.target.value="
     const prov=String(datos.prov||f.name.slice(0,2)); const r=await api("oficial",{method:"POST",body:JSON.stringify({prov,datos})});
     if(!r.ok){ alertar(`Error en ${f.name}: ${r.error}${r.clave?" ("+r.clave+")":""}`); return; } ok++; }
   alertar(`Dato oficial cargado: ${ok} provincia${ok===1?"":"s"}.`); };
+// Solo en pruebas: personas inventadas apuntadas a colegios de toda España, con unas provincias más animadas que otras
+$("btnApDemo").onclick=async()=>{ if(prompt("Esto apunta personas INVENTADAS a colegios de toda España (solo en modo pruebas; se borran con «Vaciar datos de prueba»). Escribe RELLENAR para confirmar:")!=="RELLENAR") return;
+  let n=0; for(let i=1;i<=52;i++){ const p=String(i).padStart(2,"0"); alertar(`Apuntando en la provincia ${p}… (${n} hasta ahora)`);
+    const r=await api("apuntados_demo",{method:"POST",body:JSON.stringify({confirmar:"RELLENAR",prov:p,fraccion:0.3,publicar:i===52})});
+    if(!r.ok){ alertar(r.error==="solo_en_modo_pruebas"?"Solo se puede con MODO_PRUEBAS activado.":"Error en la provincia "+p+": "+(r.error||"")); return; } n+=r.personas; }
+  alertar(`Listo: ${n} personas inventadas apuntadas.`); };
 $("btnOfiDemo").onclick=async()=>{ const n=(prompt("Inventa un «dato oficial» a partir de las actas verificadas (solo en modo pruebas), con algunas diferencias. Escribe MUNICIPIO para simular la noche electoral o MESA para simular el escrutinio definitivo:")||"").trim().toLowerCase();
   if(!["municipio","mesa"].includes(n)) return;
   for(let i=1;i<=52;i++){ const p=String(i).padStart(2,"0"); alertar(`Provincia ${p}…`); const r=await api("oficial_demo",{method:"POST",body:JSON.stringify({prov:p,nivel:n})});

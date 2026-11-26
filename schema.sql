@@ -48,9 +48,12 @@ CREATE TABLE IF NOT EXISTS envios (
   publica     INTEGER NOT NULL DEFAULT 0, -- 1 = la foto se muestra al público (mesa verificada o validada a mano)
   denuncias   INTEGER NOT NULL DEFAULT 0, -- nº de redes distintas que la han denunciado
   ia          TEXT,                     -- lectura automática de la foto (JSON), si está activada
-  ia_estado   TEXT                      -- NULL (desactivada) | pendiente | hecha | error
+  ia_estado   TEXT,                     -- NULL (desactivada) | pendiente | leyendo | hecha | en_espera | forzada | error | omitida
+  ia_intentos INTEGER NOT NULL DEFAULT 0, -- veces que se ha intentado leer la foto
+  ia_ts       INTEGER                   -- hora del último intento (para recuperar las que se quedan a medio leer)
 );
 CREATE INDEX IF NOT EXISTS envios_ia ON envios(ia_estado);
+CREATE INDEX IF NOT EXISTS envios_prov ON envios(prov);   -- para preparar los datos de cada provincia sin recorrer todos los envíos
 
 -- Lecturas automáticas pedidas por el formulario antes de enviar (se reutilizan al guardar el envío)
 CREATE TABLE IF NOT EXISTS lecturas (hash TEXT PRIMARY KEY, lectura TEXT NOT NULL, ip_hash TEXT NOT NULL, ts INTEGER NOT NULL);
@@ -95,3 +98,22 @@ CREATE TABLE IF NOT EXISTS provincias (
 
 -- Contadores (tope de gasto de la lectura automática)
 CREATE TABLE IF NOT EXISTS contador (clave TEXT PRIMARY KEY, n INTEGER NOT NULL);
+
+-- «Me apunto»: personas que dicen que irán a fotografiar las actas de un colegio
+CREATE TABLE IF NOT EXISTS apuntados (
+  codigo      TEXT PRIMARY KEY,         -- código de 6 caracteres que recibe la persona (sirve para cancelar)
+  colegio     TEXT NOT NULL,            -- código de la primera mesa del colegio
+  prov        TEXT NOT NULL,
+  dispositivo TEXT NOT NULL,            -- identificador anónimo del navegador
+  ip_hash     TEXT NOT NULL,            -- huella con clave secreta de la conexión (nunca la IP)
+  ts          INTEGER NOT NULL,
+  cancelado   INTEGER                   -- hora de la cancelación (NULL = sigue apuntada)
+);
+CREATE INDEX IF NOT EXISTS apuntados_colegio ON apuntados(prov, colegio);
+CREATE INDEX IF NOT EXISTS apuntados_disp ON apuntados(dispositivo, ts);
+CREATE INDEX IF NOT EXISTS apuntados_ip ON apuntados(ip_hash, ts);
+-- Provincias con reservas nuevas o canceladas desde la última vez que se publicaron sus cifras
+CREATE TABLE IF NOT EXISTS apuntados_cambios (prov TEXT PRIMARY KEY, ts INTEGER NOT NULL);
+-- Intentos de cancelar (para limitar los que se hacen desde una misma conexión)
+CREATE TABLE IF NOT EXISTS intentos_cancelar (ip_hash TEXT NOT NULL, ts INTEGER NOT NULL);
+CREATE INDEX IF NOT EXISTS intentos_cancelar_ip ON intentos_cancelar(ip_hash, ts);
