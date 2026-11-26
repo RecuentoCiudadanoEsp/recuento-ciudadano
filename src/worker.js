@@ -206,10 +206,14 @@ async function recibirEnvio(req, env) {
 async function conCache(req, ctx, segundos, producir) {
   const u = new URL(req.url); u.search = ""; // la clave ignora parámetros: nadie puede saltarse la caché
   const cache = caches.default; const clave = new Request(u.toString(), { method: "GET" });
-  const hit = await cache.match(clave); if (hit) return hit;
+  // Lo que sale de la caché de Cloudflare puede traer otra duración (el ajuste «Browser Cache TTL» de la zona la sube a
+  // 4 horas). Por eso se vuelve a poner la duración buena antes de entregarlo: si no, el navegador guardaría las cifras
+  // durante horas y no vería a la gente que se apunta ni las mesas nuevas.
+  const alNavegador = (resp) => { const s = new Response(resp.body, resp); s.headers.set("cache-control", `public, max-age=${segundos}`); s.headers.delete("expires"); return s; };
+  const hit = await cache.match(clave); if (hit) return alNavegador(hit);
   const res = await producir(); if (!res.ok) return res;
   const r = new Response(res.body, res); r.headers.set("cache-control", `public, max-age=${segundos}`);
-  ctx.waitUntil(cache.put(clave, r.clone())); return r;
+  ctx.waitUntil(cache.put(clave, r.clone())); return alNavegador(r);
 }
 // Una foto solo se sirve al público si es "publica" (mesa verificada por fuentes independientes o validada a mano).
 // Caché corta (5 min): si se oculta una foto, deja de verse en minutos en todo el mundo.
