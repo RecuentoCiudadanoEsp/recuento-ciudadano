@@ -1064,7 +1064,10 @@ async function verApuntarme(arg){ const ab=apuntarseAbierto(); $("apCerrado").cl
 let AP_MAPA_ESP=false;   // true = ver España aunque haya provincia elegida
 async function mapaApuntados(){ const p=$("sAProv").value, cont=$("apMapa");
   try{ if(!p||AP_MAPA_ESP){ const [m,ap,tot]=await Promise.all([getJSON("/data/mapa/espana.json"),getJSON("/api/public/apuntados.json",{fresh:true}).catch(()=>({provincias:{}})),totalColegios()]);
-      const A=id=>({...((ap.provincias||{})[id]||{personas:0,colegios:0}),total:tot[id]||0});
+      // Las cifras públicas se rehacen cada minuto: en la provincia que se está mirando se usan además las cuentas que ya
+      // conoce el navegador (incluida una reserva recién hecha), para que se pinte al momento.
+      const loc={personas:0,colegios:0}; if(AP.prov) for(const n of Object.values(AP.cuentas||{})) if(n>0){ loc.personas+=n; loc.colegios++; }
+      const A=id=>{ const s={...((ap.provincias||{})[id]||{personas:0,colegios:0})}; if(id===AP.prov){ s.personas=Math.max(s.personas,loc.personas); s.colegios=Math.max(s.colegios,loc.colegios); } return {...s,total:tot[id]||0}; };
       const info=id=>{ const a=A(id); return `${natural(nombreProv(id))}: ${personas(a.personas)} en ${fmt(a.colegios)} de ${fmt(a.total)} colegios (${pct(a.total?a.colegios/a.total:0)})`; };
       $("apMapaTit").textContent="¿Dónde falta gente?"; $("apMapaVolver").classList.add("hide"); $("apMapaInfo").textContent="Toca una provincia para ver sus municipios y colegios.";
       svgMapa(cont,m,m.provincias.map(x=>({id:x.prov,d:x.d})),{color:id=>{ const a=A(id); return colorCob(a.colegios,0,a.total); },info,marco:m.marcoCanarias,
