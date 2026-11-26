@@ -47,6 +47,12 @@ LECTURA_IA = "1"               # lectura automática de las fotos con Workers AI
 MAX_LECTURAS_IP_10MIN = "300"
 FOTOS_LEIDAS_POR_VERSION = "3"   # con 3 fotos leídas iguales en una mesa, las siguientes iguales esperan sin gastar
 MAX_LECTURAS_IA = "100000"       # red de seguridad: lecturas automáticas en total (100.000 ≈ 88 $ como máximo con Llama 4 Scout). Al llegar, se dejan de hacer
+# «Me apunto»: hasta cuándo se puede apuntar (al abrirse los envíos), minutos entre reservas de un mismo navegador,
+# reservas por conexión y hora (alto: muchas conexiones móviles se comparten) e intentos de cancelar por conexión
+APUNTARSE_HASTA = "2026-11-29T20:00:00+01:00"
+MINUTOS_ENTRE_APUNTADOS = "15"
+MAX_APUNTADOS_IP_HORA = "30"
+MAX_CANCELAR_IP_10MIN = "20"
 DENUNCIAS_OCULTAR = "2"        # redes distintas que denuncian una foto para ocultarla automáticamente
 # Cloudflare Access (panel): rellénalo al configurar Access. Sin esto el panel no abre fuera del modo pruebas.
 ACCESS_TEAM = "orange-night-ec12"   # equipo de Cloudflare Zero Trust: https://orange-night-ec12.cloudflareaccess.com
@@ -108,6 +114,12 @@ LECTURA_IA = "1"               # lectura automática de las fotos con Workers AI
 MAX_LECTURAS_IP_10MIN = "1000000"   # en pruebas, sin límite: la prueba de carga sale toda de la misma conexión (en la pública: 300)
 FOTOS_LEIDAS_POR_VERSION = "3"   # con 3 fotos leídas iguales en una mesa, las siguientes iguales esperan sin gastar
 MAX_LECTURAS_IA = "2000"         # en pruebas, como mucho unas 2.000 lecturas (≈ 2 $)
+# «Me apunto»: hasta cuándo se puede apuntar (al abrirse los envíos), minutos entre reservas de un mismo navegador,
+# reservas por conexión y hora (alto: muchas conexiones móviles se comparten) e intentos de cancelar por conexión
+APUNTARSE_HASTA = "2026-11-29T20:00:00+01:00"
+MINUTOS_ENTRE_APUNTADOS = "15"
+MAX_APUNTADOS_IP_HORA = "1000000"
+MAX_CANCELAR_IP_10MIN = "20"
 DENUNCIAS_OCULTAR = "2"        # redes distintas que denuncian una foto para ocultarla automáticamente
 # Cloudflare Access (panel): rellénalo al configurar Access. Sin esto el panel no abre fuera del modo pruebas.
 ACCESS_TEAM = ""               # equipo de Cloudflare Zero Trust: https://NOMBRE.cloudflareaccess.com

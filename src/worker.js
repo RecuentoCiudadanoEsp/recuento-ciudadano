@@ -37,9 +37,11 @@ export default {
       if (url.pathname === "/api/envio" && req.method === "POST") return await recibirEnvio(req, env);
       if (url.pathname === "/api/denuncia" && req.method === "POST") return await recibirDenuncia(req, env);
       if (url.pathname === "/api/leer" && req.method === "POST") return await leerParaFormulario(req, env);
+      if (url.pathname === "/api/apuntarme" && req.method === "POST") return await recibirApuntado(req, env);
+      if (url.pathname === "/api/cancelar" && req.method === "POST") return await cancelarApuntado(req, env);
       let m;
       if ((m = url.pathname.match(/^\/api\/(foto|mini)\/([a-f0-9]{64})\.jpg$/))) return await servirFoto(req, env, ctx, m[1], m[2]);
-      if ((m = url.pathname.match(/^\/api\/public\/(resumen|decisiones|prov\/\d{2}|oficial\/\d{2})\.json$/))) return await servirPublico(req, env, ctx, m[1]);
+      if ((m = url.pathname.match(/^\/api\/public\/(resumen|decisiones|apuntados|apuntados\/\d{2}|prov\/\d{2}|oficial\/\d{2})\.json$/))) return await servirPublico(req, env, ctx, m[1]);
       return json({ error: "no_encontrado" }, 404);
     } catch (e) {
       console.error(e && e.stack || e);
@@ -48,7 +50,8 @@ export default {
   },
   async scheduled(evt, env, ctx) {
     // Dos tareas independientes: rehacer los datos del mapa no espera a que termine la lectura automática de fotos
-    ctx.waitUntil(Promise.all([recalcular(env), iaActiva(env) ? leerPendientesIA(env) : null]));
+    // Las cifras de «Me apunto» también van aparte: son independientes de las actas.
+    ctx.waitUntil(Promise.all([recalcular(env), iaActiva(env) ? leerPendientesIA(env) : null, publicarApuntados(env)]));
   },
 };
 
@@ -64,7 +67,8 @@ const ahora = () => Date.now();
 function config(env) {
   let zonas = []; try { zonas = JSON.parse(env.ZONAS_DIFUMINADO || "[]"); } catch {}
   return { nombre: env.NOMBRE || "Recuento Ciudadano", abre: env.ABRE, totales_desde: env.TOTALES_DESDE || env.ABRE,
-    turnstile_sitekey: env.TURNSTILE_SITEKEY || "", zonas_difuminado: zonas, modo_pruebas: env.MODO_PRUEBAS === "1", lectura_ia: iaActiva(env) };
+    turnstile_sitekey: env.TURNSTILE_SITEKEY || "", zonas_difuminado: zonas, modo_pruebas: env.MODO_PRUEBAS === "1", lectura_ia: iaActiva(env),
+    apuntarse_hasta: env.APUNTARSE_HASTA || env.ABRE, minutos_entre_apuntados: Number(env.MINUTOS_ENTRE_APUNTADOS || 15) };
 }
 const abierto = (env) => env.MODO_PRUEBAS === "1" || ahora() >= Date.parse(env.ABRE);
 // Las cifras de votos y las fotos de las actas no se publican hasta que cierran todos los colegios (también en
@@ -249,10 +253,137 @@ async function recibirDenuncia(req, env) {
   ]);
   return json({ ok: true });
 }
+// ---------------------------------------------------------------- «Me apunto»: personas que irán a fotografiar un colegio
+// Cualquiera puede apuntarse a un colegio electoral (un local de votación, con todas sus mesas) para decir que irá a
+// fotografiar sus actas. No se pide ningún dato: se guardan el colegio, la hora, el identificador del navegador y la
+// huella de la conexión (los mismos que en los envíos), solo para frenar abusos. A cambio se entrega un código de
+// 6 caracteres que sirve para cancelar. La web muestra cuántas personas hay apuntadas en cada colegio.
+//
+// Un colegio se identifica por el código de su primera mesa (la de código más bajo entre las mesas del mismo municipio
+// con el mismo local y la misma dirección). scripts/colegios.py prepara la lista de la web con la misma regla.
+const ALFABETO_CODIGO = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";   // sin 0/O ni 1/I, que se confunden al copiarlos
+export const claveColegio = (local, direccion) => [local, direccion].map(s => String(s || "").trim().replace(/\s+/g, " ").toUpperCase()).join("|");
+function nuevoCodigo() { const b = crypto.getRandomValues(new Uint8Array(6)); return [...b].map(x => ALFABETO_CODIGO[x % 32]).join(""); }   // 32⁶ ≈ 1.070 millones de códigos
+export const limpiarCodigo = (c) => String(c || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+// Las reservas se cierran cuando se abren los envíos (domingo a las 20:00). En pruebas, siempre abiertas.
+const apuntarseAbierto = (env) => env.MODO_PRUEBAS === "1" || ahora() < Date.parse(env.APUNTARSE_HASTA || env.ABRE);
+// Mesas de un municipio, leídas por el índice del código (todas empiezan por «PP-MMM-»)
+const mesasDeMunicipio = (env, prov, muni) => env.DB.prepare("SELECT id, local, direccion FROM mesas WHERE id >= ? AND id < ? AND nueva = 0")
+  .bind(`${prov}-${muni}-`, `${prov}-${muni}-~`).all().then(r => r.results);
+// Código del colegio de una mesa: el de la primera mesa del mismo local
+function colegioDe(mesas, id) {
+  const m = mesas.find(x => x.id === id); if (!m) return null; const k = claveColegio(m.local, m.direccion);
+  return mesas.filter(x => claveColegio(x.local, x.direccion) === k).map(x => x.id).sort()[0];
+}
+// Las tablas de «Me apunto» se crean solas la primera vez que hacen falta (una vez por instancia del Worker), para no
+// depender de ejecutar a mano una migración. Son las mismas de schema.sql y sql/cambios/2026-11-26_apuntados.sql.
+let tablasApuntados = null;
+function asegurarTablasApuntados(env) {
+  if (!tablasApuntados) tablasApuntados = env.DB.batch([
+    "CREATE TABLE IF NOT EXISTS apuntados (codigo TEXT PRIMARY KEY, colegio TEXT NOT NULL, prov TEXT NOT NULL, dispositivo TEXT NOT NULL, ip_hash TEXT NOT NULL, ts INTEGER NOT NULL, cancelado INTEGER)",
+    "CREATE INDEX IF NOT EXISTS apuntados_colegio ON apuntados(prov, colegio)",
+    "CREATE INDEX IF NOT EXISTS apuntados_disp ON apuntados(dispositivo, ts)",
+    "CREATE INDEX IF NOT EXISTS apuntados_ip ON apuntados(ip_hash, ts)",
+    "CREATE TABLE IF NOT EXISTS apuntados_cambios (prov TEXT PRIMARY KEY, ts INTEGER NOT NULL)",
+    "CREATE TABLE IF NOT EXISTS intentos_cancelar (ip_hash TEXT NOT NULL, ts INTEGER NOT NULL)",
+    "CREATE INDEX IF NOT EXISTS intentos_cancelar_ip ON intentos_cancelar(ip_hash, ts)",
+  ].map(q => env.DB.prepare(q))).catch(e => { tablasApuntados = null; throw e; });
+  return tablasApuntados;
+}
+async function recibirApuntado(req, env) {
+  await asegurarTablasApuntados(env);
+  if (!apuntarseAbierto(env)) return json({ error: "cerrado", mensaje: "Ya no se puede apuntar: los colegios han cerrado. Si estás cerca de uno, fotografía sus actas y súbelas." }, 403);
+  const b = await req.json().catch(() => ({}));
+  const pedido = String(b.colegio || "").toUpperCase(); const m = pedido.match(RE_MESA);
+  if (!m) return json({ error: "colegio_desconocido" }, 400);
+  const ip = req.headers.get("cf-connecting-ip") || "0.0.0.0";
+  if (!(await turnstileOK(env, b.turnstile, ip))) return json({ error: "verificacion" }, 403);
+  const colegio = colegioDe(await mesasDeMunicipio(env, m[1], m[2]), pedido);
+  if (!colegio) return json({ error: "colegio_desconocido" }, 400);
+  const disp = String(b.dispositivo || "").slice(0, 64) || "sin-id";
+  const ipHash = await huellaIP(env, ip); const t = ahora();
+  const minutos = Number(env.MINUTOS_ENTRE_APUNTADOS || 15);
+  const [ya, ultimo, nIp] = await env.DB.batch([
+    env.DB.prepare("SELECT codigo FROM apuntados WHERE dispositivo = ? AND colegio = ? AND cancelado IS NULL").bind(disp, colegio),
+    env.DB.prepare("SELECT MAX(ts) AS ts FROM apuntados WHERE dispositivo = ? AND ts > ?").bind(disp, t - minutos * 60000),
+    env.DB.prepare("SELECT COUNT(*) AS n FROM apuntados WHERE ip_hash = ? AND ts > ?").bind(ipHash, t - 3600000),
+  ]);
+  // Si este navegador ya estaba apuntado a este colegio, se le recuerda su código en vez de crear otro
+  if (ya.results.length) return json({ ok: true, ya_apuntado: true, codigo: ya.results[0].codigo, colegio });
+  if (ultimo.results[0].ts) {
+    const faltan = Math.max(1, Math.ceil((ultimo.results[0].ts + minutos * 60000 - t) / 60000));
+    return json({ error: "espera", minutos: faltan, mensaje: `Para que nadie pueda apuntarse a colegios a los que no va a ir, cada navegador solo puede apuntarse a un colegio cada ${minutos} minutos. Podrás apuntarte a otro dentro de ${faltan} minuto${faltan === 1 ? "" : "s"}. Disculpa las molestias.` }, 429);
+  }
+  if (nIp.results[0].n >= Number(env.MAX_APUNTADOS_IP_HORA || 30)) return json({ error: "demasiados", mensaje: "Se han hecho muchas reservas seguidas desde tu conexión. Vuelve a intentarlo dentro de un rato." }, 429);
+  for (let i = 0; i < 5; i++) {   // si el código ya existiera (casi imposible), se prueba con otro
+    const codigo = nuevoCodigo();
+    const r = await env.DB.prepare("INSERT OR IGNORE INTO apuntados (codigo, colegio, prov, dispositivo, ip_hash, ts) VALUES (?,?,?,?,?,?)").bind(codigo, colegio, m[1], disp, ipHash, t).run();
+    if (r.meta.changes) { await marcarApuntados(env, m[1], t); return json({ ok: true, codigo, colegio }); }
+  }
+  return json({ error: "error_interno" }, 500);
+}
+async function cancelarApuntado(req, env) {
+  await asegurarTablasApuntados(env);
+  const b = await req.json().catch(() => ({})); const codigo = limpiarCodigo(b.codigo);
+  if (codigo.length !== 6) return json({ error: "codigo", mensaje: "El código tiene 6 caracteres." }, 400);
+  const ip = req.headers.get("cf-connecting-ip") || "0.0.0.0";
+  if (!(await turnstileOK(env, b.turnstile, ip))) return json({ error: "verificacion" }, 403);
+  // Límite de intentos por conexión, para que nadie pueda ir probando códigos al azar
+  const ipHash = await huellaIP(env, ip); const t = ahora();
+  const n = await env.DB.prepare("SELECT COUNT(*) AS n FROM intentos_cancelar WHERE ip_hash = ? AND ts > ?").bind(ipHash, t - 600000).first();
+  if (n.n >= Number(env.MAX_CANCELAR_IP_10MIN || 20)) return json({ error: "demasiados", mensaje: "Demasiados intentos seguidos. Espera unos minutos." }, 429);
+  await env.DB.prepare("INSERT INTO intentos_cancelar (ip_hash, ts) VALUES (?,?)").bind(ipHash, t).run();
+  const a = await env.DB.prepare("SELECT colegio, prov, cancelado FROM apuntados WHERE codigo = ?").bind(codigo).first();
+  if (!a) return json({ error: "no_encontrado", mensaje: "No hay ninguna reserva con ese código. Revisa que esté bien copiado." }, 404);
+  if (a.cancelado) return json({ ok: true, ya_cancelado: true, colegio: a.colegio });
+  await env.DB.prepare("UPDATE apuntados SET cancelado = ? WHERE codigo = ?").bind(t, codigo).run();
+  await marcarApuntados(env, a.prov, t);
+  return json({ ok: true, colegio: a.colegio });
+}
+// Apunta que una provincia ha cambiado, para que el cron rehaga sus cifras de apuntados
+const marcarApuntados = (env, prov, t) => env.DB.prepare("INSERT INTO apuntados_cambios (prov, ts) VALUES (?,?) ON CONFLICT(prov) DO UPDATE SET ts = excluded.ts").bind(prov, t).run();
+// Cada minuto (cron): personas apuntadas por colegio en las provincias que han cambiado, y el resumen de toda España.
+// public/apuntados/PP.json: { prov, generado, colegios: { id_colegio: personas } }
+// public/apuntados.json:    { generado, personas, colegios, provincias: { PP: { personas, colegios } } }
+//   («colegios» = colegios con al menos una persona; el total de colegios de cada provincia está en public/data/colegios/)
+export async function publicarApuntados(env) {
+  await asegurarTablasApuntados(env);
+  const cambios = (await env.DB.prepare("SELECT prov, ts FROM apuntados_cambios").all()).results;
+  const resumen = await env.FOTOS.head("public/apuntados.json");
+  if (!cambios.length && resumen) return { provincias: 0 };
+  for (const c of cambios) {
+    const r = (await env.DB.prepare("SELECT colegio, COUNT(*) AS n FROM apuntados WHERE prov = ? AND cancelado IS NULL GROUP BY colegio").bind(c.prov).all()).results;
+    await env.FOTOS.put(`public/apuntados/${c.prov}.json`, JSON.stringify({ prov: c.prov, generado: ahora(), colegios: Object.fromEntries(r.map(x => [x.colegio, x.n])) }), { httpMetadata: { contentType: "application/json" } });
+    await env.DB.prepare("DELETE FROM apuntados_cambios WHERE prov = ? AND ts <= ?").bind(c.prov, c.ts).run();
+  }
+  const pr = (await env.DB.prepare("SELECT prov, COUNT(*) AS personas, COUNT(DISTINCT colegio) AS colegios FROM apuntados WHERE cancelado IS NULL GROUP BY prov").all()).results;
+  const provincias = Object.fromEntries(pr.map(x => [x.prov, { personas: x.personas, colegios: x.colegios }]));
+  await env.FOTOS.put("public/apuntados.json", JSON.stringify({ generado: ahora(), abierto: apuntarseAbierto(env), personas: pr.reduce((a, x) => a + x.personas, 0), colegios: pr.reduce((a, x) => a + x.colegios, 0), provincias }),
+    { httpMetadata: { contentType: "application/json" } });
+  return { provincias: cambios.length };
+}
+// Solo en pruebas: apunta personas inventadas en una parte de los colegios de una provincia, para ver el mapa con datos
+async function apuntadosDemo(env, prov, fraccion) {
+  await asegurarTablasApuntados(env);
+  const mesas = (await env.DB.prepare("SELECT id, muni, local, direccion FROM mesas WHERE prov = ? AND nueva = 0 ORDER BY id").bind(prov).all()).results;
+  const colegios = new Map(); for (const m of mesas) { const k = m.muni + "|" + claveColegio(m.local, m.direccion); if (!colegios.has(k)) colegios.set(k, m.id); }
+  const ganas = Math.random() ** 1.5;          // unas provincias se animan más que otras
+  const st = [], t = ahora();
+  for (const id of colegios.values()) {
+    if (Math.random() > fraccion * 2 * ganas) continue;
+    const n = 1 + Math.floor(Math.random() ** 3 * 6);
+    for (let i = 0; i < n; i++) st.push(env.DB.prepare("INSERT OR IGNORE INTO apuntados (codigo, colegio, prov, dispositivo, ip_hash, ts) VALUES (?,?,?,?,?,?)").bind(nuevoCodigo(), id, prov, "demo", "demo", t));
+  }
+  for (let i = 0; i < st.length; i += 50) await env.DB.batch(st.slice(i, i + 50));
+  await marcarApuntados(env, prov, t);
+  return { ok: true, prov, personas: st.length };
+}
+
 async function servirPublico(req, env, ctx, nombre) {
   return conCache(req, ctx, env.MODO_PRUEBAS === "1" ? 1 : 30, async () => {
     const o = await env.FOTOS.get(`public/${nombre}.json`);
     if (!o) return json(nombre === "resumen" ? { generado: null, provincias: [], nacional: null } : nombre === "decisiones" ? { decisiones: [] }
+      : nombre === "apuntados" ? { generado: null, personas: 0, colegios: 0, provincias: {} } : nombre.startsWith("apuntados/") ? { prov: nombre.slice(10), colegios: {} }
       : nombre.startsWith("oficial/") ? { prov: nombre.slice(8), municipios: {}, mesas: {} } : { mesas: [] }, 200);
     return new Response(o.body, { headers: JSONH });
   });
@@ -625,6 +756,15 @@ async function admin(req, env, url) {
     if (!/^\d\d$/.test(String(b.prov || ""))) return json({ error: "provincia" }, 400);
     return json(await rellenarDemo(env, String(b.prov), Math.min(0.5, Math.max(0.01, Number(b.fraccion) || 0.1))));
   }
+  if (p === "apuntados_demo" && req.method === "POST") {
+    // Inventa personas apuntadas a colegios de una provincia (para ver «Me apunto» con datos). Solo en MODO_PRUEBAS = "1".
+    if (env.MODO_PRUEBAS !== "1") return json({ error: "solo_en_modo_pruebas" }, 403);
+    const b = await req.json().catch(() => ({})); if (b.confirmar !== "RELLENAR") return json({ error: "falta_confirmacion" }, 400);
+    if (!/^\d\d$/.test(String(b.prov || ""))) return json({ error: "provincia" }, 400);
+    const r = await apuntadosDemo(env, String(b.prov), Math.min(0.9, Math.max(0.01, Number(b.fraccion) || 0.3)));
+    if (b.publicar) await publicarApuntados(env);
+    return json(r);
+  }
   if (p === "oficial" && req.method === "POST") {
     // Carga el dato oficial de Interior de una provincia (ya convertido con scripts/oficial_desde_interior.py o con el
     // lector de la noche electoral). Sustituye entero al que hubiera de esa provincia. La web lo compara con las actas.
@@ -648,26 +788,30 @@ async function admin(req, env, url) {
     // Borra todos los envíos, fotos y JSON públicos de las pruebas. Solo funciona con MODO_PRUEBAS = "1".
     if (env.MODO_PRUEBAS !== "1") return json({ error: "solo_en_modo_pruebas" }, 403);
     const b = await req.json().catch(() => ({})); if (b.confirmar !== "VACIAR") return json({ error: "falta_confirmacion" }, 400);
-    await env.DB.batch(["DELETE FROM envios", "DELETE FROM denuncias", "DELETE FROM lecturas", "DELETE FROM contador", "DELETE FROM consenso", "DELETE FROM pendientes", "DELETE FROM decisiones", "DELETE FROM mesas WHERE de_usuario = 1"].map(q => env.DB.prepare(q)));
+    await asegurarTablasApuntados(env);
+    await env.DB.batch(["DELETE FROM envios", "DELETE FROM denuncias", "DELETE FROM lecturas", "DELETE FROM contador", "DELETE FROM consenso", "DELETE FROM pendientes", "DELETE FROM decisiones", "DELETE FROM mesas WHERE de_usuario = 1",
+      "DELETE FROM apuntados", "DELETE FROM apuntados_cambios", "DELETE FROM intentos_cancelar"].map(q => env.DB.prepare(q)));
     let borrados = 0;
     for (const prefix of ["foto/", "mini/", "public/"]) {
       let cursor;
       do { const l = await env.FOTOS.list({ prefix, cursor, limit: 1000 }); const keys = l.objects.map(o => o.key);
            if (keys.length) { await env.FOTOS.delete(keys); borrados += keys.length; } cursor = l.truncated ? l.cursor : undefined; } while (cursor);
     }
-    await publicarResumen(env); await publicarDecisiones(env);
+    await publicarResumen(env); await publicarDecisiones(env); await publicarApuntados(env);
     return json({ ok: true, objetos_borrados: borrados });
   }
   if (p === "estadisticas" && req.method === "GET") {
-    const [a, b, c, dd, ee] = await env.DB.batch([
+    await asegurarTablasApuntados(env);
+    const [a, b, c, dd, ee, ap] = await env.DB.batch([
       env.DB.prepare("SELECT COUNT(*) AS envios, COUNT(DISTINCT mesa_id) AS mesas, MAX(ts) AS ultimo FROM envios"),
       env.DB.prepare("SELECT estado, COUNT(*) AS n FROM consenso GROUP BY estado"),
       env.DB.prepare("SELECT COUNT(*) AS n FROM pendientes"),
       env.DB.prepare("SELECT SUM(ia_estado IN ('pendiente','forzada','leyendo')) AS n, SUM(ia_estado = 'en_espera') AS espera, SUM(ia_estado IN ('error','omitida')) AS sin_leer FROM envios"),
       env.DB.prepare("SELECT COALESCE(MAX(n), 0) AS n FROM contador WHERE clave = 'lecturas_ia'"),
+      env.DB.prepare("SELECT COUNT(*) AS n, COUNT(DISTINCT colegio) AS colegios FROM apuntados WHERE cancelado IS NULL"),
     ]);
     return json({ ...a.results[0], estados: b.results, pendientes_recalculo: c.results[0].n, lecturas_pendientes: dd.results[0].n || 0, fotos_en_espera: dd.results[0].espera || 0, fotos_no_leidas: dd.results[0].sin_leer || 0, lecturas_ia: ee.results[0].n, tope_lecturas_ia: Number(env.MAX_LECTURAS_IA || 100000),
-      clave_ip_ok: !!env.SAL_IP && env.SAL_IP.length >= 12 });
+      apuntados: ap.results[0].n, colegios_con_apuntados: ap.results[0].colegios, clave_ip_ok: !!env.SAL_IP && env.SAL_IP.length >= 12 });
   }
   return json({ error: "no_encontrado" }, 404);
 }

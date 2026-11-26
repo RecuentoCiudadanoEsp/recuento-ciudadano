@@ -339,4 +339,62 @@ if __name__ == "__main__":
     tmp = tempfile.NamedTemporaryFile(suffix=".jpg", delete=False).name; calida.save(tmp, quality=90)
     s, r = post_envio(cifras_ain(), variante=0, ip="10.61.0.1", mesa=mesas_f[1], imagen=tmp)
     check("un acta con luz cálida no se marca como «no parece un acta»", s == 200 and "no_parece_acta" not in r.get("avisos", []), r)
+    # ---- «Me apunto»: reservas de colegios con código para cancelar
+    def post_ap(ruta, cuerpo, ip):
+        req = urllib.request.Request(BASE + ruta, data=json.dumps(cuerpo).encode(), method="POST", headers={"content-type": "application/json", "cf-connecting-ip": ip})
+        try:
+            with urllib.request.urlopen(req) as r: return r.status, json.loads(r.read())
+        except urllib.error.HTTPError as e: return e.code, json.loads(e.read() or b"{}")
+    cols28 = json.load(open("public/data/colegios/28.json"))["municipios"]
+    ref28 = json.load(open("public/data/mesas/28.json"))["mesas"]
+    grande = next(c for c in cols28["079"] if c[3] >= 3)            # un colegio de Madrid con varias mesas
+    segunda = sorted(m[0] for m in ref28 if m[0].startswith("28-079-") and m[2] == grande[1] and (m[0].split("-")[2] + "-" + m[0].split("-")[3]) in grande[4])[1]
+    s, c = get("/api/config")
+    check("la configuración dice hasta cuándo se puede apuntar", bool(c.get("apuntarse_hasta")) and c.get("minutos_entre_apuntados") == 15, c)
+    d1 = uuid.uuid4().hex
+    s, a1 = post_ap("/api/apuntarme", {"colegio": segunda, "dispositivo": d1}, "10.70.0.1")
+    import re as _re
+    check("apuntarse a un colegio devuelve un código de 6 caracteres sin letras confusas", s == 200 and _re.fullmatch(r"[2-9A-HJ-NP-Z]{6}", a1.get("codigo", "")) is not None, a1)
+    check("el colegio se identifica por su primera mesa, igual que en la lista de la web", a1.get("colegio") == grande[0], (a1.get("colegio"), grande[0]))
+    s, a2 = post_ap("/api/apuntarme", {"colegio": grande[0], "dispositivo": d1}, "10.70.0.1")
+    check("si el mismo navegador repite, se le recuerda su código", s == 200 and a2.get("ya_apuntado") and a2.get("codigo") == a1["codigo"], a2)
+    otro = cols28["079"][0] if cols28["079"][0][0] != grande[0] else cols28["079"][1]
+    s, a3 = post_ap("/api/apuntarme", {"colegio": otro[0], "dispositivo": d1}, "10.70.0.1")
+    check("el mismo navegador no puede apuntarse a otro colegio antes de 15 minutos", s == 429 and a3.get("error") == "espera" and 1 <= a3.get("minutos", 0) <= 15, (s, a3))
+    s, a4 = post_ap("/api/apuntarme", {"colegio": grande[0], "dispositivo": uuid.uuid4().hex}, "10.70.0.2")
+    check("otra persona puede apuntarse al mismo colegio", s == 200 and a4["codigo"] != a1["codigo"], a4)
+    s, a5 = post_ap("/api/apuntarme", {"colegio": "28-079-99-999-Z", "dispositivo": uuid.uuid4().hex}, "10.70.0.3")
+    check("un colegio que no existe se rechaza", s == 400, (s, a5))
+    cron()
+    s, pa = get("/api/public/apuntados/28.json"); s2, ra = get("/api/public/apuntados.json")
+    check("el cron publica cuántas personas hay en cada colegio", pa["colegios"].get(grande[0]) == 2, pa)
+    check("y el resumen de España (personas y colegios con alguien)", ra.get("personas", 0) >= 2 and ra["provincias"].get("28", {}).get("colegios", 0) >= 1, ra)
+    check("la lista pública no contiene códigos ni identificadores", a1["codigo"] not in json.dumps(pa) and d1 not in json.dumps(pa) and a1["codigo"] not in json.dumps(ra))
+    s, k1 = post_ap("/api/cancelar", {"codigo": a1["codigo"].lower()[:3] + "-" + a1["codigo"].lower()[3:]}, "10.70.0.9")
+    check("se cancela con el código (aunque se escriba en minúsculas o con guion)", s == 200 and k1.get("ok") and k1.get("colegio") == grande[0], (s, k1))
+    s, k2 = post_ap("/api/cancelar", {"codigo": a1["codigo"]}, "10.70.0.9")
+    check("cancelar dos veces no descuenta dos veces", s == 200 and k2.get("ya_cancelado"), k2)
+    s, k3 = post_ap("/api/cancelar", {"codigo": "ZZZZZ2"}, "10.70.0.9")
+    check("un código inexistente se rechaza", s == 404, (s, k3))
+    cron()
+    s, pa = get("/api/public/apuntados/28.json")
+    check("tras cancelar, el colegio cuenta una persona menos", pa["colegios"].get(grande[0]) == 1, pa)
+    s, a6 = post_ap("/api/apuntarme", {"colegio": grande[0], "dispositivo": d1}, "10.70.0.1")
+    check("tras cancelar, el navegador sigue esperando sus 15 minutos para otra reserva", s == 429, (s, a6))
+    n_ok = 0
+    for i in range(32):
+        s, r = post_ap("/api/apuntarme", {"colegio": cols28["079"][i + 2][0], "dispositivo": uuid.uuid4().hex}, "10.70.1.1"); n_ok += s == 200
+    check("una misma conexión no puede hacer más de 30 reservas por hora", n_ok == 30, n_ok)
+    for i in range(20): post_ap("/api/cancelar", {"codigo": "ZZZZZ3"}, "10.70.2.1")
+    s, k4 = post_ap("/api/cancelar", {"codigo": a4["codigo"]}, "10.70.2.1")
+    check("tras 20 intentos de cancelar seguidos, la conexión debe esperar", s == 429, (s, k4))
+    # El servidor y scripts/colegios.py agrupan igual las mesas en colegios
+    import random as _rnd
+    _rnd.seed(7); malos = []
+    for prov in ("08", "46", "41"):
+        cl = json.load(open(f"public/data/colegios/{prov}.json"))["municipios"]
+        for muni in _rnd.sample(sorted(cl), 3):
+            c = _rnd.choice(cl[muni]); s, r = post_ap("/api/apuntarme", {"colegio": c[0], "dispositivo": uuid.uuid4().hex}, f"10.71.{prov}.{int(muni) % 250}")
+            if r.get("colegio") != c[0]: malos.append((c[0], r))
+    check("el servidor reconoce como colegio la primera mesa de cada colegio de la lista", not malos, malos)
     print("\nRESULTADO:", "todo correcto" if ok else "HAY FALLOS")

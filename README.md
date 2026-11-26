@@ -284,6 +284,29 @@ python3 test/panel_test.py      # recorre el panel: colas, registro de decisione
 - Copia una foto de acta como `test/acta_prueba.jpg` y ejecuta `k6 run -e BASE=https://tu-dominio test/carga_k6.js`.
 - Después, vacía los datos desde el panel y deja todo como estaba (ver "Antes de abrir").
 
+## «Me apunto»: personas que irán a fotografiar un colegio
+
+Hasta que se abren los envíos (domingo a las 20:00, `APUNTARSE_HASTA`), cualquiera puede apuntarse a un colegio electoral
+para decir que irá a fotografiar sus actas. Sirve para ver qué colegios tienen ya a alguien y cuáles siguen esperando.
+
+- **Colegio = local de votación**, no sección: un local puede tener mesas de varias secciones y alguna sección tiene mesas en
+  dos locales. Las mesas se agrupan por municipio, nombre del local y dirección. El colegio se identifica por el código de su
+  primera mesa. La lista de la web (`public/data/colegios/PP.json` y `resumen.json`, con el total por provincia) se prepara
+  con `python3 scripts/colegios.py`; el servidor agrupa igual a partir de la tabla `mesas`.
+- **Buscar:** provincia y municipio; después, nombre del colegio o calle, o distrito y sección. Con hasta 30 colegios en el
+  municipio la lista sale entera. Al elegir un colegio se proponen los cercanos que aún no tienen a nadie (posición aproximada
+  del panal «Por zonas», con preferencia por el mismo distrito).
+- **Sin datos personales:** se guardan el colegio, la hora, el identificador del navegador y la huella de la conexión. Se
+  entrega un código de 6 caracteres (sin 0/O ni 1/I; unos 1.070 millones de combinaciones) para cancelar. El navegador lo
+  guarda en `localStorage` (`rc-apuntados`) para poder cancelar sin apuntarlo.
+- **Límites:** un colegio por navegador cada 15 minutos (`MINUTOS_ENTRE_APUNTADOS`), 30 reservas por conexión y hora
+  (`MAX_APUNTADOS_IP_HORA`), 20 intentos de cancelar por conexión cada 10 minutos (`MAX_CANCELAR_IP_10MIN`) y antibots en
+  apuntarse y cancelar.
+- **Publicación:** el cron rehace cada minuto `public/apuntados/PP.json` (personas por colegio) y `public/apuntados.json`
+  (resumen) solo si hay cambios. Se ven en la portada, en el modo «Apuntados» de los mapas y en la ficha de cada mesa.
+- Las tablas (`apuntados`, `apuntados_cambios`, `intentos_cancelar`) se crean solas la primera vez; también están en
+  `schema.sql` y en `sql/cambios/2026-11-26_apuntados.sql`. En pruebas, el panel tiene «Inventar apuntados (pruebas)».
+
 ## Vista «Por zonas» del panal de mesas
 
 Al abrir un municipio en Resultados se ve un panal con un hexágono por mesa. En la vista «Por zonas» el panal tiene la
