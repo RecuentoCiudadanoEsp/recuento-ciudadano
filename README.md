@@ -160,7 +160,12 @@ cosa. Si falla algo, la foto queda en **cuarentena**: no se publica nunca aunque
 inapropiada. Sirve para tres cosas:
 - En el formulario, en cuanto la persona elige la foto: debajo de cada casilla sale lo que se lee en la foto y su
   fiabilidad: **alta** si coinciden la cifra en letra y en número del acta, **media** si solo se lee una, **baja** si no
-  coinciden. Si lo escrito no coincide, la casilla se pone en amarillo. No se escribe nada solo en las casillas: si dos
+  coinciden. El modelo copia tal cual las palabras de la columna «En letra» y el servidor las convierte en cifra
+  (castellano, valenciano/catalán y gallego); si las diera ya convertidas, podría habérselas inventado copiando el número,
+  y la fiabilidad se queda en media. Cada fila se asigna a su candidatura por el nombre escrito en ella cuando se reconoce
+  sin dudas (da igual el orden en que la mesa las haya escrito) y, si no, por el número de fila (orden oficial).
+  Si lo escrito no coincide con una lectura de fiabilidad alta, la casilla se pone en amarillo; con fiabilidad media o
+  baja solo sale una nota discreta. No se escribe nada solo en las casillas: si dos
   personas aceptaran la misma lectura errónea, la verificación entre fuentes independientes dejaría de valer.
 - En el panel: en cada versión de una mesa en conflicto te dice si sus cifras coinciden con lo que se lee en sus fotos.
 - Si dice que no es un acta o que es inapropiada: cuarentena, y además el envío no cuenta para verificar.

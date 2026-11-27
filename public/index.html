@@ -108,7 +108,7 @@ button.small,.btn.small{padding:7px 11px; font-size:14px}
 .checks li{display:flex; gap:8px; padding:8px 10px; border-radius:8px; font-size:15px}
 .checks .ic{font-family:var(--mono); font-weight:600; width:16px; flex:none; text-align:center}
 input.dudoso{background:var(--warn-soft); border-color:var(--warn)} .ayuda{display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; min-height:0; padding:0; margin:0 0 0 6px; border-radius:50%; font-size:12px; font-weight:700; line-height:1; vertical-align:middle; background:var(--accent-soft); color:var(--accent); border:1px solid currentColor; cursor:pointer}
-#fBasicos{align-items:end} #fBasicos label{line-height:1.3} .ayudaTxt{grid-column:1/-1; font-size:13px; background:var(--accent-soft); color:var(--ink); border-radius:8px; padding:8px 10px; margin:6px 0} .pista{font-size:12px; color:var(--muted); min-height:0; margin-top:2px} .pista.f-alta{color:var(--ok)} .pista.f-baja{color:var(--bad); font-weight:600} input.dudoso+.pista{color:var(--warn); font-weight:600}
+#fBasicos{align-items:end} #fBasicos label{line-height:1.3} .ayudaTxt{grid-column:1/-1; font-size:13px; background:var(--accent-soft); color:var(--ink); border-radius:8px; padding:8px 10px; margin:6px 0} .pista{font-size:12px; color:var(--muted); min-height:0; margin-top:2px} .pista.f-alta{color:var(--ok)} .pista.f-baja{color:var(--muted)} input.dudoso+.pista{color:var(--warn); font-weight:600}
 .mapa{width:100%; height:auto; max-height:62vh; display:block; margin:0 auto; touch-action:manipulation} .mapa path{stroke:var(--card); stroke-width:.7; cursor:pointer; transition:opacity .15s} .mapa path:hover{opacity:.75; stroke:var(--ink); stroke-width:1.2}
 .mapa .marco{fill:none; stroke:var(--line); stroke-width:1; pointer-events:none}
 .leyenda{display:flex; flex-wrap:wrap; gap:10px; font-size:12.5px; color:var(--muted); margin-top:8px} .leyenda i{display:inline-block; width:14px; height:14px; border-radius:3px; vertical-align:-3px; margin-right:4px}
@@ -830,14 +830,17 @@ async function pedirLectura(){ LECTURA=null; marcarDudosos(); const prov=$("sPro
     const r=await fetch("/api/leer",{method:"POST",body:fd}); if(id!==LECT_ID) return; const d=await r.json();
     if(d.omitida){ $("iaInfo").textContent="Esta mesa ya está verificada por varias personas: tu foto se guardará como respaldo."; return; }
     if(!r.ok||!d.lectura){ $("iaInfo").textContent=""; return; }
-    LECTURA=d.lectura; $("iaInfo").textContent=LECTURA.es_acta===false?"La foto no parece un acta de escrutinio. Revisa que sea la correcta.":"Foto leída. Debajo de cada casilla tienes lo que se lee en la foto y su fiabilidad (alta si coinciden la cifra en letra y en número). No se escribe solo: cópialo tú del acta. En amarillo, lo que no coincide.";
+    LECTURA=d.lectura; $("iaInfo").textContent=LECTURA.es_acta===false?"La foto no parece un acta de escrutinio. Revisa que sea la correcta.":"Foto leída. Debajo de cada casilla tienes lo que se lee en la foto y su fiabilidad (alta si coinciden la cifra en letra y en número). No se escribe solo: cópialo tú del acta. En amarillo, lo que no coincide con una lectura fiable.";
     validar(); }catch(e){ if(id===LECT_ID) $("iaInfo").textContent=""; } }
 function marcarDudosos(){ const campos=[...BASICOS.map(([k])=>["n-"+k,k,null]),...CANDS.map(c=>["c-"+c.codigo,null,c.codigo])];
   for(const [idInput,k,cod] of campos){ const el=$(idInput), p=$("p-"+(k||cod)); if(!el) continue;
     const leido=LECTURA?(k?LECTURA[k]:(LECTURA.cand||{})[cod]):null; const v=el.value===""?null:Number(el.value);
-    const f=LECTURA&&LECTURA.fiab?LECTURA.fiab[k||cod]:null; const dudoso=leido!=null&&v!=null&&v!==leido; el.classList.toggle("dudoso",dudoso);
+    const f=LECTURA&&LECTURA.fiab?LECTURA.fiab[k||cod]:null; const distinto=leido!=null&&v!=null&&v!==leido;
+    // La casilla solo se pone en amarillo si la lectura es fiable (letra y número coinciden). Si no, solo una nota discreta:
+    // la lectura automática se equivoca a veces y no debe hacer dudar a quien ha copiado bien.
+    const dudoso=distinto&&f==="alta"; el.classList.toggle("dudoso",dudoso);
     if(!p) continue; p.className="pista"+(leido!=null?" f-"+(f||"media"):"");
-    p.textContent = leido==null ? "" : dudoso ? `En la foto parece ${leido} (fiabilidad ${f||"media"})` : (v===leido ? `✓ coincide con la foto` : `En la foto: ${leido} · fiabilidad ${f||"media"}`); } }
+    p.textContent = leido==null ? "" : dudoso ? `En la foto parece ${leido} (fiabilidad alta): revisa que esté bien copiado` : distinto ? `En la foto se ha leído ${leido} (fiabilidad ${f||"media"}): si has copiado bien del acta, déjalo así` : (v===leido ? `✓ coincide con la foto` : `En la foto: ${leido} · fiabilidad ${f||"media"}`); } }
 
 // ---------- validación (mismas reglas que el servidor) ----------
 function comprobar(){

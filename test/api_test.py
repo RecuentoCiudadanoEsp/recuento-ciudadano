@@ -22,9 +22,19 @@ def lectura_de(cifras, **extra):
          "votos": [cifras["cand"][c] for c in cands.values()]}
     l.update(extra); return l
 
+UNID = "cero uno dos tres cuatro cinco seis siete ocho nueve diez once doce trece catorce quince dieciséis diecisiete dieciocho diecinueve veinte veintiuno veintidós veintitrés veinticuatro veinticinco veintiséis veintisiete veintiocho veintinueve".split()
+DECE = {3: "treinta", 4: "cuarenta", 5: "cincuenta", 6: "sesenta", 7: "setenta", 8: "ochenta", 9: "noventa"}
+CENT = {1: "ciento", 2: "doscientos", 3: "trescientos", 4: "cuatrocientos", 5: "quinientos", 6: "seiscientos", 7: "setecientos", 8: "ochocientos", 9: "novecientos"}
+def en_letra(n):
+    # cifra escrita con palabras, como en la columna «En letra» del acta (hasta 999)
+    if n == 100: return "cien"
+    c, r = divmod(n, 100); t = [CENT[c]] if c else []
+    if r or not c: t.append(UNID[r] if r < 30 else DECE[r // 10] + (" y " + UNID[r % 10] if r % 10 else ""))
+    return " ".join(t)
+
 def lectura_pares(cifras, dudosos=()):
-    # como la devolvería el modelo: [cifra en número, cifra en letra]; en "dudosos" la letra no coincide
-    par = lambda k, v: [v, v + 1 if k in dudosos else v]
+    # como la devolvería el modelo: [cifra en número, cifra en letra copiada tal cual]; en "dudosos" la letra no coincide
+    par = lambda k, v: [v, en_letra(v + 1 if k in dudosos else v)]
     return {"es_acta": True, "inapropiada": False, **{k: par(k, cifras[k]) for k in ("electores", "votantes", "nulos", "blanco")},
             "votos": [par(cod, cifras["cand"][cod]) for cod in cands.values()]}
 
@@ -220,6 +230,18 @@ if __name__ == "__main__":
     d = json.loads(urllib.request.urlopen(urllib.request.Request(BASE + "/api/leer", data=body, method="POST", headers={"content-type": f"multipart/form-data; boundary={bnd}"})).read())
     fb = d["lectura"]["fiab"]
     check("fiabilidad: alta si letra y número coinciden, baja si no", fb["votantes"] == "alta" and fb[cands["PSOE"]] == "alta" and fb[cands["PP"]] == "baja" and d["lectura"]["cand"][cands["PP"]] == 19, fb)
+    # Si el modelo da la letra como cifra (pudo inventarla copiando el número) o la deja vacía, la fiabilidad es media
+    def leer_foto(lectura, giro):
+        foto = jpeg(img.rotate(giro), 1600, 80, lectura); body, bnd = multipart({"foto": foto, "prov": "12"})
+        return json.loads(urllib.request.urlopen(urllib.request.Request(BASE + "/api/leer", data=body, method="POST", headers={"content-type": f"multipart/form-data; boundary={bnd}"})).read())["lectura"]
+    c = cifras_ain(); l = lectura_pares(c); l["votantes"] = [c["votantes"], c["votantes"]]; l["nulos"] = [c["nulos"], None]
+    d = leer_foto(l, 2)
+    check("fiabilidad: media si la letra llega como cifra o vacía", d["fiab"]["votantes"] == "media" and d["fiab"]["nulos"] == "media" and d["fiab"]["blanco"] == "alta", d["fiab"])
+    # Cada fila se coloca por el nombre escrito, aunque la mesa haya escrito las candidaturas en otro orden
+    orden = list(cands.items()); fila = lambda i, sig, cod: [i + 1, sig, c["cand"][cod], en_letra(c["cand"][cod])]
+    al_reves = [fila(i, sig, cod) for i, (sig, cod) in enumerate(reversed(orden))]
+    d = leer_foto({**lectura_pares(c), "votos": al_reves}, 3)
+    check("cada fila va a su candidatura por el nombre escrito, en cualquier orden", all(d["cand"][cod] == c["cand"][cod] for cod in cands.values()), d["cand"])
 
     # ---- Conflicto con lectura que delata la versión mala y resolución por mesa
     m4 = otras[12] if len(otras) > 12 else otras[2]
