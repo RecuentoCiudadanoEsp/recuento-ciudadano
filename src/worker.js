@@ -929,7 +929,7 @@ export function flagsLectura(l) {
 const MODELOS_IA = ["@cf/meta/llama-3.2-11b-vision-instruct", "@cf/meta/llama-4-scout-17b-16e-instruct",
   "@cf/mistralai/mistral-small-3.1-24b-instruct", "@cf/google/gemma-3-12b-it"];
 // Versión de la forma de leer. Las lecturas guardadas con otra versión no se reutilizan en el formulario (se vuelve a leer).
-const LECTURA_VERSION = 2;
+const LECTURA_VERSION = 3;
 
 // Cifra escrita con letras («treinta y uno», «trenta-u», «trinta e un»...) convertida a número. Entiende castellano,
 // valenciano/catalán y gallego, que son las lenguas de las actas bilingües más habituales. Si no la entiende, null.
@@ -968,27 +968,6 @@ export function letraANumero(t) {
   }
   return total + actual;
 }
-// Empareja el nombre escrito en una fila del acta con una candidatura de la lista. Devuelve su posición o -1 si no está claro.
-const VACIAS = new Set(["partido", "partit", "de", "del", "la", "las", "los", "el", "els", "les", "y", "i", "e", "por", "per", "con", "amb", "a", "en", "para"]);
-const normNombre = t => String(t || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9+]+/g, " ").trim();
-export function candidaturaPorNombre(escrito, cands) {
-  const e = normNombre(escrito); if (e.length < 2) return -1;
-  const palabrasE = new Set(e.split(" "));
-  // Palabras que solo aparecen en el nombre de una candidatura («socialista», «animalista»...): bastan para reconocerla
-  const cuenta = {}; cands.forEach(c => new Set(normNombre(c.denominacion).split(" ")).forEach(x => { cuenta[x] = (cuenta[x] || 0) + 1; }));
-  const notas = cands.map(c => {
-    let nota = 0;
-    for (const s of normNombre(c.siglas).split(" ").filter(x => x.length >= 2)) if (palabrasE.has(s)) nota = Math.max(nota, 1);
-    const sig = normNombre(c.siglas).replace(/ /g, ""); if (sig.length >= 2 && e.replace(/ /g, "").includes(sig)) nota = Math.max(nota, 0.9);
-    const pal = normNombre(c.denominacion).split(" ").filter(x => x.length > 2 && !VACIAS.has(x));
-    if (pal.length) nota = Math.max(nota, pal.filter(x => palabrasE.has(x)).length / pal.length);
-    if (pal.some(x => x.length >= 5 && cuenta[x] === 1 && palabrasE.has(x))) nota = Math.max(nota, 0.7);
-    return nota;
-  });
-  const max = Math.max(...notas); if (max < 0.6) return -1;
-  const mejores = notas.filter(n => n === max).length; return mejores === 1 ? notas.indexOf(max) : -1;
-}
-
 async function leerConIA(env, fotoBuf, prov, modeloPedido) {
   const modelo = modeloPedido || env.MODELO_IA || MODELO_IA;
   const cands = (await env.DB.prepare("SELECT codigo, siglas, denominacion FROM candidaturas WHERE prov = ? ORDER BY orden").bind(prov).all()).results;
@@ -997,7 +976,7 @@ async function leerConIA(env, fotoBuf, prov, modeloPedido) {
 de totales arriba y una tabla de candidaturas con los votos rellenados a mano.
 Cada cifra puede aparecer dos veces: escrita con palabras (columna «En letra») y con números (columna «En número», a la derecha).
 Responde SOLO con un objeto JSON válido, sin texto adicional ni explicaciones, con esta forma exacta:
-{"es_acta": true, "inapropiada": false, "electores": [N, "L"], "votantes": [N, "L"], "nulos": [N, "L"], "blanco": [N, "L"], "votos": [[F, "NOMBRE", N, "L"], ...]}
+{"es_acta": true, "inapropiada": false, "electores": [N, "L"], "votantes": [N, "L"], "nulos": [N, "L"], "blanco": [N, "L"], "votos": [[F, N, "L"], ...]}
 - N: la cifra escrita con números, como número entero. Lee todos sus dígitos: 20 no es 2, 30 no es 3 ni 0.
 - "L": copia LITERALMENTE las palabras escritas en la casilla «En letra», entre comillas (por ejemplo "treinta y uno").
   No conviertas las palabras a número. Si esa casilla está vacía o no se lee, pon null. Nunca copies ahí la cifra en número.
@@ -1005,10 +984,10 @@ Responde SOLO con un objeto JSON válido, sin texto adicional ni explicaciones, 
 - es_acta: false si la imagen no es un acta de escrutinio. inapropiada: true si contiene desnudos, contenido sexual, violencia u otra cosa ofensiva.
 - electores: «Total electores (1+2)»; si esa casilla está vacía, el número de electores según las listas del censo (casilla 1). votantes: «Total votantes (A+B)», la suma de A y B, no solo A.
   nulos y blanco: votos nulos y votos en blanco (casillas de arriba a la derecha).
-- votos: un grupo [F, "NOMBRE", N, "L"] por cada fila de la tabla de candidaturas que tenga algo escrito, donde F es el
-  número de fila impreso a la izquierda (1, 2, 3...) y "NOMBRE" el nombre o las siglas escritos en esa fila, copiados tal cual.
-  Si una fila está vacía, la siguiente sigue llevando su propio número. No repitas filas.
-  Como referencia, las ${cands.length} candidaturas de esta provincia, en el orden oficial, son (en el acta pueden estar en otro orden):
+- votos: un trío [F, N, "L"] por cada fila de la tabla de candidaturas que tenga algo escrito, donde F es el número de
+  fila impreso a la izquierda (1, 2, 3...). Comprueba que cada cifra va con el número de su fila: si una fila está vacía,
+  la siguiente sigue llevando su propio número. No repitas filas.
+  Como referencia, las ${cands.length} candidaturas de esta provincia, en el orden de las filas, son:
 ${lista}`;
   const datosFoto = "data:image/jpeg;base64," + aBase64(fotoBuf);
   const sistema = { role: "system", content: "Lees actas electorales españolas y respondes solo con JSON." };
@@ -1017,7 +996,7 @@ ${lista}`;
     ? { messages: [sistema, { role: "user", content: prompt }], image: datosFoto }
     : { messages: [sistema, { role: "user", content: [{ type: "text", text: prompt }, { type: "image_url", image_url: { url: datosFoto } }] }] };
   let r;
-  try { r = iaSimulada(env) ? iaDePrueba(fotoBuf) : await env.AI.run(modelo, { ...entrada, max_tokens: 1400, temperature: 0 }); }
+  try { r = iaSimulada(env) ? iaDePrueba(fotoBuf) : await env.AI.run(modelo, { ...entrada, max_tokens: 1000, temperature: 0 }); }
   catch (e) { const err = new Error("ia_no_disponible: " + String(e && e.message || e).slice(0, 300)); err.sinCoste = true; throw err; }
   // En pruebas locales, una foto con el comentario {"_falla": true} simula que el servicio está saturado
   if (iaSimulada(env) && /"_falla":\s*true/.test(String(r && r.response))) { const err = new Error("ia_no_disponible: simulado"); err.sinCoste = true; throw err; }
@@ -1034,25 +1013,14 @@ ${lista}`;
     fiab[clave] = num != null && letra != null ? (num === letra ? "alta" : "baja") : "media";
     return num != null ? num : letra;
   };
-  // Cada voto llega como [fila, nombre, número, letra]. Se coloca en su candidatura por el nombre escrito si se reconoce
-  // sin dudas (así da igual el orden en que la mesa las haya escrito); si no, por el número de fila (orden oficial).
-  // Formas antiguas admitidas: [fila, número, letra] y [número, letra] (en el orden de la lista).
+  // Cada voto llega como [fila, número, letra]; si el modelo no da la fila ([número, letra]), se toma el orden de la lista.
+  // (Se probó a pedir también el nombre escrito en cada fila para no depender del orden, pero el modelo copiaba los
+  // nombres de la lista de referencia en vez de leerlos, así que no servía.)
   const porCand = {}; const votos = Array.isArray(o.votos) ? o.votos : [];
-  const porFila = {}; const nombres = {};
   votos.forEach((v, i) => {
-    if (Array.isArray(v) && v.length >= 4 && Number.isInteger(Number(v[0]))) { porFila[Number(v[0])] = [v[2], v[3]]; nombres[Number(v[0])] = v[1]; }
-    else if (Array.isArray(v) && v.length === 3 && Number.isInteger(Number(v[0])) && Number(v[0]) >= 1) porFila[Number(v[0])] = [v[1], v[2]];
-    else porFila[i + 1] = v;
+    if (Array.isArray(v) && v.length >= 3 && Number.isInteger(Number(v[0])) && Number(v[0]) >= 1) porCand[Number(v[0]) - 1] = [v[1], v[2]];
+    else porCand[i] = v;
   });
-  const usadas = new Set();
-  for (const f of Object.keys(porFila).map(Number)) {
-    const k = candidaturaPorNombre(nombres[f], cands);
-    if (k >= 0 && !usadas.has(k)) { porCand[k] = porFila[f]; usadas.add(k); }
-  }
-  for (const f of Object.keys(porFila).map(Number)) {
-    if (candidaturaPorNombre(nombres[f], cands) >= 0) continue;
-    const k = f - 1; if (k >= 0 && k < cands.length && !usadas.has(k)) { porCand[k] = porFila[f]; usadas.add(k); }
-  }
   const cand = {}; cands.forEach((c, i) => { cand[c.codigo] = leer(c.codigo, porCand[i] ?? null); });
   // Control de cuadre: si lo leído no suma (candidaturas + blanco + nulos = votantes), alguna cifra o alguna fila está mal
   // leída, aunque no se sepa cuál. Entonces ninguna candidatura se da por fiable (no se pone nada en amarillo por ellas).

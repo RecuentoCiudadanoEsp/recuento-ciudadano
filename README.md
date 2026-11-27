@@ -158,15 +158,13 @@ cosa. Si falla algo, la foto queda en **cuarentena**: no se publica nunca aunque
 
 **Lectura automática (Workers AI, `LECTURA_IA = "1"`).** Un modelo de visión lee cada foto: cifras, si es un acta y si es
 inapropiada. Sirve para tres cosas:
-- En el formulario, en cuanto la persona elige la foto: debajo de cada casilla sale lo que se lee en la foto y su
-  fiabilidad: **alta** si coinciden la cifra en letra y en número del acta, **media** si solo se lee una, **baja** si no
-  coinciden. El modelo copia tal cual las palabras de la columna «En letra» y el servidor las convierte en cifra
-  (castellano, valenciano/catalán y gallego); si las diera ya convertidas, podría habérselas inventado copiando el número,
-  y la fiabilidad se queda en media. Cada fila se asigna a su candidatura por el nombre escrito en ella cuando se reconoce
-  sin dudas (da igual el orden en que la mesa las haya escrito) y, si no, por el número de fila (orden oficial).
-  Si lo escrito no coincide con una lectura de fiabilidad alta, la casilla se pone en amarillo; con fiabilidad media o
-  baja solo sale una nota discreta. No se escribe nada solo en las casillas: si dos
-  personas aceptaran la misma lectura errónea, la verificación entre fuentes independientes dejaría de valer.
+- El formulario **no** muestra lo que se lee en la foto. Se probó a enseñar la lectura debajo de cada casilla, con su
+  fiabilidad (letra y número), pero con actas escritas a mano el modelo a veces desplazaba las cifras de una fila a otra
+  y aun así parecía seguro: una casilla bien copiada podía salir marcada y animar a «corregirla» con una cifra errónea
+  (y si dos personas lo hicieran, la mesa se verificaría con cifras falsas). La lectura se hace en el servidor con cada
+  foto enviada. El modelo copia tal cual las palabras de la columna «En letra» y el servidor las convierte en cifra
+  (castellano, valenciano/catalán y gallego); la fiabilidad es **alta** si coinciden con la cifra en número, **media**
+  si solo hay una y **baja** si no coinciden, y si lo leído no cuadra ninguna candidatura se da por fiable.
 - En el panel: en cada versión de una mesa en conflicto te dice si sus cifras coinciden con lo que se lee en sus fotos.
 - Si dice que no es un acta o que es inapropiada: cuarentena, y además el envío no cuenta para verificar.
 **Solo se lee lo que aporta.** En cuanto una mesa está verificada (o validada por ti), las fotos nuevas de esa mesa no

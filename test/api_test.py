@@ -237,15 +237,6 @@ if __name__ == "__main__":
     c = cifras_ain(); l = lectura_pares(c); l["votantes"] = [c["votantes"], c["votantes"]]; l["nulos"] = [c["nulos"], None]
     d = leer_foto(l, 2)
     check("fiabilidad: media si la letra llega como cifra o vacía", d["fiab"]["votantes"] == "media" and d["fiab"]["nulos"] == "media" and d["fiab"]["blanco"] == "alta", d["fiab"])
-    # Cada fila se coloca por el nombre escrito, aunque la mesa haya escrito las candidaturas en otro orden
-    orden = list(cands.items()); fila = lambda i, sig, cod: [i + 1, sig, c["cand"][cod], en_letra(c["cand"][cod])]
-    al_reves = [fila(i, sig, cod) for i, (sig, cod) in enumerate(reversed(orden))]
-    d = leer_foto({**lectura_pares(c), "votos": al_reves}, 3)
-    # Si lo leído no cuadra (por ejemplo, una fila leída como 0 en letra y en número), ninguna candidatura sale como fiable
-    mal = lectura_pares(c); mal["votos"][[*cands.values()].index(cands["PP"])] = [0, "cero"]
-    d2 = leer_foto(mal, 4)
-    check("lectura que no cuadra: ninguna candidatura con fiabilidad alta", d2["no_cuadra"] and d2["cand"][cands["PP"]] == 0 and all(f != "alta" for k, f in d2["fiab"].items() if k in cands.values()) and d2["fiab"]["votantes"] == "alta", d2["fiab"])
-    check("cada fila va a su candidatura por el nombre escrito, en cualquier orden", all(d["cand"][cod] == c["cand"][cod] for cod in cands.values()), d["cand"])
 
     # ---- Conflicto con lectura que delata la versión mala y resolución por mesa
     m4 = otras[12] if len(otras) > 12 else otras[2]

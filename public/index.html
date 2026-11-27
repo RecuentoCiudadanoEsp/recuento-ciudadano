@@ -529,7 +529,7 @@ table.comp tr.difiere td{background:var(--warn-soft)}
       <div class="card"><h2>Qué se publica</h2><p>Las fotos de las actas (con los nombres y firmas tapados), sus cifras, el estado de cada mesa y la hora de cada envío. Nunca se publican el identificador seudonimizado de la conexión ni el identificador del navegador. Las decisiones de revisión quedan en un registro público, sin ningún dato de quien envió la foto.</p></div>
       <div class="card"><h2>Durante cuánto tiempo</h2><p>Las fotos, las cifras y el registro de decisiones se conservan de forma indefinida, porque son la prueba pública de cada acta. El identificador seudonimizado de la conexión y el identificador del navegador (también los de las reservas de colegios) se borrarán como tarde el <b>28 de febrero de 2027</b>, una vez cerradas las posibles reclamaciones sobre el recuento.</p></div>
       <div class="card"><h2>Proveedor del servicio</h2><p>La web está alojada en Cloudflare, que actúa como encargado del tratamiento conforme al Reglamento General de Protección de Datos. No hay publicidad, ni herramientas de analítica, ni botones de redes sociales que rastreen la visita.</p></div>
-      <div class="card"><h2>Almacenamiento en el navegador</h2><p>No se usan cookies de publicidad ni de analítica. El navegador guarda el identificador aleatorio descrito arriba, necesario para la seguridad del servicio. Al apuntarse a un colegio, guarda el código de la reserva y el nombre del colegio, para poder cancelarla sin tener que apuntar el código; se borran al cancelar. Mientras se rellena el formulario, también guarda la mesa elegida y las cifras escritas, para no perderlas si la página se recarga (por ejemplo, al abrir la cámara); no salen del dispositivo y se borran al enviar o al cerrar la pestaña. El formulario de envío (también al leer la foto), el botón para denunciar una foto y los de apuntarse a un colegio y cancelar incluyen una verificación antibots de Cloudflare, que analiza datos técnicos de la conexión y del navegador con el único fin de distinguir a las personas de los programas automáticos (<a href="https://www.cloudflare.com/turnstile-privacy-policy/" target="_blank" rel="noopener">aviso de privacidad de Cloudflare</a>).</p></div>
+      <div class="card"><h2>Almacenamiento en el navegador</h2><p>No se usan cookies de publicidad ni de analítica. El navegador guarda el identificador aleatorio descrito arriba, necesario para la seguridad del servicio. Al apuntarse a un colegio, guarda el código de la reserva y el nombre del colegio, para poder cancelarla sin tener que apuntar el código; se borran al cancelar. Mientras se rellena el formulario, también guarda la mesa elegida y las cifras escritas, para no perderlas si la página se recarga (por ejemplo, al abrir la cámara); no salen del dispositivo y se borran al enviar o al cerrar la pestaña. El formulario de envío, el botón para denunciar una foto y los de apuntarse a un colegio y cancelar incluyen una verificación antibots de Cloudflare, que analiza datos técnicos de la conexión y del navegador con el único fin de distinguir a las personas de los programas automáticos (<a href="https://www.cloudflare.com/turnstile-privacy-policy/" target="_blank" rel="noopener">aviso de privacidad de Cloudflare</a>).</p></div>
       <div class="card"><h2>Derechos</h2><p>Se pueden ejercer los derechos de acceso, rectificación, supresión, oposición y limitación escribiendo a <a href="mailto:privacidad@recuentociudadano.es">privacidad@recuentociudadano.es</a>. Como no se guarda ningún dato que identifique a nadie, es posible que no se pueda saber qué envíos corresponden a quien lo pide; en ese caso, indicar la mesa y la hora aproximada ayuda a localizarlos. Si alguien aparece en una foto publicada, puede pedir que se tape o se retire. También es posible reclamar ante la Agencia Española de Protección de Datos (<a href="https://www.aepd.es" target="_blank" rel="noopener">aepd.es</a>).</p></div>
       <p class="meta">Última actualización: 26 de noviembre de 2026.</p>
     </div>
@@ -820,22 +820,14 @@ function revisarEncuadre(){ const c=lienzo(300), d=c.getContext("2d").getImageDa
   const mal=papel/n<0.3||piel/n>0.3||col/n>0.3; const a=$("avisoEncuadre");
   a.classList.toggle("hide",!mal); a.innerHTML=mal?"<b>Parece que la foto tiene mucho fondo o no es un acta.</b> Acércate para que el acta ocupe casi toda la foto. Si la envías así, no se publicará hasta que la revisemos.":""; }
 
-// ---------- lectura automática: marca en amarillo lo que no coincide con la foto ----------
-let LECTURA=null, LECT_ID=0;
-async function pedirLectura(){ LECTURA=null; marcarDudosos(); const prov=$("sProv").value;
-  if(!CFG.lectura_ia||!abierto()||!IMG||!prov){ $("iaInfo").textContent=""; return; }
-  const id=++LECT_ID; $("iaInfo").innerHTML='<span class="spinner"></span> Leyendo la foto para ayudarte a comprobar las cifras…';
-  try{ const foto=await aBlob(lienzo(1600),0.8); const fd=new FormData(); fd.append("foto",foto,"acta.jpg"); fd.append("prov",prov); const ms=mesaSel(); if(ms) fd.append("mesa_id",ms.id);
-    const tk=await pase(); if(tk) fd.append("turnstile",tk); if(id!==LECT_ID) return;
-    const t0=Date.now(); const r=await fetch("/api/leer",{method:"POST",body:fd}); if(id!==LECT_ID) return; const d=await r.json();
-    if(d.omitida){ $("iaInfo").textContent="Esta mesa ya está verificada por varias personas: tu foto se guardará como respaldo."; return; }
-    if(!r.ok||!d.lectura){ $("iaInfo").textContent=""; return; }
-    LECTURA=d.lectura; $("iaInfo").textContent=LECTURA.es_acta===false?"La foto no parece un acta de escrutinio. Revisa que sea la correcta.":"Foto leída. Debajo de cada casilla tienes lo que se lee en la foto y su fiabilidad (alta si coinciden la cifra en letra y en número). No se escribe solo: cópialo tú del acta. En amarillo, lo que no coincide con una lectura fiable.";
-    // Solo en la versión de pruebas: la respuesta del modelo tal cual, el tiempo y los tokens, para ajustar la lectura
-    if(CFG.modo_pruebas&&LECTURA.bruto){ const u=LECTURA.uso||{}; const det=document.createElement("details"); det.style.marginTop="6px";
-      det.innerHTML=`<summary>Lectura en bruto (solo pruebas) · ${((Date.now()-t0)/1000).toFixed(1)} s · tokens: ${u.prompt_tokens??"?"} de entrada, ${u.completion_tokens??"?"} de salida${LECTURA.no_cuadra?" · la lectura NO cuadra":""}</summary><pre style="white-space:pre-wrap;font-size:11px">${esc(JSON.stringify(LECTURA.bruto).replace(/\],\[/g,"],\n["))}</pre>`;
-      $("iaInfo").appendChild(det); }
-    validar(); }catch(e){ if(id===LECT_ID) $("iaInfo").textContent=""; } }
+// ---------- lectura automática ----------
+// El formulario no muestra lo que la lectura automática cree ver en la foto. En las pruebas con actas escritas a mano,
+// el modelo a veces desplazaba las cifras de una fila a otra y aun así parecía seguro: una casilla bien copiada podía
+// salir marcada y animar a «corregirla» con una cifra equivocada (y si dos personas lo hicieran, la mesa se verificaría
+// con cifras falsas). La lectura se sigue haciendo en el servidor con cada foto enviada: decide si es un acta y si es
+// apropiada antes de publicarla, y sirve de ayuda en el panel de revisión.
+let LECTURA=null;
+function pedirLectura(){ LECTURA=null; $("iaInfo").textContent=""; }
 function marcarDudosos(){ const campos=[...BASICOS.map(([k])=>["n-"+k,k,null]),...CANDS.map(c=>["c-"+c.codigo,null,c.codigo])];
   for(const [idInput,k,cod] of campos){ const el=$(idInput), p=$("p-"+(k||cod)); if(!el) continue;
     const leido=LECTURA?(k?LECTURA[k]:(LECTURA.cand||{})[cod]):null; const v=el.value===""?null:Number(el.value);
