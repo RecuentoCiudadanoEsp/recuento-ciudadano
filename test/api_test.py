@@ -39,13 +39,13 @@ def multipart(campos):
         out.write(b"\r\n")
     out.write(f"--{bnd}--\r\n".encode()); return out.getvalue(), bnd
 
-def post_envio(cifras, variante=0, disp=None, ip="1.1.1.1", mesa="12-002-01-001-U", sin_tapar=False, lectura="auto", imagen=None):
+def post_envio(cifras, variante=0, disp=None, ip="1.1.1.1", mesa="12-002-01-001-U", sin_tapar=False, lectura="auto", imagen=None, dhash=None):
     img = ImageOps.exif_transpose(Image.open(imagen or ACTA)).convert("RGB")
     if variante: img = img.rotate(variante * 0.3, expand=False, fillcolor="white")   # foto distinta => huella distinta
     if not sin_tapar: img = tapar(img)
     if lectura == "auto": lectura = lectura_de(cifras) if cifras.get("cand") and len(cifras["cand"]) == len(cands) else None
     foto = jpeg(img, 1600, 80, lectura); mini = jpeg(img, 480, 65)
-    datos = {"mesa_id": mesa, "cifras": cifras, "hash": hashlib.sha256(foto).hexdigest(), "dhash": f"{variante:016x}",
+    datos = {"mesa_id": mesa, "cifras": cifras, "hash": hashlib.sha256(foto).hexdigest(), "dhash": dhash or f"{variante:016x}",
              "dispositivo": disp or uuid.uuid4().hex, "geo": None, "ts_foto": None}
     body, bnd = multipart({"foto": foto, "mini": mini, "datos": json.dumps(datos)})
     req = urllib.request.Request(BASE + "/api/envio", data=body, method="POST",
@@ -397,4 +397,9 @@ if __name__ == "__main__":
             c = _rnd.choice(cl[muni]); s, r = post_ap("/api/apuntarme", {"colegio": c[0], "dispositivo": uuid.uuid4().hex}, f"10.71.{prov}.{int(muni) % 250}")
             if r.get("colegio") != c[0]: malos.append((c[0], r))
     check("el servidor reconoce como colegio la primera mesa de cada colegio de la lista", not malos, malos)
+    # Dos fotos distintas de mesas distintas con la misma huella visual (pasa a menudo: todas las actas tienen la misma
+    # maqueta). No es una foto repetida: el envío cuenta con normalidad.
+    s1, r1 = post_envio(cifras_ain(), variante=777, mesa="12-003-01-001-A", ip="10.80.0.1", dhash="00000000000000c7")
+    s2, r2 = post_envio(cifras_ain(), variante=778, mesa="12-004-01-001-U", ip="10.80.0.2", dhash="00000000000000c7")
+    check("misma huella visual en dos mesas distintas: el envío no se descarta", s1 == 200 and not r1.get("ya_enviada") and s2 == 200 and not r2.get("ya_enviada") and "foto_reutilizada" not in r2.get("avisos", []), (r1, r2))
     print("\nRESULTADO:", "todo correcto" if ok else "HAY FALLOS")

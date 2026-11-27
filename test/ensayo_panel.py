@@ -1,5 +1,5 @@
 # Prepara envíos simulados para ensayar el panel en la versión de pruebas: una mesa verificada con fotos en espera,
-# conflictos, una foto con nombres sin tapar, una imagen que no es un acta, una foto repetida en otra mesa,
+# conflictos, una foto con nombres sin tapar, una imagen que no es un acta, la misma foto enviada a otra mesa,
 # una mesa nueva y una mesa pendiente.
 #
 # Como el ordenador desde el que se lanza puede no tener Python, el script no envía nada: deja en una carpeta cada
@@ -60,8 +60,8 @@ preparar("montroy_b_errata", VAL, montroy({0: 183, 1: 190}), "46-176-01-001-B", 
 # 3. Montroy A: empate 1 contra 1 -> conflicto; la versión sugerida es la que coincide con lo leído en la foto
 preparar("montroy_a_version_1", VAL, montroy(), "46-176-01-001-A", variante=4)
 preparar("montroy_a_version_2", VAL, montroy({2: 47, 3: 18}), "46-176-01-001-A", variante=5)
-# 4. Foto repetida: la misma foto de Montroy B enviada a otra mesa -> revisión por «foto repetida en otra mesa»
-# (otra copia del archivo, con distinta compresión: el servidor la reconoce por su huella visual)
+# 4. La misma foto de Montroy B (otra copia, con distinta compresión) enviada a otra mesa: ya no va a revisión por sí
+# sola (la huella visual no distingue unas actas de otras); se ve en el panel como un envío más de esa mesa
 preparar("foto_repetida", VAL, montroy(), "46-176-01-002-A", variante=1, huella="00000000000000b1", calidad=78)
 # 5. Nombres sin tapar -> cuarentena; en el panel: «Tapar nombres y aprobar»
 preparar("nombres_sin_tapar", AIN, ain(), "12-003-01-001-A", tapada=False, variante=6)

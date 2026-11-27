@@ -155,13 +155,12 @@ async function recibirEnvio(req, env) {
   const t = ahora(); const desde = t - 10 * 60 * 1000;
   const ipHash = await huellaIP(env, ip);
   const disp = String(d.dispositivo || "").slice(0, 64) || "sin-id";
-  const [dup, nIp, nDisp, mesasDisp, mesasRed, reuso] = await env.DB.batch([
+  const [dup, nIp, nDisp, mesasDisp, mesasRed] = await env.DB.batch([
     env.DB.prepare("SELECT 1 AS x FROM envios WHERE hash = ?").bind(hash),
     env.DB.prepare("SELECT COUNT(*) AS n FROM envios WHERE ip_hash = ? AND ts > ?").bind(ipHash, desde),
     env.DB.prepare("SELECT COUNT(*) AS n FROM envios WHERE dispositivo = ? AND ts > ?").bind(disp, desde),
     env.DB.prepare("SELECT COUNT(DISTINCT mesa_id) AS n FROM envios WHERE dispositivo = ? AND ts > ?").bind(disp, t - 30 * 60 * 1000),
     env.DB.prepare("SELECT COUNT(DISTINCT mesa_id) AS n FROM envios WHERE ip_hash = ? AND ts > ?").bind(ipHash, t - 60 * 60 * 1000),
-    env.DB.prepare("SELECT COUNT(*) AS n FROM envios WHERE dhash = ? AND mesa_id <> ?").bind(String(d.dhash || "-"), mesa.id),
   ]);
   if (dup.results.length) return json({ ok: true, ya_enviada: true, hash, mesa_id: mesa.id, avisos: [], foto_en_revision: false });
   if (nIp.results[0].n >= Number(env.MAX_ENVIOS_IP_10MIN || 300) || nDisp.results[0].n >= Number(env.MAX_ENVIOS_DISPOSITIVO_10MIN || 10))
@@ -175,7 +174,11 @@ async function recibirEnvio(req, env) {
   // Muchas IP son compartidas (las operadoras móviles agrupan a miles de clientes): esto no bloquea ni excluye,
   // solo impide que varios "dispositivos" detrás de una misma red muy activa cuenten como fuentes independientes.
   if (mesasRed.results[0].n >= Number(env.MAX_MESAS_RED_HORA || 8)) flags.push("red_muchas_mesas");
-  if (d.dhash && reuso.results[0].n > 0) flags.push("foto_reutilizada");
+  // No se compara la huella visual (dhash) con las fotos de otras mesas. Esa huella es una miniatura de 9×8 puntos en la
+  // que las cifras no se ven: todas las actas tienen la misma maqueta, así que fotos distintas de mesas distintas salían
+  // iguales y se descartaban envíos buenos. La misma foto exacta ya se reconoce por su huella completa (arriba), y una
+  // copia en otra mesa no basta para verificarla: hacen falta dos navegadores con las mismas cifras, y la foto publicada
+  // muestra la cabecera del acta. La huella visual se sigue guardando por si hiciera falta revisar algo después.
   if (Number.isFinite(d.ts_foto) && env.MODO_PRUEBAS !== "1" && d.ts_foto < Date.parse(env.ABRE) - 5 * 60 * 1000) flags.push("foto_antes_apertura");
   let geoOk = null, geoDist = null;
   if (d.geo && Number.isFinite(d.geo.lat) && Number.isFinite(d.geo.lon) && mesa.lat != null && mesa.lon != null) {

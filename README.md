@@ -139,7 +139,7 @@ la web no deja y el servidor la rechaza.
   (`MAX_MESAS_RED_HORA`, 8 por defecto), cuentan como una sola fuente.
 - **Pendiente:** un solo envío. Se muestra, pero no cuenta en los totales.
 - **En conflicto:** envíos válidos con cifras distintas. Va a la cola del panel.
-- **En revisión:** la mesa es nueva ("Mi mesa no aparece") o el envío tiene alertas (foto repetida en otra mesa, foto
+- **En revisión:** la mesa es nueva ("Mi mesa no aparece") o el envío tiene alertas (foto
   anterior al cierre, muchas mesas desde el mismo dispositivo —`MAX_MESAS_DISPOSITIVO_30MIN`: a partir de la 9.ª mesa
   distinta en media hora—, o la lectura automática dice que no es un acta). No cuenta hasta que lo revises.
   (El servidor aún admite una comprobación de distancia al colegio, `DISTANCIA_MAX_METROS`, pero la lista oficial de
