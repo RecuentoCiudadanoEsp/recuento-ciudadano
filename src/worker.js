@@ -356,24 +356,53 @@ async function cancelarApuntado(req, env) {
 // Apunta que una provincia ha cambiado, para que el cron rehaga sus cifras de apuntados
 const marcarApuntados = (env, prov, t) => env.DB.prepare("INSERT INTO apuntados_cambios (prov, ts) VALUES (?,?) ON CONFLICT(prov) DO UPDATE SET ts = excluded.ts").bind(prov, t).run();
 // Cada minuto (cron): personas apuntadas por colegio en las provincias que han cambiado, y el resumen de toda España.
-// public/apuntados/PP.json: { prov, generado, colegios: { id_colegio: personas } }
-// public/apuntados.json:    { generado, personas, colegios, provincias: { PP: { personas, colegios } } }
+// public/apuntados/PP.json: { prov, generado, mesas, colegios: { id_colegio: personas } }
+// public/apuntados.json:    { generado, personas, colegios, mesas, provincias: { PP: { personas, colegios, mesas } } }
 //   («colegios» = colegios con al menos una persona; el total de colegios de cada provincia está en public/data/colegios/)
+//   («mesas» = mesas de esos colegios: quien se apunta a un colegio puede fotografiar las actas de todas sus mesas)
+const VERSION_APUNTADOS = "2";   // se sube cuando cambia el formato, para que el cron rehaga los archivos aunque no haya cambios
 export async function publicarApuntados(env) {
   await asegurarTablasApuntados(env);
   const cambios = (await env.DB.prepare("SELECT prov, ts FROM apuntados_cambios").all()).results;
   const resumen = await env.FOTOS.head("public/apuntados.json");
-  if (!cambios.length && resumen) return { provincias: 0 };
+  const alDia = resumen && resumen.customMetadata && resumen.customMetadata.v === VERSION_APUNTADOS;
+  if (!cambios.length && alDia) return { provincias: 0 };
+  const mesasProv = {};
   for (const c of cambios) {
-    const r = (await env.DB.prepare("SELECT colegio, COUNT(*) AS n FROM apuntados WHERE prov = ? AND cancelado IS NULL GROUP BY colegio").bind(c.prov).all()).results;
-    await env.FOTOS.put(`public/apuntados/${c.prov}.json`, JSON.stringify({ prov: c.prov, generado: ahora(), colegios: Object.fromEntries(r.map(x => [x.colegio, x.n])) }), { httpMetadata: { contentType: "application/json" } });
+    mesasProv[c.prov] = await publicarApuntadosProvincia(env, c.prov);
     await env.DB.prepare("DELETE FROM apuntados_cambios WHERE prov = ? AND ts <= ?").bind(c.prov, c.ts).run();
   }
   const pr = (await env.DB.prepare("SELECT prov, COUNT(*) AS personas, COUNT(DISTINCT colegio) AS colegios FROM apuntados WHERE cancelado IS NULL GROUP BY prov").all()).results;
-  const provincias = Object.fromEntries(pr.map(x => [x.prov, { personas: x.personas, colegios: x.colegios }]));
-  await env.FOTOS.put("public/apuntados.json", JSON.stringify({ generado: ahora(), abierto: apuntarseAbierto(env), personas: pr.reduce((a, x) => a + x.personas, 0), colegios: pr.reduce((a, x) => a + x.colegios, 0), provincias }),
-    { httpMetadata: { contentType: "application/json" } });
+  // Las mesas de las provincias que no han cambiado se leen de su archivo; si es del formato antiguo (sin «mesas»), se rehace
+  for (const x of pr) if (mesasProv[x.prov] === undefined) {
+    const o = await env.FOTOS.get(`public/apuntados/${x.prov}.json`);
+    const d = o ? await o.json().catch(() => null) : null;
+    mesasProv[x.prov] = d && typeof d.mesas === "number" ? d.mesas : await publicarApuntadosProvincia(env, x.prov);
+  }
+  const provincias = Object.fromEntries(pr.map(x => [x.prov, { personas: x.personas, colegios: x.colegios, mesas: mesasProv[x.prov] || 0 }]));
+  await env.FOTOS.put("public/apuntados.json", JSON.stringify({ generado: ahora(), abierto: apuntarseAbierto(env), personas: pr.reduce((a, x) => a + x.personas, 0),
+    colegios: pr.reduce((a, x) => a + x.colegios, 0), mesas: pr.reduce((a, x) => a + (mesasProv[x.prov] || 0), 0), provincias }),
+    { httpMetadata: { contentType: "application/json" }, customMetadata: { v: VERSION_APUNTADOS } });
   return { provincias: cambios.length };
+}
+// Rehace public/apuntados/PP.json de una provincia y devuelve cuántas mesas suman sus colegios con alguien apuntado
+async function publicarApuntadosProvincia(env, prov) {
+  const r = (await env.DB.prepare("SELECT colegio, COUNT(*) AS n FROM apuntados WHERE prov = ? AND cancelado IS NULL GROUP BY colegio").bind(prov).all()).results;
+  const porColegio = await mesasPorColegio(env, prov);
+  const mesas = r.reduce((a, x) => a + (porColegio[x.colegio] || 1), 0);
+  await env.FOTOS.put(`public/apuntados/${prov}.json`, JSON.stringify({ prov, generado: ahora(), mesas, colegios: Object.fromEntries(r.map(x => [x.colegio, x.n])) }), { httpMetadata: { contentType: "application/json" } });
+  return mesas;
+}
+// Número de mesas de cada colegio de una provincia, sacado de la lista de colegios que ya publica la web
+// (public/data/colegios/PP.json, cuarto dato de cada colegio). Leerla no consulta la base de datos ni cuesta.
+async function mesasPorColegio(env, prov) {
+  try {
+    const r = await env.ASSETS.fetch(new Request(`https://recuento.local/data/colegios/${prov}.json`));
+    if (!r.ok) return {};
+    const d = await r.json(), m = {};
+    for (const lista of Object.values(d.municipios || {})) for (const c of lista) m[c[0]] = c[3];
+    return m;
+  } catch (e) { return {}; }
 }
 // Solo en pruebas: apunta personas inventadas en una parte de los colegios de una provincia, para ver el mapa con datos
 async function apuntadosDemo(env, prov, fraccion) {
