@@ -1054,7 +1054,13 @@ ${lista}`;
     const k = f - 1; if (k >= 0 && k < cands.length && !usadas.has(k)) { porCand[k] = porFila[f]; usadas.add(k); }
   }
   const cand = {}; cands.forEach((c, i) => { cand[c.codigo] = leer(c.codigo, porCand[i] ?? null); });
-  const res = { v: LECTURA_VERSION, es_acta: o.es_acta !== false, inapropiada: o.inapropiada === true, electores: leer("electores", o.electores), votantes: leer("votantes", o.votantes),
+  // Control de cuadre: si lo leído no suma (candidaturas + blanco + nulos = votantes), alguna cifra o alguna fila está mal
+  // leída, aunque no se sepa cuál. Entonces ninguna candidatura se da por fiable (no se pone nada en amarillo por ellas).
+  const vot = leer("_v", o.votantes), bl = leer("_b", o.blanco), nu = leer("_n", o.nulos); delete fiab._v; delete fiab._b; delete fiab._n;
+  const sumaCand = Object.values(cand).reduce((a, x) => a + (x || 0), 0);
+  const noCuadra = vot == null || sumaCand + (bl || 0) + (nu || 0) !== vot;
+  if (noCuadra) for (const c of cands) if (fiab[c.codigo] === "alta") fiab[c.codigo] = "media";
+  const res = { v: LECTURA_VERSION, no_cuadra: noCuadra, es_acta: o.es_acta !== false, inapropiada: o.inapropiada === true, electores: leer("electores", o.electores), votantes: leer("votantes", o.votantes),
     nulos: leer("nulos", o.nulos), blanco: leer("blanco", o.blanco), cand, fiab, modelo };
   if (env.MODO_PRUEBAS === "1" && r && r.usage) res.uso = r.usage;   // tokens gastados, para calcular el coste en las pruebas
   if (env.MODO_PRUEBAS === "1") res.bruto = o;                         // respuesta del modelo tal cual, para ajustar la lectura

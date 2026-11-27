@@ -241,6 +241,10 @@ if __name__ == "__main__":
     orden = list(cands.items()); fila = lambda i, sig, cod: [i + 1, sig, c["cand"][cod], en_letra(c["cand"][cod])]
     al_reves = [fila(i, sig, cod) for i, (sig, cod) in enumerate(reversed(orden))]
     d = leer_foto({**lectura_pares(c), "votos": al_reves}, 3)
+    # Si lo leído no cuadra (por ejemplo, una fila leída como 0 en letra y en número), ninguna candidatura sale como fiable
+    mal = lectura_pares(c); mal["votos"][[*cands.values()].index(cands["PP"])] = [0, "cero"]
+    d2 = leer_foto(mal, 4)
+    check("lectura que no cuadra: ninguna candidatura con fiabilidad alta", d2["no_cuadra"] and d2["cand"][cands["PP"]] == 0 and all(f != "alta" for k, f in d2["fiab"].items() if k in cands.values()) and d2["fiab"]["votantes"] == "alta", d2["fiab"])
     check("cada fila va a su candidatura por el nombre escrito, en cualquier orden", all(d["cand"][cod] == c["cand"][cod] for cod in cands.values()), d["cand"])
 
     # ---- Conflicto con lectura que delata la versión mala y resolución por mesa

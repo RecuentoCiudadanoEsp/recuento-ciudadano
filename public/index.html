@@ -827,10 +827,14 @@ async function pedirLectura(){ LECTURA=null; marcarDudosos(); const prov=$("sPro
   const id=++LECT_ID; $("iaInfo").innerHTML='<span class="spinner"></span> Leyendo la foto para ayudarte a comprobar las cifras…';
   try{ const foto=await aBlob(lienzo(1600),0.8); const fd=new FormData(); fd.append("foto",foto,"acta.jpg"); fd.append("prov",prov); const ms=mesaSel(); if(ms) fd.append("mesa_id",ms.id);
     const tk=await pase(); if(tk) fd.append("turnstile",tk); if(id!==LECT_ID) return;
-    const r=await fetch("/api/leer",{method:"POST",body:fd}); if(id!==LECT_ID) return; const d=await r.json();
+    const t0=Date.now(); const r=await fetch("/api/leer",{method:"POST",body:fd}); if(id!==LECT_ID) return; const d=await r.json();
     if(d.omitida){ $("iaInfo").textContent="Esta mesa ya está verificada por varias personas: tu foto se guardará como respaldo."; return; }
     if(!r.ok||!d.lectura){ $("iaInfo").textContent=""; return; }
     LECTURA=d.lectura; $("iaInfo").textContent=LECTURA.es_acta===false?"La foto no parece un acta de escrutinio. Revisa que sea la correcta.":"Foto leída. Debajo de cada casilla tienes lo que se lee en la foto y su fiabilidad (alta si coinciden la cifra en letra y en número). No se escribe solo: cópialo tú del acta. En amarillo, lo que no coincide con una lectura fiable.";
+    // Solo en la versión de pruebas: la respuesta del modelo tal cual, el tiempo y los tokens, para ajustar la lectura
+    if(CFG.modo_pruebas&&LECTURA.bruto){ const u=LECTURA.uso||{}; const det=document.createElement("details"); det.style.marginTop="6px";
+      det.innerHTML=`<summary>Lectura en bruto (solo pruebas) · ${((Date.now()-t0)/1000).toFixed(1)} s · tokens: ${u.prompt_tokens??"?"} de entrada, ${u.completion_tokens??"?"} de salida${LECTURA.no_cuadra?" · la lectura NO cuadra":""}</summary><pre style="white-space:pre-wrap;font-size:11px">${esc(JSON.stringify(LECTURA.bruto).replace(/\],\[/g,"],\n["))}</pre>`;
+      $("iaInfo").appendChild(det); }
     validar(); }catch(e){ if(id===LECT_ID) $("iaInfo").textContent=""; } }
 function marcarDudosos(){ const campos=[...BASICOS.map(([k])=>["n-"+k,k,null]),...CANDS.map(c=>["c-"+c.codigo,null,c.codigo])];
   for(const [idInput,k,cod] of campos){ const el=$(idInput), p=$("p-"+(k||cod)); if(!el) continue;
