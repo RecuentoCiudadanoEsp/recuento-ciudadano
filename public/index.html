@@ -204,7 +204,7 @@ table.comp tr.difiere td{background:var(--warn-soft)}
 .cols li.elegido{background:var(--accent-soft); box-shadow:inset 3px 0 0 var(--accent)}
 .cols .nom{font-weight:600} .cols .dir{font-size:13px; color:var(--muted)}
 .cols .ap{flex:none; font-size:13px; white-space:nowrap; text-align:right}
-.ap0{color:var(--muted)} .ap1{color:var(--ok); font-weight:600}
+.ap0{color:var(--muted)} .ap1{color:var(--ok); font-weight:600} .apUna{color:var(--warn); font-weight:600}
 .codigo{font-family:var(--mono); font-size:32px; font-weight:500; letter-spacing:6px; background:var(--card); border:2px dashed var(--accent); border-radius:10px; padding:8px 16px; display:inline-block; margin:6px 0}
 .chk{display:flex; align-items:center; gap:8px; font-size:15px; margin-top:10px; cursor:pointer} .chk input{width:20px; height:20px}
 .mensajeProv{border-left:4px solid var(--ocre); padding:8px 12px; background:var(--warn-soft); border-radius:6px; margin:10px 0}
@@ -288,7 +288,7 @@ table.comp tr.difiere td{background:var(--warn-soft)}
             <div><label for="sADist">o por distrito</label><select id="sADist"></select></div>
             <div><label for="sASecc">y sección</label><select id="sASecc"></select></div>
           </div>
-          <label class="chk"><input type="checkbox" id="chkVacios"> Solo colegios a los que aún no va nadie</label>
+          <label class="chk"><input type="checkbox" id="chkVacios"> Solo colegios donde aún falta gente (nadie o una sola persona)</label>
           <div class="meta" id="apCuenta" style="margin-top:8px"></div>
           <ul class="cols" id="apLista"></ul>
         </div>
@@ -319,7 +319,7 @@ table.comp tr.difiere td{background:var(--warn-soft)}
         <div id="tsCancelar" style="margin-top:10px"></div>
         <div id="apCancelRes" style="margin-top:8px" aria-live="polite"></div>
       </div>
-      <p class="meta">Apuntarse no es obligatorio para subir fotos: el domingo cualquiera puede enviar el acta de cualquier mesa. Y aunque un colegio ya tenga gente apuntada, ve igualmente si puedes: cuantas más fotos de cada acta, mejor se verifica. Para frenar reservas falsas, cada navegador solo puede apuntarse a un colegio cada 15 minutos.</p>
+      <p class="meta">Apuntarse no es obligatorio para subir fotos: el domingo cualquiera puede enviar el acta de cualquier mesa. Y aunque un colegio ya tenga gente apuntada, ve igualmente si puedes: para verificar cada acta hacen falta fotos de dos personas distintas, así que un colegio con una sola persona apuntada aún necesita otra, y cuantas más fotos, mejor. Para frenar reservas falsas, cada navegador solo puede apuntarse a un colegio cada 15 minutos.</p>
     </div>
   </section>
 
@@ -941,6 +941,14 @@ const MIS_RESERVAS="rc-apuntados";
 const apuntarseAbierto=()=>CFG.modo_pruebas||!CFG.apuntarse_hasta||Date.now()<Date.parse(CFG.apuntarse_hasta);
 let AP={prov:null,col:null,cuentas:{},elegido:null};
 const personas=n=>`${fmt(n)} persona${n===1?"":"s"}`;
+// Una mesa solo se verifica con fotos de dos personas distintas: un colegio con una sola persona apuntada aún no basta,
+// y se dice (en la lista, en la ficha del colegio y en la de la mesa). Los cercanos que se proponen incluyen también
+// los que tienen una sola persona.
+const FALTA_OTRA="Para verificar cada mesa hacen falta fotos de dos personas distintas: aquí falta otra persona.";
+const faltaGente=id=>(AP.cuentas[id]||0)<2;
+const textoColN=n=>!n?`<b>Aún no va nadie.</b> Si te apuntas, serás la primera persona.`
+  :n===1?`<b class="apUna">👤 1 persona se ha sumado</b> a fotografiar sus actas. ${FALTA_OTRA}`
+  :`<b class="ap1">👤 ${personas(n)} se han sumado</b> a fotografiar sus actas.`;
 const cargarColegios=p=>getJSON(`/data/colegios/${p}.json`);
 const cargarApuntados=p=>getJSON(`/api/public/apuntados/${p}.json`,{fresh:true}).catch(()=>({colegios:{}}));
 const totalColegios=()=>getJSON("/data/colegios/resumen.json").catch(()=>({}));
@@ -971,8 +979,8 @@ $("sAMuni").addEventListener("change",()=>{ const l=colegiosMuni(); $("apColegio
   if(!l.length){ $("apBusca").classList.add("hide"); return; } $("apBusca").classList.remove("hide");
   const ds=[...new Set(l.flatMap(c=>c[4].map(x=>x.slice(0,2))))].sort();
   opts($("sADist"),ds.map(d=>[d,"Distrito "+Number(d)]),"Todos los distritos"); $("sADist").disabled=ds.length<2; opts($("sASecc"),[],"Todas las secciones"); $("sASecc").disabled=true;
-  $("qCol").value=""; const con=l.filter(c=>AP.cuentas[c[0]]).length;
-  $("apMensaje").innerHTML=AP.msgProv+`<div class="meta" style="margin-top:6px">${esc(natural(AP.nombres[$("sAMuni").value]||""))}: ${fmt(l.length)} colegio${l.length===1?"":"s"}, ${fmt(con)} con alguien apuntado.</div>`;
+  $("qCol").value=""; const con=l.filter(c=>AP.cuentas[c[0]]).length, una=l.filter(c=>AP.cuentas[c[0]]===1).length;
+  $("apMensaje").innerHTML=AP.msgProv+`<div class="meta" style="margin-top:6px">${esc(natural(AP.nombres[$("sAMuni").value]||""))}: ${fmt(l.length)} colegio${l.length===1?"":"s"}, ${fmt(con)} con alguien apuntado${una?` (${fmt(una)} con una sola persona: les falta otra para poder verificar)`:""}.</div>`;
   pintarColegios(); });
 // Buscar por nombre o calle borra el distrito y la sección, y elegir distrito o sección borra lo escrito
 $("qCol").addEventListener("input",()=>{ if($("sADist").value||$("sASecc").value){ $("sADist").value=""; opts($("sASecc"),[],"Todas las secciones"); $("sASecc").disabled=true; } pintarColegios(); });
@@ -982,9 +990,9 @@ $("sADist").addEventListener("change",()=>{ $("qCol").value=""; const d=$("sADis
 $("sASecc").addEventListener("change",()=>{ $("qCol").value=""; pintarColegios(); });
 $("chkVacios").addEventListener("change",()=>pintarColegios());
 const filaColegio=c=>{ const n=AP.cuentas[c[0]]||0;
-  return `<li tabindex="0" role="button" data-col="${c[0]}" class="${AP.elegido===c[0]?"elegido":""}"><div><div class="nom">${esc(c[1])}</div><div class="dir">${esc(c[2])} · ${c[3]} mesa${c[3]===1?"":"s"}</div></div><div class="ap ${n?"ap1":"ap0"}">${n?"👤 "+personas(n):"Nadie aún"}</div></li>`; };
+  return `<li tabindex="0" role="button" data-col="${c[0]}" class="${AP.elegido===c[0]?"elegido":""}"><div><div class="nom">${esc(c[1])}</div><div class="dir">${esc(c[2])} · ${c[3]} mesa${c[3]===1?"":"s"}</div></div><div class="ap ${n>1?"ap1":n?"apUna":"ap0"}">${n>1?"👤 "+personas(n):n?"👤 1 persona · falta otra":"Nadie aún"}</div></li>`; };
 function pintarColegios(){ const l=colegiosMuni(), q=norm($("qCol").value), d=$("sADist").value, sc=$("sASecc").value, vacios=$("chkVacios").checked;
-  let r=l.filter(c=>(!d||c[4].some(x=>x.startsWith(d+"-")&&(!sc||x===d+"-"+sc)))&&(!q||norm(c[1]+" "+c[2]).includes(q))&&(!vacios||!AP.cuentas[c[0]]));
+  let r=l.filter(c=>(!d||c[4].some(x=>x.startsWith(d+"-")&&(!sc||x===d+"-"+sc)))&&(!q||norm(c[1]+" "+c[2]).includes(q))&&(!vacios||faltaGente(c[0])));
   r.sort((a,b)=>a[1].localeCompare(b[1],"es"));
   const filtrado=q.length>=2||d||vacios;
   if(l.length>LISTA_ENTERA&&!filtrado){ $("apCuenta").textContent=`Este municipio tiene ${fmt(l.length)} colegios: escribe el nombre o la calle, o elige un distrito.`; $("apLista").innerHTML=""; return; }
@@ -994,23 +1002,24 @@ function alTocar(ul){ const ir=li=>{ if(li) verColegio(li.dataset.col,true); };
   ul.addEventListener("click",e=>ir(e.target.closest("li[data-col]")));
   ul.addEventListener("keydown",e=>{ if(e.key==="Enter") ir(e.target.closest("li[data-col]")); }); }
 alTocar($("apLista"));
-// Colegios cercanos al elegido que aún no tienen a nadie. Distancia en el panal «Por zonas» (solo dentro del municipio).
+// Colegios cercanos al elegido donde aún falta gente (nadie o una sola persona: para verificar hacen falta dos).
+// Distancia en el panal «Por zonas» (solo dentro del municipio).
 // Es aproximada: en los municipios grandes el panal desplaza algunas mesas de su sección. Por eso se da preferencia a los
 // colegios del mismo distrito. Tras apuntarse («tras»), se invita a mirar otro y se recuerda el límite de 15 minutos.
 function pintarCerca(id,tras){ const mu=id.split("-")[1], l=AP.col?AP.col.municipios[mu]||[]:[], c=l.find(x=>x[0]===id); if(!c){ $("apCerca").innerHTML=""; return; }
   const dist=x=>x[4][0].slice(0,2), mismo=new Set(c[4].map(y=>y.slice(0,2)));
-  let cerca=[]; if(c[5]!=null) cerca=l.filter(x=>x[0]!==id&&x[5]!=null&&!AP.cuentas[x[0]]).map(x=>[x,Math.hypot(x[5]-c[5],(x[6]-c[6])*0.87)+(mismo.has(dist(x))?0:4)]).sort((a,b)=>a[1]-b[1]).slice(0,5).map(x=>x[0]);
+  let cerca=[]; if(c[5]!=null) cerca=l.filter(x=>x[0]!==id&&x[5]!=null&&faltaGente(x[0])).map(x=>[x,Math.hypot(x[5]-c[5],(x[6]-c[6])*0.87)+(mismo.has(dist(x))?0:4)]).sort((a,b)=>a[1]-b[1]).slice(0,5).map(x=>x[0]);
   const aviso=tras?`<p class="meta" style="margin:14px 0 0">(Para evitar reservas masivas hechas con bots, cada móvil puede apuntarse a un colegio cada ${CFG.minutos_entre_apuntados||15} minutos.)</p>`:"";
-  const tit=tras?"¿Te animas con otro? Cerca de este colegio, aún sin nadie":"Cerca de este colegio, aún sin nadie";
+  const tit=tras?"¿Te animas con otro? Cerca de este colegio, donde aún falta gente":"Cerca de este colegio, donde aún falta gente";
   $("apCerca").innerHTML=l.length>1?(cerca.length?`${aviso}<h3 style="margin-top:${tras?6:18}px">${tit}</h3><p class="meta" style="margin:2px 0 0">Por zona aproximada. Comprueba la dirección antes de ir.</p><ul class="cols" id="apCercaLista">${cerca.map(filaColegio).join("")}</ul>`
-    :c[5]!=null?`${aviso}<p class="meta" style="margin-top:14px">Todos los colegios de ${esc(natural(AP.nombres[mu]||""))} tienen ya a alguien. 💪</p>`:aviso):aviso;
+    :c[5]!=null?`${aviso}<p class="meta" style="margin-top:14px">Todos los colegios de ${esc(natural(AP.nombres[mu]||""))} tienen ya al menos dos personas. 💪</p>`:aviso):aviso;
   if($("apCercaLista")) alTocar($("apCercaLista")); }
-// Ficha del colegio elegido: cuántas personas hay, botón para apuntarse y los colegios más cercanos sin nadie
+// Ficha del colegio elegido: cuántas personas hay, botón para apuntarse y los colegios más cercanos donde falta gente
 function verColegio(id,desplazar){ const mu=id.split("-")[1], l=AP.col?AP.col.municipios[mu]||[]:[], c=l.find(x=>x[0]===id); if(!c) return;
   AP.elegido=id; pintarColegios(); const n=AP.cuentas[id]||0, ab=apuntarseAbierto();
   $("apColegio").classList.remove("hide"); $("apColNom").textContent=c[1]; renderTs(TS.apuntar);   // el widget, ya visible
   $("apColDir").textContent=`${c[2]} · ${natural(AP.nombres[mu]||"")} · ${c[3]} mesa${c[3]===1?"":"s"} (secciones ${c[4].map(x=>Number(x.slice(0,2))+"-"+x.slice(3)).join(", ")})`;
-  $("apColN").innerHTML=n?`<b class="ap1">👤 ${personas(n)} ${n===1?"se ha sumado":"se han sumado"}</b> a fotografiar sus actas.`:`<b>Aún no va nadie.</b> Si te apuntas, serás la primera persona.`;
+  $("apColN").innerHTML=textoColN(n);
   const mia=misReservas().find(r=>r.colegio===id);
   $("btnApuntar").classList.toggle("hide",!ab||!!mia); $("apResultado").innerHTML=mia?`<div class="banner b-ok">Ya te habías apuntado a este colegio con el código <b class="mono">${mia.codigo}</b>.</div>`:"";
   pintarCerca(id,false);
@@ -1024,7 +1033,7 @@ $("btnApuntar").addEventListener("click",async()=>{ const id=AP.elegido; if(!id)
     const l=misReservas().filter(x=>x.codigo!==d.codigo); l.push({codigo:d.codigo,colegio:d.colegio,nombre:c[1],muni:natural(AP.nombres[id.split("-")[1]]||""),ts:Date.now()}); guardarReservas(l);
     if(!d.ya_apuntado) AP.cuentas[id]=(AP.cuentas[id]||0)+1;
     b.classList.add("hide"); pintarColegios(); pintarMias();
-    $("apColN").innerHTML=`<b class="ap1">👤 ${personas(AP.cuentas[id]||1)} ${(AP.cuentas[id]||1)===1?"se ha sumado":"se han sumado"}</b> a fotografiar sus actas.`;
+    $("apColN").innerHTML=textoColN(AP.cuentas[id]||1);
     $("apResultado").innerHTML=`<div class="banner b-ok"><b>${d.ya_apuntado?"Ya te habías apuntado a este colegio.":"¡Muchas gracias por tu compromiso con la transparencia del recuento!"}</b>
       <div style="margin-top:8px">Tu código:</div><div class="codigo">${esc(d.codigo)}</div>
       <p style="margin:6px 0">Si al final no puedes ir, cancela la reserva con este código: así quien busque colegios sabrá que este necesita a alguien, y tendremos la mejor organización posible. El código queda guardado en este navegador (en «Mis reservas», aquí abajo), pero mejor hazle una captura.</p>
@@ -1058,7 +1067,7 @@ async function irAColegio(arg){ const pt=(arg||"").split("-"); if(!/^\d\d$/.test
 async function verApuntarme(arg){ const ab=apuntarseAbierto(); $("apCerrado").classList.toggle("hide",ab); pintarMias(); mapaApuntados();
   if(arg) await irAColegio(decodeURIComponent(arg));
   else if(AP.prov){ const a=await cargarApuntados(AP.prov); AP.cuentas=a.colegios||{}; if($("sAMuni").value) pintarColegios();   // al refrescar solo cambian las cifras
-    if(AP.elegido){ const n=AP.cuentas[AP.elegido]||0; if(n) $("apColN").innerHTML=`<b class="ap1">👤 ${personas(n)} ${n===1?"se ha sumado":"se han sumado"}</b> a fotografiar sus actas.`; } } }
+    if(AP.elegido){ const n=AP.cuentas[AP.elegido]||0; if(n) $("apColN").innerHTML=textoColN(n); } } }
 // Mapa de «Me apunto»: parte de los colegios con alguien apuntado, en España (por provincia) o en la provincia elegida
 // (por municipio). Usa los mismos contornos que Resultados (archivos estáticos, en caché) y las cifras de apuntados.
 let AP_MAPA_ESP=false;   // true = ver España aunque haya provincia elegida
@@ -1284,7 +1293,7 @@ async function apuntadosMesa(p,pt,ref){ const caja=$("mesaApunta"); try{ if(!ref
   const [cols,apu]=await Promise.all([cargarColegios(p),cargarApuntados(p)]); const sec=pt[2]+"-"+pt[3];
   const c=((cols.municipios||{})[pt[1]]||[]).find(x=>x[1]===String(ref[2]||"").trim()&&x[4].includes(sec)); if(!c){ caja.innerHTML=""; return; }
   const n=(apu.colegios||{})[c[0]]||0, ab=apuntarseAbierto();
-  caja.innerHTML=`<span class="${n?"ap1":"ap0"}" style="font-size:14px">${n?`👤 ${personas(n)} ${n===1?"se ha apuntado":"se han apuntado"} a fotografiar las actas de este colegio.`:ab?"Nadie se ha apuntado aún a fotografiar las actas de este colegio.":""}</span>${ab?` <a href="#apuntarme=${c[0]}">${n?"Apúntate tú también":"Apúntate"} →</a>`:""}`;
+  caja.innerHTML=`<span class="${n>1?"ap1":n?"apUna":"ap0"}" style="font-size:14px">${n?`👤 ${personas(n)} ${n===1?"se ha apuntado":"se han apuntado"} a fotografiar las actas de este colegio.${n===1&&ab?` ${FALTA_OTRA}`:""}`:ab?"Nadie se ha apuntado aún a fotografiar las actas de este colegio.":""}</span>${ab?` <a href="#apuntarme=${c[0]}">${n?"Apúntate tú también":"Apúntate"} →</a>`:""}`;
 }catch(e){ caja.innerHTML=""; } }
 async function verMesa(id,refresco){
   const p=(id||"").slice(0,2), pt=(id||"").split("-"); $("mesaBack").href="#prov="+p;
