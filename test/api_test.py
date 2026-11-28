@@ -107,7 +107,19 @@ if __name__ == "__main__":
     s, r = post_envio(cifras_ain(PP=29, PSOE=21), variante=2, ip="10.0.0.3"); check("versión alterada que cuadra aceptada", s == 200 and r["cuadra"], r)
     cron(); s, p = get("/api/public/prov/12.json"); m = next(x for x in p["mesas"] if x["id"] == "12-002-01-001-U")
     check("mesa pasa a conflicto", m["estado"] == "conflicto", m["estado"])
-    s, r = post_envio(cifras_ain(VOX=19), variante=3, ip="10.0.0.4"); check("acta que no cuadra RECHAZADA", s == 400 and r["error"] == "no_cuadra", r)
+    s, r = post_envio(cifras_ain(VOX=19), variante=3, ip="10.0.0.4"); check("acta que no cuadra aceptada, marcada como que no cuadra", s == 200 and r["cuadra"] is False and "no_cuadra" in r["errores"], r)
+    cron(); s, p = get("/api/public/prov/12.json"); m = next(x for x in p["mesas"] if x["id"] == "12-002-01-001-U")
+    check("un envío que no cuadra no cuenta: la mesa sigue en conflicto entre las dos versiones que cuadran", m["estado"] == "conflicto", m["estado"])
+    # Mesa en la que todas las fotos dicen lo mismo, pero el propio acta no cuadra: no se verifica sola, va a revisión
+    mesa_nc = [x[0] for x in json.load(open("public/data/mesas/12.json"))["mesas"] if not x[0].startswith("12-002-")][20]
+    nc = {**cifras_ain(), "votantes": 97}
+    s, r = post_envio(nc, variante=8, ip="10.0.1.1", mesa=mesa_nc); s2, r2 = post_envio(nc, variante=9, ip="10.0.1.2", mesa=mesa_nc)
+    check("dos personas envían la misma acta que no cuadra: aceptadas", s == 200 and s2 == 200 and not r["cuadra"] and not r2["cuadra"], (r, r2))
+    s, r = post_envio({**cifras_ain(), "electores": 90}, variante=10, ip="10.0.1.3", mesa=mesa_nc)
+    check("más votantes que electores: aceptada y marcada", s == 200 and "mas_votantes_que_electores" in r["errores"], r)
+    cron(); s, p = get("/api/public/prov/12.json"); mnc = next(x for x in p["mesas"] if x["id"] == mesa_nc)
+    check("acta que no cuadra: la mesa queda en revisión, sin verificarse ni sumar", mnc["estado"] == "revision" and mnc["cifras"] is None, (mnc["estado"], mnc["cifras"]))
+    check("sus fotos no se publican", not any(f["pub"] for f in mnc["fotos"]), [f["pub"] for f in mnc["fotos"]])
     s, r = post_envio({"electores": 121, "votantes": 96, "nulos": 1, "blanco": 1, "cand": {}}, variante=4, ip="10.0.0.5"); check("cifras incompletas rechazadas", s == 400, r)
     s, r = post_envio(cifras_ain(), variante=5, ip="10.0.0.6", mesa="99-999-99-999-Z"); check("mesa inexistente rechazada", s == 400, r)
     s, r = get("/admin/api/estadisticas"); check("panel sin contraseña rechazado", s == 401)

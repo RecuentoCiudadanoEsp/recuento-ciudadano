@@ -130,8 +130,12 @@ Después, en el panel de Cloudflare:
 
 ## Reglas de verificación
 
-Un acta que no cuadra (votantes ≠ candidaturas + blanco + nulos, o más votantes que electores) **no se puede enviar**:
-la web no deja y el servidor la rechaza.
+Un acta que no cuadra (votantes ≠ candidaturas + blanco + nulos, o más votantes que electores) **se puede enviar, pero
+no cuenta**: la web avisa y pide revisar las cifras, y solo deja enviarla si la persona confirma que las ha copiado bien
+y que es el propio acta la que no cuadra (a esa hora ya está firmada y colgada: nadie puede corregirla, y es justo el
+tipo de acta que interesa documentar). El servidor la guarda con `cuadra = 0`: no cuenta para verificar ni para los
+totales y, si la mesa no tiene otros envíos que cuenten, queda **en revisión**. En el panel aparece con el aviso «Las
+cuentas no cuadran»; si das por buena esa versión («Esta es la buena»), la mesa queda validada con esas cifras.
 
 - **Verificada:** al menos dos envíos con las mismas cifras desde dispositivos distintos. No se exige
   que vengan de IP distintas, porque las operadoras móviles hacen que miles de personas compartan IP. Salvaguarda: si

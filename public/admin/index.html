@@ -115,7 +115,9 @@ function compararIA(e,campos){ if(!e.ia||e.ia.es_acta===false) return null; cons
   for(const [k,l] of campos){ const iv=val(e.ia,k); if(iv==null) continue; leidos++; const v=val(e.cifras,k); if(v!==iv) dif.push({k,l,foto:iv,env:v}); }
   return {leidos, dif, acuerdo: leidos? (leidos-dif.length)/leidos : null}; }
 const img=(h,alto)=>`<img data-foto="${h}" alt="Foto del acta" title="Abrir a tamaño completo"${alto?` style="height:${alto}px"`:""}>`;
-const avisosEnvio=e=>e.flags.filter(f=>f!=="foto_aprobada"&&!f.startsWith("retapada:")).map(f=>FLAGS[f]||f);
+// Errores aritméticos de las cifras enviadas: el envío se acepta (puede ser un error del propio acta), pero no cuenta
+const ERRORES_CIFRAS={no_cuadra:"Las cuentas no cuadran (votantes ≠ candidaturas + blanco + nulos): quien la envía confirma que el acta viene así",mas_votantes_que_electores:"Más votantes que electores: quien la envía confirma que el acta viene así"};
+const avisosEnvio=e=>[...(e.errores||[]).map(x=>ERRORES_CIFRAS[x]||x),...e.flags.filter(f=>f!=="foto_aprobada"&&!f.startsWith("retapada:")).map(f=>FLAGS[f]||f)];
 
 // ---------- vista por MESA: versiones agrupadas con sugerencia ----------
 function pintarMesa(m){
