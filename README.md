@@ -297,8 +297,13 @@ para decir que irá a fotografiar sus actas. Sirve para ver qué colegios tienen
   primera mesa. La lista de la web (`public/data/colegios/PP.json` y `resumen.json`, con el total por provincia) se prepara
   con `python3 scripts/colegios.py`; el servidor agrupa igual a partir de la tabla `mesas`.
 - **Buscar:** provincia y municipio; después, nombre del colegio o calle, o distrito y sección. Con hasta 30 colegios en el
-  municipio la lista sale entera. Al elegir un colegio se proponen los cercanos que aún no tienen a nadie (posición aproximada
+  municipio la lista sale entera. Al elegir un colegio se proponen los cercanos donde aún falta gente (posición aproximada
   del panal «Por zonas», con preferencia por el mismo distrito).
+- **Hacen falta dos por colegio:** una mesa solo se verifica con fotos de dos personas distintas, así que un colegio con
+  una sola persona apuntada todavía no basta. La web lo dice: en la lista sale «1 persona · falta otra», la ficha del
+  colegio y la de la mesa lo explican, el filtro «Solo colegios donde aún falta gente» y los cercanos propuestos incluyen
+  los que tienen nadie o una sola persona, y el resumen del municipio dice cuántos colegios tienen solo una. El mapa y el
+  mensaje de la provincia siguen contando los colegios con alguien apuntado.
 - **Sin datos personales:** se guardan el colegio, la hora, el identificador del navegador y la huella de la conexión. Se
   entrega un código de 6 caracteres (sin 0/O ni 1/I; unos 1.070 millones de combinaciones) para cancelar. El navegador lo
   guarda en `localStorage` (`rc-apuntados`) para poder cancelar sin apuntarlo.
