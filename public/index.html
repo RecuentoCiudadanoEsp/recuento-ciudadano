@@ -382,6 +382,7 @@ table.comp tr.difiere td{background:var(--warn-soft)}
       <div class="card" id="cardEnvio">
         <div class="step"><span class="n">4</span><h2>Comprobación y envío</h2></div>
         <ul class="checks" id="checks"></ul>
+        <label class="chk hide" id="lblNoCuadra"><input type="checkbox" id="chkNoCuadra"> He comprobado las cifras una a una con el acta: las he copiado bien y es el acta la que no cuadra. Enviarla para que la revisen.</label>
         <div id="turnstile" style="margin-top:12px"></div>
         <button class="primary big" id="btnEnviar" style="margin-top:12px" disabled>Enviar</button>
         <div id="resultado" style="margin-top:12px" aria-live="polite"></div>
@@ -839,6 +840,8 @@ function marcarDudosos(){ const campos=[...BASICOS.map(([k])=>["n-"+k,k,null]),.
     p.textContent = leido==null ? "" : dudoso ? `En la foto parece ${leido} (fiabilidad alta): revisa que esté bien copiado` : distinto ? `En la foto se ha leído ${leido} (fiabilidad ${f||"media"}): si has copiado bien del acta, déjalo así` : (v===leido ? `✓ coincide con la foto` : `En la foto: ${leido} · fiabilidad ${f||"media"}`); } }
 
 // ---------- validación (mismas reglas que el servidor) ----------
+// Cifras (JSON) para las que se ha confirmado que el acta no cuadra; null si no se ha confirmado
+let NO_CUADRA_OK=null;
 function comprobar(){
   const it=[]; const add=(l,t)=>it.push({l,t}); const m=mesaSel(); const c=leerCifras();
   add(m?(m.nueva?"warn":"ok"):"idle", m?(m.nueva?`Mesa ${m.id}: no está en nuestra lista, la revisaremos a mano antes de contarla.`:`Mesa ${m.id}`):(MODO_NUEVA?"Completa municipio, distrito, sección y mesa.":"Elige tu mesa."));
@@ -847,14 +850,21 @@ function comprobar(){
   if(!CANDS.length) add("idle","Faltan las cifras.");
   else if(faltan.length) add("idle",`Faltan cifras: ${faltan.slice(0,4).join(", ")}${faltan.length>4?"…":""}. Si una candidatura tiene 0 votos, escribe 0.`);
   else { const suma=CANDS.reduce((a,k)=>a+c.cand[k.codigo],0)+c.blanco+c.nulos;
-    if(c.votantes>c.electores) add("bad",`Hay más votantes (${fmt(c.votantes)}) que electores (${fmt(c.electores)}). Revisa las cifras.`);
-    if(c.votantes!==suma) add("bad",`No cuadra: candidaturas + blanco + nulos = ${fmt(suma)}, pero votantes = ${fmt(c.votantes)}. Revisa las cifras${LECTURA?" (empieza por las casillas en amarillo)":""}. Si están bien copiadas, puede que haya un error en el propio acta: coméntaselo a la presidencia de la mesa. Un acta que no cuadra no se puede enviar.`);
+    const siEstanBien="Si están bien copiadas, el error está en el propio acta: márcalo abajo y envíala igualmente. No contará hasta que la revisemos, pero así no se pierde.";
+    if(c.votantes>c.electores) add("bad",`Hay más votantes (${fmt(c.votantes)}) que electores (${fmt(c.electores)}). Revisa las cifras. ${siEstanBien}`);
+    if(c.votantes!==suma) add("bad",`No cuadra: candidaturas + blanco + nulos = ${fmt(suma)}, pero votantes = ${fmt(c.votantes)}. Revisa las cifras${LECTURA?" (empieza por las casillas en amarillo)":""}. ${siEstanBien}`);
     else add("ok","Las cuentas cuadran.");
     if(m&&m.censo&&!m.nueva&&Math.abs(c.electores-m.censo)>Math.max(15,m.censo*0.08)) add("warn",`Electores (${fmt(c.electores)}) muy distinto al censo de referencia (${fmt(m.censo)}). ¿Es la mesa correcta?`); }
-  const listo=!!(m&&IMG&&CANDS.length&&!faltan.length&&!it.some(i=>i.l==="bad"));
+  // Un acta que no cuadra se puede enviar, pero solo después de confirmar que es el acta la que no cuadra. La confirmación
+  // vale para esas cifras exactas: si se cambia cualquiera, hay que volver a marcarla.
   const cuadra=!!(CANDS.length&&!faltan.length&&!it.some(i=>i.l==="bad"));
+  const noCuadra=!!(CANDS.length&&!faltan.length&&!cuadra);
+  const confirmada=noCuadra&&NO_CUADRA_OK===JSON.stringify(c);
+  $("lblNoCuadra").classList.toggle("hide",!noCuadra); $("chkNoCuadra").checked=confirmada;
+  const listo=!!(m&&IMG&&CANDS.length&&!faltan.length&&(cuadra||confirmada));
   return {it,listo,m,c,faltan,cuadra};
 }
+$("chkNoCuadra").addEventListener("change",e=>{ NO_CUADRA_OK=e.target.checked?JSON.stringify(leerCifras()):null; validar(); });
 let checksPrev="";
 function validar(){ const {it,listo}=comprobar(); const ic={ok:"✓",warn:"!",bad:"✕",idle:"·"};
   const html=it.map(i=>`<li class="c-${i.l}"><span class="ic">${ic[i.l]}</span><span class="t">${i.t}</span></li>`).join("");
@@ -920,7 +930,7 @@ $("btnEnviar").addEventListener("click",async()=>{
     let r, d; for(let intento=0; intento<3; intento++){ try{ r=await fetch("/api/envio",{method:"POST",body:fd}); d=await r.json(); break; }catch(err){ if(intento===2) throw err; await new Promise(z=>setTimeout(z,1500*(intento+1))); } }
     if(!r.ok){ $("resultado").innerHTML=`<div class="banner b-bad">${ERRORES[d.error]||d.mensaje||"No se ha podido enviar. Inténtalo de nuevo."}</div>`; return; }
     const url=`${location.origin}/#mesa=${d.mesa_id}`; borrarBorrador();
-    $("resultado").innerHTML=`<div class="banner b-ok"><b>¡Enviada, gracias!</b> ${antesDeTotales()?"Las cifras y las fotos se publicarán a partir de las 21:00 (hora peninsular), cuando cierren todos los colegios, también en Canarias. Hasta entonces la ficha de la mesa solo muestra si está verificada.":"Tus cifras aparecerán en la ficha de la mesa en un minuto. La foto se hará pública cuando otra persona envíe la misma acta (o la revisemos)."}${d.foto_en_revision?" Hemos detectado algo raro en la foto (mucho fondo o algún nombre sin tapar), así que la revisaremos antes de publicarla.":""}
+    $("resultado").innerHTML=`<div class="banner b-ok"><b>¡Enviada, gracias!</b> ${antesDeTotales()?"Las cifras y las fotos se publicarán a partir de las 21:00 (hora peninsular), cuando cierren todos los colegios, también en Canarias. Hasta entonces la ficha de la mesa solo muestra si está verificada.":"Tus cifras aparecerán en la ficha de la mesa en un minuto. La foto se hará pública cuando otra persona envíe la misma acta (o la revisemos)."}${d.foto_en_revision?" Hemos detectado algo raro en la foto (mucho fondo o algún nombre sin tapar), así que la revisaremos antes de publicarla.":""}${d.cuadra===false?" Como las cuentas del acta no cuadran, no contará hasta que la revisemos a mano.":""}
       <div class="row" style="margin-top:10px"><a class="btn small" href="#mesa=${d.mesa_id}">Ver mi mesa</a><button class="small" id="btnShareMesa">Compartir</button><button class="small" id="btnOtra">Enviar otra mesa</button></div></div>`;
     $("btnShareMesa").onclick=()=>compartir(`He fotografiado el acta de mi mesa electoral. Cuando cierre tu colegio, haz lo mismo:`,url);
     $("btnOtra").onclick=()=>{ IMG=null; RECTS=[]; LECTURA=null; $("foto").value=""; $("editorBox").classList.add("hide"); $("lblFoto").textContent="Hacer o elegir foto";

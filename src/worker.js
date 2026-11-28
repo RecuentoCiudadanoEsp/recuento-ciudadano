@@ -144,7 +144,10 @@ async function recibirEnvio(req, env) {
   const cods = (await env.DB.prepare("SELECT codigo FROM candidaturas WHERE prov = ?").bind(mesa.prov).all()).results.map(r => r.codigo);
   const val = validarCifras(d.cifras, cods, mesa.censo);
   if (val.errores.some(e => e.startsWith("falta") || e.startsWith("cand_desconocida") || e === "formato")) return json({ error: "cifras_incompletas", detalle: val.errores }, 400);
-  if (!val.ok) return json({ error: "no_cuadra", detalle: val.errores, mensaje: "Las cuentas no cuadran. Revisa las cifras. Si están bien copiadas, puede que haya un error en el propio acta: coméntaselo a la presidencia de la mesa." }, 400);
+  // Un acta cuyas cuentas no cuadran (o con más votantes que electores) se acepta igualmente: a esa hora el acta ya está
+  // firmada y colgada, así que si el error está en el propio acta nadie lo puede corregir, y es justo el tipo de acta que
+  // interesa documentar. Se guarda con cuadra = 0: no cuenta para verificar ni para los totales (calcularConsenso solo
+  // usa envíos con cuadra = 1) y, si la mesa no tiene otros envíos que cuenten, queda «en revisión» para el panel.
 
   // Comprobaciones de la imagen (foto grande y miniatura): zona de nombres tapada y aspecto de documento
   let zonas = []; try { zonas = JSON.parse(env.ZONAS_DIFUMINADO || "[]"); } catch {}
