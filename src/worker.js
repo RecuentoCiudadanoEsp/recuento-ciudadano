@@ -1029,6 +1029,8 @@ ${lista}`;
   catch (e) { const err = new Error("ia_no_disponible: " + String(e && e.message || e).slice(0, 300)); err.sinCoste = true; throw err; }
   // En pruebas locales, una foto con el comentario {"_falla": true} simula que el servicio está saturado
   if (iaSimulada(env) && /"_falla":\s*true/.test(String(r && r.response))) { const err = new Error("ia_no_disponible: simulado"); err.sinCoste = true; throw err; }
+  // …y con {"_rota": true}, que el modelo contesta algo que no se puede leer (eso sí se cobra y cuenta como intento)
+  if (iaSimulada(env) && /"_rota":\s*true/.test(String(r && r.response))) r = { response: "respuesta sin datos" };
   const o = jsonDeRespuesta(r && (r.response ?? r.result?.response ?? r.choices?.[0]?.message?.content));
   const n = (v) => (Number.isInteger(v) && v >= 0 ? v : (typeof v === "string" && /^\d+$/.test(v.trim()) ? Number(v) : null));
   // Fiabilidad: «alta» solo si la cifra en número coincide con las PALABRAS de la casilla «En letra», que convierte el
@@ -1126,6 +1128,33 @@ async function leerParaFormulario(req, env) {
   await env.DB.prepare("INSERT OR REPLACE INTO lecturas (hash, lectura, ip_hash, ts) VALUES (?,?,?,?)").bind(hash, JSON.stringify(lectura), ipHash, ahora()).run();
   return json({ hash, lectura });
 }
+// Lee una foto con la IA y guarda el resultado. Devuelve "hecha", "saturado", "fallo" u "otra" (ya la tenía otra tarea).
+async function leerUnaFoto(env, e) {
+  // Se reserva antes de leerla («leyendo»): si otra tarea coincide en el tiempo, se la salta y no se lee dos veces
+  const reserva = await env.DB.prepare(`UPDATE envios SET ia_estado = 'leyendo', ia_ts = ?, ia_intentos = ia_intentos + 1
+    WHERE hash = ? AND ia_estado IN ('pendiente','forzada','en_espera') RETURNING ia_intentos`).bind(ahora(), e.hash).first();
+  if (!reserva) return "otra";
+  const recalcular = env.DB.prepare("INSERT INTO pendientes (mesa_id, prov, ts) VALUES (?,?,?) ON CONFLICT(mesa_id) DO UPDATE SET ts = excluded.ts").bind(e.mesa_id, e.prov, ahora());
+  try {
+    const o = await env.FOTOS.get(`foto/${e.hash}.jpg`);
+    if (!o) { await env.DB.prepare("UPDATE envios SET ia_estado = 'error' WHERE hash = ?").bind(e.hash).run(); return "fallo"; }
+    if (!(await hayCupoIA(env))) { await env.DB.batch([env.DB.prepare("UPDATE envios SET ia_estado = 'omitida' WHERE hash = ?").bind(e.hash), recalcular]); return "fallo"; }
+    let l; try { l = await leerConIA(env, await o.arrayBuffer(), e.prov); } catch (err) { if (err.sinCoste) await devolverCupoIA(env); throw err; }
+    const flags = [...new Set([...JSON.parse(e.flags || "[]"), ...flagsLectura(l)])];
+    await env.DB.batch([env.DB.prepare("UPDATE envios SET ia = ?, ia_estado = 'hecha', flags = ? WHERE hash = ?").bind(JSON.stringify(l), JSON.stringify(flags), e.hash), recalcular]);
+    return "hecha";
+  } catch (err) {
+    console.error("IA cron", err);
+    if (err.sinCoste) {   // servicio saturado: vuelve a la lista sin contar como intento
+      await env.DB.prepare("UPDATE envios SET ia_estado = 'pendiente', ia_intentos = MAX(0, ia_intentos - 1) WHERE hash = ?").bind(e.hash).run();
+      return "saturado";
+    }
+    const otraVez = reserva.ia_intentos < MAX_INTENTOS_IA;
+    // si ya no se vuelve a intentar, se recalcula la mesa para que la foto aparezca en la cola de revisión manual
+    await env.DB.batch([env.DB.prepare("UPDATE envios SET ia_estado = ? WHERE hash = ?").bind(otraVez ? "pendiente" : "error", e.hash), ...(otraVez ? [] : [recalcular])]);
+    return "fallo";
+  }
+}
 // El cron lee las fotos enviadas sin lectura previa (por ejemplo, de quien se salta la web). Hasta entonces no se publican.
 // Va aparte del recálculo del mapa, así que una lectura lenta no retrasa los resultados.
 async function leerPendientesIA(env) {
@@ -1135,14 +1164,19 @@ async function leerPendientesIA(env) {
   //  - si llega una foto con otras cifras, la mesa pasa a conflicto y entonces sí se leen sus fotos en espera;
   //  - antes de verificarse, como mucho FOTOS_LEIDAS_POR_VERSION fotos leídas con las mismas cifras (por si llegan muchas a la vez);
   //  - van primero las que se fuerzan desde el panel y después las de mesas verificadas (son las que se publicarían).
-  // Si una lectura falla (por ejemplo, el servicio está saturado), la foto se vuelve a intentar en los minutos siguientes,
-  // hasta MAX_INTENTOS_IA veces; después queda para la revisión manual (cola «Fotos aún sin leer» del panel).
+  // Se leen IA_PARALELO fotos a la vez (cada lectura empieza en cuanto termina otra), como mucho IA_POR_MINUTO por tarea y sin
+  // empezar ninguna nueva pasados 50 s (la tarea siguiente, un minuto después, sigue por donde se quedó).
+  // Si el servicio de lectura está saturado, la foto vuelve a la lista sin gastar ningún intento ni nada del tope, y quien
+  // estaba leyendo espera unos segundos. Si el modelo contesta algo que no se puede leer, la foto se vuelve a intentar en las
+  // tareas siguientes, hasta MAX_INTENTOS_IA veces; después queda para la revisión manual (cola «Fotos aún sin leer»).
+  // Mientras tanto, las fotos de mesas verificadas también aparecen en esa cola, por si se quieren aprobar a mano.
   const t0 = ahora(); const N = Number(env.FOTOS_LEIDAS_POR_VERSION || 3);
+  const porMinuto = Math.max(1, Number(env.IA_POR_MINUTO || 300)), paralelo = Math.max(1, Number(env.IA_PARALELO || 30));
   // Fotos que se quedaron a medio leer (la tarea se cortó): vuelven a la lista
   await env.DB.prepare("UPDATE envios SET ia_estado = 'pendiente' WHERE ia_estado = 'leyendo' AND ia_ts < ?").bind(t0 - 5 * 60 * 1000).run();
   const cand = (await env.DB.prepare(`SELECT e.hash, e.mesa_id, e.prov, e.flags, e.firma, e.ia_estado, c.estado AS mesa_estado FROM envios e LEFT JOIN consenso c ON c.mesa_id = e.mesa_id
     WHERE e.ia_estado IN ('pendiente','forzada') OR (e.ia_estado = 'en_espera' AND c.estado IN ('conflicto','revision'))
-    ORDER BY (e.ia_estado = 'forzada') DESC, (c.estado IN ('verificada','validada')) DESC, (e.ia_estado = 'en_espera') DESC, e.ts LIMIT 150`).all()).results;
+    ORDER BY (e.ia_estado = 'forzada') DESC, (c.estado IN ('verificada','validada')) DESC, (e.ia_estado = 'en_espera') DESC, e.ts LIMIT ?`).bind(porMinuto).all()).results;
   const mesas = [...new Set(cand.map(e => e.mesa_id))]; const leidas = new Map();
   for (let i = 0; i < mesas.length; i += 90) {
     const ids = mesas.slice(i, i + 90);
@@ -1157,34 +1191,12 @@ async function leerPendientesIA(env) {
     if ((verificada && n >= 2) || n >= N) { if (e.ia_estado !== "en_espera") espera.push(e.hash); } else { pend.push(e); leidas.set(k, n + 1); } }
   for (let i = 0; i < espera.length; i += 90) { const h = espera.slice(i, i + 90);
     await env.DB.prepare(`UPDATE envios SET ia_estado = 'en_espera' WHERE hash IN (${h.map(() => "?").join(",")}) AND ia_estado = 'pendiente'`).bind(...h).run(); }
-  for (let i = 0; i < pend.length; i += 15) {
-    // Sin empezar tandas nuevas pasados 45 s: la siguiente tarea (dentro de un minuto) sigue por donde se quedó
-    if (ahora() - t0 > 45000) break;
-    const tanda = pend.slice(i, i + 15);
-    // Se reservan antes de leerlas («leyendo»): si otra tarea coincide en el tiempo, se las salta y no se leen dos veces
-    const reservadas = (await env.DB.prepare(`UPDATE envios SET ia_estado = 'leyendo', ia_ts = ?, ia_intentos = ia_intentos + 1
-      WHERE hash IN (${tanda.map(() => "?").join(",")}) AND ia_estado IN ('pendiente','forzada','en_espera') RETURNING hash, ia_intentos`).bind(ahora(), ...tanda.map(e => e.hash)).all()).results;
-    const intentos = new Map(reservadas.map(r => [r.hash, r.ia_intentos]));
-    await Promise.all(tanda.filter(e => intentos.has(e.hash)).map(async (e) => {
-      try {
-        const o = await env.FOTOS.get(`foto/${e.hash}.jpg`);
-        if (!o) { await env.DB.prepare("UPDATE envios SET ia_estado = 'error' WHERE hash = ?").bind(e.hash).run(); return; }
-        if (!(await hayCupoIA(env))) { await env.DB.prepare("UPDATE envios SET ia_estado = 'omitida' WHERE hash = ?").bind(e.hash).run(); return; }
-        let l; try { l = await leerConIA(env, await o.arrayBuffer(), e.prov); } catch (err) { if (err.sinCoste) await devolverCupoIA(env); throw err; }
-        const flags = [...new Set([...JSON.parse(e.flags || "[]"), ...flagsLectura(l)])];
-        await env.DB.batch([
-          env.DB.prepare("UPDATE envios SET ia = ?, ia_estado = 'hecha', flags = ? WHERE hash = ?").bind(JSON.stringify(l), JSON.stringify(flags), e.hash),
-          env.DB.prepare("INSERT INTO pendientes (mesa_id, prov, ts) VALUES (?,?,?) ON CONFLICT(mesa_id) DO UPDATE SET ts = excluded.ts").bind(e.mesa_id, e.prov, ahora()),
-        ]);
-      } catch (err) {
-        console.error("IA cron", err);
-        const otraVez = intentos.get(e.hash) < MAX_INTENTOS_IA;
-        await env.DB.batch([
-          env.DB.prepare("UPDATE envios SET ia_estado = ? WHERE hash = ?").bind(otraVez ? "pendiente" : "error", e.hash),
-          // si ya no se vuelve a intentar, se recalcula la mesa para que la foto aparezca en la cola de revisión manual
-          ...(otraVez ? [] : [env.DB.prepare("INSERT INTO pendientes (mesa_id, prov, ts) VALUES (?,?,?) ON CONFLICT(mesa_id) DO UPDATE SET ts = excluded.ts").bind(e.mesa_id, e.prov, ahora())]),
-        ]);
-      }
-    }));
-  }
+  let siguiente = 0;
+  const lector = async () => {
+    while (siguiente < pend.length && ahora() - t0 < 50000) {
+      const resultado = await leerUnaFoto(env, pend[siguiente++]);
+      if (resultado === "saturado") await new Promise(listo => setTimeout(listo, 3000));
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(paralelo, pend.length) }, lector));
 }

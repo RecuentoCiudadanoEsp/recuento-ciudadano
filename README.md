@@ -175,11 +175,13 @@ verificarse, como mucho `FOTOS_LEIDAS_POR_VERSION` fotos (3) con las mismas cifr
 vez. El formulario tampoco gasta lectura en mesas verificadas. Así todo el cupo va a mesas sin verificar.
 
 **Ninguna foto se publica sin lectura automática o revisión manual.** Mientras una foto no se ha leído, no se publica
-(sus cifras cuentan igual). El cron lee hasta 150 por minuto, primero las de mesas verificadas (son las que se
-publicarían), y va aparte del recálculo del mapa: una lectura lenta no retrasa los resultados. Antes de leer cada foto
-la marca como «leyendo», para que dos tareas que coincidan en el tiempo no la lean dos veces. Si una lectura falla (por
-ejemplo, porque el servicio está saturado), se vuelve a intentar en los minutos siguientes, hasta 6 veces; después, o si
-se llega al tope de lecturas, la foto queda en la cola **Fotos aún sin leer** del panel para aprobarla a mano. Modelo: Llama 4 Scout
+(sus cifras cuentan igual). El cron lee hasta `IA_POR_MINUTO` (300) por minuto, `IA_PARALELO` (30) a la vez, primero las de
+mesas verificadas (son las que se publicarían), y va aparte del recálculo del mapa: una lectura lenta no retrasa los
+resultados. Si el servicio de lectura está saturado, la foto vuelve a la lista sin gastar ningún intento ni nada del tope. Antes de leer cada foto
+la marca como «leyendo», para que dos tareas que coincidan en el tiempo no la lean dos veces. Si el modelo contesta algo
+que no se puede leer, se vuelve a intentar en los minutos siguientes, hasta 6 veces; después, o si se llega al tope de
+lecturas, la foto queda en la cola **Fotos aún sin leer** del panel para aprobarla a mano (las fotos de mesas verificadas
+que esperan lectura también salen ahí). Modelo: Llama 4 Scout
 (`@cf/meta/llama-4-scout-17b-16e-instruct`), elegido tras compararlo con otros modelos de visión de Workers AI sobre actas
 reales: es el que mejor lee las cifras manuscritas. Coste: Workers AI regala 10.000 "neuronas" al día (unas 120 fotos) y
 después cobra unos 0,0009 $ por foto (unas 80 neuronas; reducir la foto no lo abarata con este modelo). **Red de seguridad:**

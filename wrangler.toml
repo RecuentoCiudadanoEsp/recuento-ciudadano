@@ -46,6 +46,8 @@ DISTANCIA_MAX_METROS = "400"
 LECTURA_IA = "1"               # lectura automática de las fotos con Workers AI ("0" para desactivarla)
 MAX_LECTURAS_IP_10MIN = "300"
 FOTOS_LEIDAS_POR_VERSION = "3"   # con 3 fotos leídas iguales en una mesa, las siguientes iguales esperan sin gastar
+IA_PARALELO = "30"               # fotos que se leen a la vez en la tarea de cada minuto
+IA_POR_MINUTO = "300"            # fotos como mucho por tarea (300 es el límite por defecto de Workers AI por minuto)
 MAX_LECTURAS_IA = "100000"       # red de seguridad: lecturas automáticas en total (100.000 ≈ 88 $ como máximo con Llama 4 Scout). Al llegar, se dejan de hacer
 # «Me apunto»: hasta cuándo se puede apuntar (al abrirse los envíos), minutos entre reservas de un mismo navegador,
 # reservas por conexión y hora (alto: muchas conexiones móviles se comparten) e intentos de cancelar por conexión
@@ -113,6 +115,8 @@ DISTANCIA_MAX_METROS = "400"
 LECTURA_IA = "1"               # lectura automática de las fotos con Workers AI ("0" para desactivarla)
 MAX_LECTURAS_IP_10MIN = "1000000"   # en pruebas, sin límite: la prueba de carga sale toda de la misma conexión (en la pública: 300)
 FOTOS_LEIDAS_POR_VERSION = "3"   # con 3 fotos leídas iguales en una mesa, las siguientes iguales esperan sin gastar
+IA_PARALELO = "30"               # fotos que se leen a la vez en la tarea de cada minuto
+IA_POR_MINUTO = "300"            # fotos como mucho por tarea (300 es el límite por defecto de Workers AI por minuto)
 MAX_LECTURAS_IA = "2000"         # en pruebas, como mucho unas 2.000 lecturas (≈ 2 $)
 # «Me apunto»: hasta cuándo se puede apuntar (al abrirse los envíos), minutos entre reservas de un mismo navegador,
 # reservas por conexión y hora (alto: muchas conexiones móviles se comparten) e intentos de cancelar por conexión

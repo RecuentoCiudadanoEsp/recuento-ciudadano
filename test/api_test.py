@@ -322,33 +322,38 @@ if __name__ == "__main__":
     s, r = get("/api/public/oficial/12.json")
     check("y se publica tal cual, sin campos desconocidos", s == 200 and r["mesas"]["12-002-01-001-U"]["cand"] == {"C01": 50} and r["municipios"]["002"]["cand"]["?OTRA"] == 3 and "extra" not in r, r)
     s, r = get("/admin/api/oficial", method="POST", body={"prov": "12", "datos": bueno}); check("sin contraseña no se puede cargar", s in (401, 403), s)
-    # ---- Ninguna foto se publica sin lectura automática: si el servicio falla, la foto espera y se reintenta
-    mesas_f = [m[0] for m in json.load(open("public/data/mesas/12.json"))["mesas"] if not m[0].startswith("12-002-")][60:62]
-    m5 = mesas_f[0]; falla = {**lectura_de(cifras_ain()), "_falla": True}
+    # ---- Ninguna foto se publica sin lectura automática. Si el servicio está saturado, la foto espera sin gastar intentos;
+    #      si el modelo contesta algo ilegible, se reintenta hasta 6 veces y después queda para la revisión manual
+    mesas_f = [m[0] for m in json.load(open("public/data/mesas/12.json"))["mesas"] if not m[0].startswith("12-002-")][60:63]
+    m5, m6 = mesas_f[0], mesas_f[2]
+    falla = {**lectura_de(cifras_ain()), "_falla": True}; rota = {**lectura_de(cifras_ain()), "_rota": True}
     cron(); cron()   # que no quede ninguna lectura pendiente de las pruebas anteriores
     s, st0 = get("/admin/api/estadisticas", admin=True)
     s, ra = post_envio(cifras_ain(), variante=601, ip="10.60.0.1", mesa=m5, lectura=falla)
     s, rb = post_envio(cifras_ain(), variante=602, ip="10.60.0.2", mesa=m5, lectura=falla); cron(); cron()
     s, p = get("/api/public/prov/12.json"); mm = next(x for x in p["mesas"] if x["id"] == m5)
-    check("si la IA no puede leer, la mesa se verifica igual (las cifras cuentan)", mm["estado"] == "verificada", mm["estado"])
+    check("si la IA está saturada, la mesa se verifica igual (las cifras cuentan)", mm["estado"] == "verificada", mm["estado"])
     check("…pero sus fotos no se publican", all(not f["pub"] for f in mm["fotos"]), [f["pub"] for f in mm["fotos"]])
     s, st1 = get("/admin/api/estadisticas", admin=True)
-    check("los intentos fallidos no gastan del tope de lecturas", st1["lecturas_ia"] == st0["lecturas_ia"], (st0["lecturas_ia"], st1["lecturas_ia"]))
+    check("los intentos con la IA saturada no gastan del tope de lecturas", st1["lecturas_ia"] == st0["lecturas_ia"], (st0["lecturas_ia"], st1["lecturas_ia"]))
+    s, q = get("/admin/api/cola?estado=sin_leer", admin=True)
+    check("las fotos que esperan lectura salen en la cola «Fotos aún sin leer» del panel", any(x["mesa_id"] == m5 for x in q["mesas"]))
+    for _ in range(5): cron()
     s, q = get("/admin/api/mesa?id=" + m5, admin=True)
-    check("tras un fallo, la foto vuelve a la cola de lectura", all(e["ia_estado"] == "pendiente" for e in q["mesas"][0]["envios"]), [e["ia_estado"] for e in q["mesas"][0]["envios"]])
+    check("con la IA saturada no se agotan los intentos: sigue esperando su lectura", all(e["ia_estado"] == "pendiente" for e in q["mesas"][0]["envios"]), [e["ia_estado"] for e in q["mesas"][0]["envios"]])
+    s, rc = post_envio(cifras_ain(), variante=603, ip="10.60.0.3", mesa=m6, lectura=rota)
+    s, rd = post_envio(cifras_ain(), variante=604, ip="10.60.0.4", mesa=m6, lectura=rota)
+    for _ in range(2): cron()
+    s, q = get("/admin/api/mesa?id=" + m6, admin=True)
+    check("si el modelo contesta algo ilegible, la foto vuelve a la cola de lectura", all(e["ia_estado"] == "pendiente" for e in q["mesas"][0]["envios"]), [e["ia_estado"] for e in q["mesas"][0]["envios"]])
+    for _ in range(5): cron()
+    s, q = get("/admin/api/mesa?id=" + m6, admin=True)
+    check("tras 6 respuestas ilegibles se deja de intentar", all(e["ia_estado"] == "error" for e in q["mesas"][0]["envios"]), [e["ia_estado"] for e in q["mesas"][0]["envios"]])
     s, q = get("/admin/api/cola?estado=sin_leer", admin=True)
-    check("aparece en la cola «Fotos aún sin leer» del panel", any(x["mesa_id"] == m5 for x in q["mesas"]))
-    for _ in range(4): cron()
-    s, q = get("/admin/api/mesa?id=" + m5, admin=True)
-    check("tras 6 intentos fallidos se deja de intentar", all(e["ia_estado"] == "error" for e in q["mesas"][0]["envios"]), [e["ia_estado"] for e in q["mesas"][0]["envios"]])
-    s, q = get("/admin/api/cola?estado=sin_leer", admin=True)
-    check("y sigue en la cola para aprobarla a mano", any(x["mesa_id"] == m5 for x in q["mesas"]))
-    get("/admin/api/aprobar_foto", admin=True, method="POST", body={"hash": ra["hash"]}); cron()
-    s, p = get("/api/public/prov/12.json"); mm = next(x for x in p["mesas"] if x["id"] == m5)
-    check("al aprobarla a mano, se publica (solo esa)", {f["h"]: f["pub"] for f in mm["fotos"]} == {ra["hash"]: 1, rb["hash"]: 0}, [(f["h"][:8], f["pub"]) for f in mm["fotos"]])
-    s, q = get("/admin/api/cola?estado=sin_leer", admin=True)
-    s2, q2 = get("/admin/api/mesa?id=" + m5, admin=True)
-    check("la foto aprobada sale de la cola y la otra sigue", any(x["mesa_id"] == m5 for x in q["mesas"]) and q2["mesas"][0]["envios"], len(q["mesas"]))
+    check("y queda en la cola para aprobarla a mano", any(x["mesa_id"] == m6 for x in q["mesas"]))
+    get("/admin/api/aprobar_foto", admin=True, method="POST", body={"hash": rc["hash"]}); cron()
+    s, p = get("/api/public/prov/12.json"); mm = next(x for x in p["mesas"] if x["id"] == m6)
+    check("al aprobarla a mano, se publica (solo esa)", {f["h"]: f["pub"] for f in mm["fotos"]} == {rc["hash"]: 1, rd["hash"]: 0}, [(f["h"][:8], f["pub"]) for f in mm["fotos"]])
     # ---- Un acta fotografiada con luz cálida (bombilla, farola) sigue pareciendo un acta
     import tempfile
     im = ImageOps.exif_transpose(Image.open(ACTA)).convert("RGB"); R, G, B = im.split()
