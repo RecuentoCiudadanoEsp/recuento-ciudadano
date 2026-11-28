@@ -1084,10 +1084,13 @@ async function mapaApuntados(){ const p=$("sAProv").value, cont=$("apMapa");
     $("apMapaLey").innerHTML=leyAp();
   }catch(e){ cont.innerHTML=""; } }
 $("apMapaVolver").onclick=e=>{ e.preventDefault(); AP_MAPA_ESP=true; mapaApuntados(); };
-// Cifras de la portada: personas apuntadas, colegios con alguien y cuántas mesas suman esos colegios
+// Cifras de la portada: personas apuntadas, colegios con alguien, provincias y cuántas mesas suman esos colegios
 async function cifrasApuntados(){ try{ const r=await getJSON("/api/public/apuntados.json",{fresh:true}); const n=r.personas||0;
+  const provs=Object.values(r.provincias||{}).filter(x=>x.personas>0).length;   // provincias con al menos una persona apuntada
+  // Cifras con punto de millares también en las de 4 cifras (2.279), igual que se escriben en las redes
+  const mil=v=>{ try{ return v.toLocaleString("es-ES",{useGrouping:"always"}); }catch(e){ return fmt(v); } };
   // Hasta que haya al menos 5 personas no se dan cifras (un «0» o un «2» no animan a nadie)
-  $("apuntaLinea").innerHTML=n>=5?`👤 <b>${personas(n)}</b> ya se ${n===1?"ha":"han"} apuntado en <b>${fmt(r.colegios||0)} colegio${r.colegios===1?"":"s"}</b> de toda España${r.mesas?`, que suman <b>${fmt(r.mesas)} mesa${r.mesas===1?"":"s"}</b>`:""}. <a href="#apuntarme">Mira dónde falta gente →</a>`:`<a href="#apuntarme">Sé de las primeras personas en apuntarte →</a>`; }catch(e){} }
+  $("apuntaLinea").innerHTML=n>=5?`👤 <b>${mil(n)} persona${n===1?"":"s"}</b> ya se ${n===1?"ha":"han"} apuntado en <b>${mil(r.colegios||0)} colegio${r.colegios===1?"":"s"}</b> de <b>${provs} provincia${provs===1?"":"s"}</b>${r.mesas?`, que suman <b>${mil(r.mesas)} mesa${r.mesas===1?"":"s"}</b>`:""}. <a href="#apuntarme">Mira dónde falta gente →</a>`:`<a href="#apuntarme">Sé de las primeras personas en apuntarte →</a>`; }catch(e){} }
 
 // ---------- resultados ----------
 async function verResultados(){
